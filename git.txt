@@ -3,7 +3,7 @@ vim -> git -> pytest -> travis-ci -> fabric # 开发流程
 git rebase -i upstream/master # 合并多个commit为一个完整的commit
 
 将dev提交变基:
-	git rebase master dev =
+	git rebase master dev ?
 		git checkout dev
 		git rebase master
 		git checkout master
