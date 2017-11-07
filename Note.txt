@@ -1,0 +1,12 @@
+gcc: c compiler.
+	gcc hello.cpp -o hl
+g++: c++ compiler. 
+	g++ hello.cpp -o hl
+C++中没有现成的获取数组元素个数的方法，只有自己写。
+	int count = sizeof(array) / sizeof(array[0]);
+	int count = sizeof(array) / sizeof(int);
+nice:
+uptime:
+gdb:
+(gdb)bt:
+(gdb)backtrace:
