@@ -7,4 +7,4 @@ git rebase -i upstream/master # 合并多个commit为一个完整的commit
 		git checkout dev
 		git rebase master
 		git checkout master
-		git merge dev
+		git merge dev #快进master到dev
