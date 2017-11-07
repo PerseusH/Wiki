@@ -51,11 +51,11 @@
     2.InnoDB用于事务处理,具有ACID事务支持等特性,如果执行大量insert和update操作,应该选择InnoDB
 
     |关闭Innodb引擎方法
-        1.关闭mysql服务 ->  net stop mysql
-        2.找到mysql安装目录下的my.ini文件 ->
-        3.找到default-storage-engine=INNODB 改为default-storage-engine=MYISAM
-        4.找到#skip-innodb 改为skip-innodb
-        5.启动mysql服务 -> net start mysql
+    1.关闭mysql服务 ->  net stop mysql
+    2.找到mysql安装目录下的my.ini文件 ->
+    3.找到default-storage-engine=INNODB 改为default-storage-engine=MYISAM
+    4.找到#skip-innodb 改为skip-innodb
+    5.启动mysql服务 -> net start mysql
 
 \linux下设置mysql大小写敏感的问题和设置默认字体集的问题
     -> vi /etc/my.cnf:
