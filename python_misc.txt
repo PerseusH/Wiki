@@ -1,7 +1,4 @@
-key point:
-    Data(BigData,  Mysql),  Algrithm(String,  Array,  Tree),  Apply(Linux,  Git,  UnitTest,  Release(Gunicorn),  WebServer)
-
-python:
+\python
     python manage.py runserver 0.0.0.0:8000 # 启动一个web项目 | manage.py: 项目启动文件
 
     # deployment
@@ -28,15 +25,15 @@ python:
         假如你的项目是可以直接运行的, 那么 requirements.txt 也是必不可少.
         如果你两种功能都需要, 那么就两个文件都不能少.
 
-pytest:
+\pytest
     python测试框架
     python -m pytest -v # 自动查找'test_'开头的function, module, file, 'Test'开头的class
 
-pyenv:
+\pyenv
     source .pyenvrc && pyenv local 3.6.3 ＃ python版本切换
     ~/.pyenv/versions/3.6.3/lib/python3.6/site-packages
 
-travis-ci:
+\travis-ci
     travis-ci.org => settings, 连接github
     ssh-keygen -t rsa ＃ 生成密钥~/.ssh/id_rsa, ~/.ssh/id_rsa.pub
     将id_rsa.pub内容copy到github的repo => settings => deploy keys
@@ -46,49 +43,19 @@ travis-ci:
     git push [.travis.yml, id_rsa.enc] to github
     git push, travis开始build, 结果联动到github
 
-fabric:
+\fabric
     远程部署工具, run(shell cmd), 将程序包同时分发到多个hosts
 
-mysql:
-    mysql -u user -p pwd # 进入mysql | pwd: root
-    mysqladmin -u root -p shutdown 或者 brew services mysqld restart # 重启mysql服务器
-
-    mysql >
-        mysql.server start | mysql.server stop | mysql.server restart | mysql.server status
-
-    程序中增删改操作必需db.commit(),  否则无效
-    show variables like 'xxx%'; # 查看参数'xxxabcd'
-    select version(); # 查看Mysql服务器上的版本
-    show engins; # 查看存储引擎
-    linux下设置mysql大小写敏感的问题和设置默认字体集的问题
-
-    # 关闭Innodb引擎方法:
-        关闭mysql服务： net stop mysql
-        找到mysql安装目录下的my.ini文件：
-        找到default-storage-engine=INNODB 改为default-storage-engine=MYISAM
-        找到#skip-innodb 改为skip-innodb
-        启动mysql服务：net start mysql
-
-    vi /etc/my.cnf:
-        [mysqld]
-        lower_case_table_names=1//不区分大小写, 0为要区分.
-        default-character-set=utf8//设置服务端的字符集为***
-        [client]
-        default-character-set=utf8
-
-    1.MyIASM管理非事务表, 提供高速存储和检索以及全文搜索能力, 如果执行大量select操作, 应该选择MyIASM
-    2.InnoDB用于事务处理, 具有ACID事务支持等特性, 如果执行大量insert和update操作, 应该选择InnoDB
-
-gunicorn: # 默认长连接
+\gunicorn # 默认长连接
     gunicorn是一个高效的 Python WSGI Server, 我们通常用它来运行 WSGI(Web Server Gateway Interface, Web 服务器网关接口)应用
     gunicorn mypy.wsgi:application -b 127.0.0.1[:8000] --reload # 启动Django
     gunicorn -w 3 -b 127.0.0.1:5000 start-file-name:app -k gevent # 启动Flask
 
-Nginx:
+\Nginx
     Nginx是一款轻量级的Web 服务器/反向代理服务器及电子邮件(IMAP/POP3)代理服务器, 并在一个BSD-like 协议下发行. 其特点是占有内存少, 并发能力强, 事实上nginx的并发能力确实在同类型的网页服务器中表现较好
 
     location / {
-        #设置主机头和客户端真实地址，以便服务器获取客户端真实IP
+        #设置主机头和客户端真实地址,以便服务器获取客户端真实IP
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -109,21 +76,21 @@ Nginx:
         静态缓存:
             将指定类型的静态文件缓存到浏览器端
         负载均衡:
-            nginx的upstream默认是以轮询的方式实现负载均衡，这种方式中，每个请求按时间顺序逐一分配到不同的后端服务器，如果后端服务器down掉，能自动剔除。
+            nginx的upstream默认是以轮询的方式实现负载均衡,这种方式中,每个请求按时间顺序逐一分配到不同的后端服务器,如果后端服务器down掉,能自动剔除。
                 upstream test.com {
                     server 192.168.232.132:80;
                     server 192.168.232.133:80;
                 }
-            另外一种方式是ip_hash：每个请求按访问ip的hash结果分配，这样每个访客固定访问一个服务器，可以解决session的问题
+            另外一种方式是ip_hash -> 每个请求按访问ip的hash结果分配,这样每个访客固定访问一个服务器,可以解决session的问题
                 upstream test.com {
                      ip_hash;
                      server 192.168.1.251;
                      server 192.168.1.252;
                      server 192.168.1.247;
                  }
-                 当后端服务器宕机后，session会丢失；
-                 来自同一局域网的客户端会被转发到同一个后端服务器，可能导致负载失衡；
-                 不适用于CDN网络，不适用于前段还有代理的情况
+                 当后端服务器宕机后,session会丢失；
+                 来自同一局域网的客户端会被转发到同一个后端服务器,可能导致负载失衡；
+                 不适用于CDN网络,不适用于前段还有代理的情况
 
     /usr/local/bin/nginx # 主文件(非目录)
     /usr/local/etc/nginx ＃ 安装目录(含配置文件nginx.conf)
@@ -139,8 +106,8 @@ Nginx:
     nginx把所有静态请求自己来处理(这是NGINX的强项).然后,NGINX将所有非静态请求通过uwsgi传递给Django,由Django来进行处理,从而完成一次WEB请求
     可见,uwsgi的作用就类似一个桥接器.起到桥梁的作用
 
-supervisor:
-    supervisor是一个进程管理工具，可以很方便地启动、关闭和重启进程等
+\supervisor
+    supervisor是一个进程管理工具,可以很方便地启动、关闭和重启进程等
     /usr/local/etc/supervisord.ini # 配置文件
 
     # 启动／关闭supervisor
@@ -153,23 +120,23 @@ supervisor:
         directory = path
         command = linux_cmd
 
-HTTP CODE:
+\HTTP CODE
     300 Multiple Choices
-      客户请求的文档可以在多个位置找到，这些位置已经在返回的文档内列出。如果服务器要提出优先选择，则应该在Location应答头指明。
+      客户请求的文档可以在多个位置找到,这些位置已经在返回的文档内列出。如果服务器要提出优先选择,则应该在Location应答头指明。
     301 Moved Permanently
-      客户请求的文档在其他地方，新的URL在Location头中给出，浏览器应该自动地访问新的URL。
+      客户请求的文档在其他地方,新的URL在Location头中给出,浏览器应该自动地访问新的URL。
     302 Found
-      类似于301，但新的URL应该被视为临时性的替代，而不是永久性的。
+      类似于301,但新的URL应该被视为临时性的替代,而不是永久性的。
     303 See Other
-      类似于301/302，不同之处在于，如果原来的请求是POST，Location头指定的重定向目标文档应该通过GET提取
+      类似于301/302,不同之处在于,如果原来的请求是POST,Location头指定的重定向目标文档应该通过GET提取
     304 Not Modified
-      客户端有缓冲的文档并发出了一个条件性的请求（一般是提供If-Modified-Since头表示客户只想比指定日期更新的文档）。服务器告诉客户，原来缓冲的文档还可以继续使用。
+      客户端有缓冲的文档并发出了一个条件性的请求（一般是提供If-Modified-Since头表示客户只想比指定日期更新的文档）。服务器告诉客户,原来缓冲的文档还可以继续使用。
     305 Use Proxy
       客户请求的文档应该通过Location头所指明的代理服务器提取
     307 Temporary Redirect
-      和302（Found）相同。许多浏览器会错误地响应302应答进行重定向，即使原来的请求是 POST，即使它实际上只能在POST请求的应答是303时才能重定向。由于这个原因，HTTP 1.1新增了307，以便更加清除地区分几个状态代码： 当出现303应答时，浏览器可以跟随重定向的GET和POST请求；如果是307应答，则浏览器只能跟随对GET请求的重定向。
+      和302（Found）相同。许多浏览器会错误地响应302应答进行重定向,即使原来的请求是 POST,即使它实际上只能在POST请求的应答是303时才能重定向。由于这个原因,HTTP 1.1新增了307,以便更加清除地区分几个状态代码 ->  当出现303应答时,浏览器可以跟随重定向的GET和POST请求；如果是307应答,则浏览器只能跟随对GET请求的重定向。
 
-UWSGI:
+\UWSGI:
     uwsgi是一个快速的.纯C语言开发的.自维护.对开发者友好的WSGI服务器, 旨在提供专业的Python Web应用和发布功能(源码安装或pip安装).
 
     uwsgi --ini HelloWorld/hw_uwsgi.ini # 使用uwsgi启动监听服务
@@ -178,17 +145,17 @@ UWSGI:
     # 使用uwsgi启动项目:
         uwsgi --http :8001 --chdir ~/HelloWorld --wsgi-file mypy/wsgi.py --master --processes 4 --threads 2 --stats 127.0.0.1:9191
 
-vim:
+\vim
     ~/.vimrc # 配置文件
     F2 -> i -> ctl+v # 外部文本完美粘贴
     shift+a, 就是A, 即可直接到真正的行尾添加内容
 
-    # 多行注释：
+    # 多行注释 ->
         1.进入命令行模式, 按ctrl+v进入 visual block模式, 然后按j, 或者k选中多行, 把需要注释的行标记起来
         2.按大写字母I, 再插入注释符, 例如#
         3.按esc键就会全部注释了
 
-    # 取消多行注释：
+    # 取消多行注释 ->
         1.进入命令行模式, 按ctrl+v进入 visual block模式, 按字母l横向选中列的个数, 例如#需要选中2列
         2.按字母j, 或者k选中注释符号
         3.按d键就可全部取消注释
@@ -199,35 +166,35 @@ vim:
     :q! 强制退出并忽略所有更改
     :e! 放弃所有修改, 并打开原来文件
 
-Mac CMD:
+\Mac CMD
     Finder->Go: /etc/hosts # hosts
     opt+cmd+i: es6 console
 
-Terminal CMD:
-    1.将光标移动到行首：ctrl + a
-    2.将光标移动到行尾：ctrl + e
-    3.清除屏幕：       ctrl + l
-    4.搜索以前使用命令：ctrl + r
-    5.清除当前行：     ctrl + u
-    6.清除至当前行尾：  ctrl + k
-    7.单词为单位移动：  option + 方向键
+\Terminal CMD
+    1.将光标移动到行首 -> ctrl + a
+    2.将光标移动到行尾 -> ctrl + e
+    3.清除屏幕 ->        ctrl + l
+    4.搜索以前使用命令 -> ctrl + r
+    5.清除当前行 ->      ctrl + u
+    6.清除至当前行尾 ->   ctrl + k
+    7.单词为单位移动 ->   option + 方向键
 
-shell脚本:
+\shell脚本
     参数: 命令行输入, 以空格分割
-    $0 ： ./test.sh,即命令本身, 相当于c/c++中的argv[0]
-    $1 ： -f,第一个参数.
-    $2 ： config.conf
-    $3, $4 ... ：类推。
+    $0  ->  ./test.sh,即命令本身, 相当于c/c++中的argv[0]
+    $1  ->  -f,第一个参数.
+    $2  ->  config.conf
+    $3, $4 ...  -> 类推。
     $#  参数的个数, 不包括命令本身, 上例中$#为4.
-    $@ ：参数本身的列表, 也不包括命令本身, 如上例为 -f config.conf -v --prefix=/home
-    $* ：和$@相同, 但"$*" 和 "$@"(加引号)并不同, "$*"将所有的参数解释成一个字符串, 而"$@"是一个参数数组。
+    $@  -> 参数本身的列表, 也不包括命令本身, 如上例为 -f config.conf -v --prefix=/home
+    $*  -> 和$@相同, 但"$*" 和 "$@"(加引号)并不同, "$*"将所有的参数解释成一个字符串, 而"$@"是一个参数数组。
 
-Jenkins: 是一个可扩展的持续集成引擎。
-    主要用于：
+\Jenkins 是一个可扩展的持续集成引擎。
+    主要用于 ->
         持续、自动地构建/测试软件项目。
         监控一些定时执行的任务。
 
-    特性包括：
+    特性包括 ->
         易于安装-只要把jenkins.war部署到servlet容器, 不需要数据库支持。
         易于配置-所有配置都是通过其提供的web界面实现。
         集成RSS/E-mail通过RSS发布构建结果或当构建完成时通过e-mail通知。
@@ -243,7 +210,7 @@ Jenkins: 是一个可扩展的持续集成引擎。
     restart或者安全重启: safe-restart # 重启
     safe-shutdown # 停止
 
-Docker:
+\Docker
     user: perseush | pwd:  hui_123
     /usr/local/bin/docker # docker地址
     /Library/Containers/com.docker.docker/Data # 镜像地址

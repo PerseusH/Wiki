@@ -1,14 +1,25 @@
-WorkFlow:
+\SkillStack
+	Release(Fabric)
+	Build(Travis-CI, Jenkins, Docker)
+	UnitTest(pytest)
+	Coding(Linux&Vim&SSH, Git, Atom)
+	Algrithm(String, Array, Tree, list, Hash)
+	FrontEnd(DOM&H5, JS&ES6, CSS&CSS3&LESS&SASS, React&Redux&Webpack&Node&Gulp)
+	Data(BigData, Mysql, Redis)
+	Python(Pip, VirtualEnv, Flask, Django, Tornado, Mako)
+	WebServer(Nginx, Gunicorn)
+
+\WorkFlow
 	algorithm -> major -> python
--------------------------------------------------------------------------------
-PowerShell:
+
+\PowerShell
 	install: cinst <package>
--------------------------------------------------------------------------------
+
 顺序表：数组
 
 链表：进程管理，管程的条件变量
 
-栈：堆栈，Android activity
+栈：堆栈
 
 后缀表达式：计算器
 
@@ -25,7 +36,7 @@ B树/B+树：关系型数据库结构
 有向图：通信网络，工程关系，课程关系，有限状态机
 
 无向图：最短路径算法
--------------------------------------------------------------------------------
+
 二叉树
 栈/队列
 字符串操作
@@ -53,8 +64,8 @@ oop
 垃圾回收机制
 Hashmap/Hashtable
 控制反转（Inversion of Control，缩写为IoC），是面向对象编程中的一种设计原则，可以用来减低计算机代码之间的耦合度。其中最常见的方式叫做依赖注入（Dependency Injection，简称DI），还有一种方式叫“依赖查找”（Dependency Lookup）。通过控制反转，对象在被创建的时候，由一个调控系统内所有对象的外界实体，将其所依赖的对象的引用传递给它。也可以说，依赖被注入到对象中。
--------------------------------------------------------------------------------
-深度学习(Deep Learning)：梯度下降，牛顿法，人工神经网络，决策树，逻辑回归，贝叶斯方法，模式匹配
+
+
 
 遗传算法
 
