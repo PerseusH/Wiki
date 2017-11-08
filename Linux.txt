@@ -1,24 +1,35 @@
-\misc
+\环境变量
     $HOME = ~/ #当前用户根目录
-    desktop -> cmd + k #远程连接
+    echo $PATH #使用echo命令查看单个环境变量
+    env #使用env查看所有环境变量
 
 \bash多命令执行
     *; *   #命令会连续的执行下去
     * && * #中间有错误则不再执行后面的命令,没错则执行到完为止
+    *|*    #前一命令生成结果作为后一命令的参数进行传递
+    echo x.txt|xargs cat > y.txt #echo xxx.txt->"x.txt"->xargs->cat @xargs > y.txt
+    echo y.txt|xargs rm #echo y.txt->"y.txt"->xargs->rm @xargs
 
 \进程
-    ps [aux|-ef] | grep xxx #查看进程是否存在xxx进程
     "working process | master" #主进程
 
+    ps [aux|-ef] | grep xxx #查看进程是否存在xxx进程
+    |aux 用BSD格式显示
+    -> 显示项:USER, PID, %CPU, %MEM, VSZ, RSS, TTY, STAT, START, TIME, COMMAND
+    |-ef 用标准格式显示
+    -> 显示项:UID, PID, PPID, C, STIME, TTY, TIME, CMD
+
+    |awk [-F 'seperator'] '/pattern/{action}' <file>
     ps -ef|grep xxx|grep -v grep|awk '{print "kill -9 " $2}' |sh #批量删除含xxx进程
     -> "ps -ef"是linux里查看所有进程的命令.这时检索出的进程将作为下一条命令"grep xxx"的输入
     -> "grep xxx"是获取所有含有关键字"xxx"的进程
-    -> "grep -v grep"是在列出的进程中去除含有关键字"grep"的进程
+    -> "grep -v grep"是在前句的结果中排除含有关键字"grep"的进程
     -> "awk '{print "kill -9 " $2}'"是根据搜索结果批量打印出"kill -9 nnn"指令
     -> "print"是打印指令,"kill -9"会强行杀掉指定进程,"$2"就是"ps -ef"结果的第二列显示的PID
     -> "|sh"是执行awk打印的"kill -9 nnn"命令
 
-    |awk [-F 'seperator'] '/pattern/{action}' <file>
+    file xxx.txt|awk -F ':' '{cmd="rm "$1;system(cmd)}' #执行"rm xxx.txt"命令
+
     cat /etc/passwd|awk -F ':' '{print $1}'
     -> 等于"awk -F ':' '{print $1}' /etc/passwd"
     -> "cat /etc/passwd"获取文件内容给awk
@@ -68,6 +79,7 @@
     CMD > xxx.xx #xxx.xx不存在则生成文件,内容为CMD结果;文件存在则以CMD结果覆盖内容
     CMD >> xxx.xx #xxx.xx不存在则生成文件,内容为CMD结果;文件存在则新添CMD内容
     echo "xxx" >> README.md  #生成内容为"xxx"的文件README.md,文件存在则新添一行"xxx"
+    echo xxx.txt #输出"xxx.txt"
     touch -t 0712250000 file1 #修改一个文件或目录的时间戳 - (YYMMDDhhmm)
     file file1 #outputs the mime type of the file as text
     iconv -l #列出已知的编码
@@ -85,7 +97,7 @@
     find / -perm -u+s #罗列一个系统中所有使用了SUID控制的文件
     chmod u+s /bin/file1 #设置一个二进制文件的 SUID 位 - 运行该文件的用户也被赋予和所有者同样的权限
     chmod u-s /bin/file1 #禁用一个二进制文件的 SUID位
-    chmod g+s /home/public #设置一个目录的SGID 位 - 类似SUID ,不过这是针对目录的
+    chmod g+s /home/public #设置一个目录的SGID 位 - 类似SUID,不过这是针对目录的
     chmod g-s /home/public #禁用一个目录的 SGID 位
     chmod o+t /home/public #设置一个文件的 STIKY 位 - 只允许合法所有人删除文件
     chmod o-t /home/public #禁用一个目录的 STIKY 位
@@ -93,7 +105,12 @@
 
 \文件搜索
     find / -user user1 #搜索属于用户 'user1' 的文件和目录
-    find /home/user1 -name \*.bin #在目录 '/ home/user1' 中搜索带有'.bin' 结尾的文件
+    find / -name \*o\*|grep '^\./\.' #在结果中搜索以./.开头的文件或目录,正则表达式需加引号
+    find / -name \*o\*|grep git #在结果中搜索含git的文件或目录
+    find / -name \*o\*|grep -v git #在结果中排除含git的文件或目录
+    grep -n xxx <file> #在文件中查找包含xxx的行,-n为打印行号
+    grep -n '[0-9]' <file> #在文件中查找包含数字的行
+    find /home/user -name \*.bin #在目录'/home/user'中搜索带有'.bin'结尾的文件,*.需转义
     find /usr/bin -type f -atime +100 #搜索在过去100天内未被使用过的执行文件
     find /usr/bin -type f -mtime -10 #搜索在10天内被创建或者修改过的文件
     find / -name \*.rpm -exec chmod 755 '{}' \; #搜索以 '.rpm' 结尾的文件并定义其权限

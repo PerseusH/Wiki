@@ -14,7 +14,7 @@
     git remote show origin #查看远程服务器仓库状态
     git clone --bare robbin_site robbin_site.git  #用带版本的项目创建纯版本仓库
     scp -r my_project.git git@git.csdn.net:~      #将纯仓库上传到服务器上
-    mkdir robbin_site.git && cd robbin_site.git && git --bare init #在服务器创建纯仓库
+    mkdir robbin_site.git&&cd robbin_site.git&&git --bare init #在服务器创建纯仓库
 
 \提交修改
     git add .                 #添加当前修改的文件到暂存区
@@ -65,18 +65,11 @@
     |分支合并和rebase
     git fetch origin                 #抓取远程仓库更新，但不会更新合并到本地，要merge
     git merge origin/master          #将远程主分支合并到本地当前分支
-    git merge <branch>               #将branch分支合并到当前分支
+    git merge <branch>               #将branch分支合并到当前分支(快进当前分支到branch)
     git merge origin/master --no-ff  #不要Fast-Foward合并，这样可以生成merge提交
-    git rebase master <branch>       #将master rebase到branch，相当于：
-        git checkout br && git rebase master && git checkout master && git merge br
+    git rebase master <branch>       #将master rebase到branch(变基),相当于:
+        #git checkout br&&git rebase master&&git checkout master&&git merge br
     git rebase -i origin/master #合并多个commit为一个(pick a commit,squash else:'s')
-
-    |将dev提交变基
-	git rebase master dev ???
-		git checkout dev
-		git rebase master
-		git checkout master
-		git merge dev #快进master到dev
 
 \查看、添加、提交、删除、找回，重置修改文件
     git status                #查看文件状态
@@ -151,25 +144,24 @@
     git apply --check ../sync.patch  #测试补丁能否成功
 
 \错误
-    "You are not currently on a branch, so I cannot use any"
+    1."You are not currently on a branch, so I cannot use any"
     -> git checkout master
 
-    "Your branch and 'bruce/dev' have diverged,and have 6 and 1 different commits each, respectively"
+    2."Your branch and 'bruce/dev' have diverged,and have 6 and 1 different commits each, respectively"
     -> git rebase
 
-    "There is no tracking information for the current branch...""
+    3."There is no tracking information for the current branch...""
     -> 说明本地分支和远程分支的链接关系没有创建，用命令：
     -> git branch --set-upstream branch-name origin/branch-name
 
-    "![rejected] dev -> dev (non-fast-forward)  ... Updates were rejected because the tip of your current branch"
+    4."![rejected] dev -> dev (non-fast-forward)  ... Updates were rejected because the tip of your current branch"
     -> 推送失败，因为远程的最新提交和推送的提交有冲突
     -> 先用git pull把最新的提交从origin/dev抓下来在本地合并，解决冲突，再推送
 
-    "Your branch is behind 'origin/master' by 1 commit, and can be fast-forwarded"
+    5."Your branch is behind 'origin/master' by 1 commit, and can be fast-forwarded"
     -> 意思是，有一个更新还没有反应到本地来，可能是别人往server上提交了一点东西
     -> 使用git pull命令更新到本地来
 
-\github
-    acfdc768bd59823972b74f3f5391f702720b6b89
+\github(acfdc768bd59823972b74f3f5391f702720b6b89)
     -> repo -> settings(last part) -> delete #删除repo
     -> github-pages只能建立在master/master-docs/gh-pages之上
