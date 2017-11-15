@@ -1,0 +1,107 @@
+\Item
+    python manage.py runserver 0.0.0.0:8000 #启动一个web项目|manage.py:项目启动文件
+
+    |包
+    -> Package是模块的集合,当解释器发现目录下有'{__init__.py}',就会认为此目录是一个Package
+
+    |pyenv
+        source .pyenvrc && pyenv local 3.6.3 #python版本切换
+        ~/.pyenv/versions/3.6.3/lib/python3.6/site-packages
+
+\Test -> UnitTest, PyTest
+    白盒测试 -> 通过程序的'{源代码进行测试}'而不使用用户界面.这种类型的测试需要从代码句法发现内部代码在算法,溢出,路径,条件等等中的缺点或者错误,进而加以修正
+    黑盒测试 -> 又被称为功能测试、数据驱动测试或基于规格说明的测试,是通过使用'{整个软件或某种软件功能}'来严格地测试, 而并没有通过检查程序的源代码或者很清楚地了解该软件的源代码程序具体是怎样设计的.测试人员通过输入他们的数据然后看输出的结果从而了解软件怎样工作
+
+\Pack
+    |wheel
+    1.python setup.py bdist_wheel #打包成Wheel
+	2.pip install xxx.whl | pip wheel xxx #安装wheel到/usr/local/bin/xxx
+
+    |egg
+    1.python setup.py bdist_egg #打包成egg文件,类似Java的jar
+    2.python setup.py install #在服务器或VirtualEnv上安装, 完成部署
+
+    |pip
+    1.pip freeze > requirements.txt #生成requirements.txt(含本地所有依赖及版本号)
+    2.pip install -r requirements.txt #在服务器或venv上从requirements.txt安装依赖
+
+    -> 假如项目需要保存为'{系统模块}'(打包),或者可安装为系统命令的'{setup.py}'就必不可少
+    -> 假如项目需要可以'{直接运行}',那么'{requirements.txt}'就必不可少
+    -> 如果你两种功能都需要,那么就两个文件都不能少
+
+    -> python的很多库,内部其实是C语言的,使用easy_install/pip安装的时候,往往是下载源码然后本机编译的.如果打包了,可能会出现一些莫名奇妙的问题,比如 32.64位的兼容问题,不同的操作系统的路径查找问题等等.正确的方式就是在setup.py文件中写明依赖的库和版本,然后到目标机器上安装,反正就一句python setup.py install,不算复杂
+
+    -> vitualenv新建环境里根目录在bin/activate文件中配置
+        -> ???????????????????
+        -> VIRTUAL_ENV="/Users/username/env_x" -> VIRTUAL_ENV=`pwd`
+        -> 这样就把静态根目录改成了动态获取,就能把虚拟环境打包部署到其他机器
+        -> 创建虚拟环境时加--no-site-packages,就不会用主系统python里的库,环境自带lib/site-packages
+
+\Build
+    |travis-ci
+    1.travis-ci.org -> settings,连接github
+    2.ssh-keygen -t rsa #生成密钥~/.ssh/id_rsa,~/.ssh/id_rsa.pub
+    3.将id_rsa.pub内容copy到github的repo -> settings -> deploy keys
+    4.cd myproject
+    5.travis encrypt-file ~/.ssh/id_rsa --add #加密,生成id_rsa.enc
+    6.add .travis.yml配置文件,修改id_rsa.enc路径
+    7.git push [.travis.yml,id_rsa.enc] to github
+    8.git push,travis开始build,结果联动到github
+
+\Release
+    -> 使用Debian基于包的部署是部署Python应用的极佳方案,最重要的是它可以平稳而快速的迁移代码
+
+    |fabric
+    -> 远程部署工具,run(shell cmd),将程序包同时分发到多个hosts
+
+    |Ansible
+
+-Jenkins
+    -> 一个可扩展的持续集成引擎
+
+    $Jenkins_home: ~/.jenkins
+    java -jar jenkins.war --httpPort=8888 #启动
+    /Library/Application Support/Jenkins/Uninstall.command #删除
+    restart或者安全重启: safe-restart #重启
+    safe-shutdown #停止
+
+    |主要用于
+        1.持续、自动地构建/测试软件项目
+        2.监控一些定时执行的任务
+
+    |特性包括
+        1.易于安装-只要把jenkins.war部署到servlet容器,不需要数据库支持
+        2.易于配置-所有配置都是通过其提供的web界面实现
+        3.集成RSS/E-mail通过RSS发布构建结果或当构建完成时通过e-mail通知
+        4.生成JUnit/TestNG测试报告
+        5.分布式构建支持Jenkins能够让多台计算机一起构建/测试
+        6.文件识别:Jenkins能够跟踪哪次构建生成哪些jar,哪次构建使用哪个版本的jar等
+        7.插件支持:支持扩展插件,你可以开发适合自己团队使用的工具
+
+-Docker
+    user: perseush | pwd:  hui_123
+    /usr/local/bin/docker #docker地址
+    /Library/Containers/com.docker.docker/Data #镜像地址
+
+    docker build -t runoob/ubuntu:v1 .#使用当前目录的Dockerfile创建镜像
+    docker run image_name[:tag] #根据镜像启动一个Container
+    docker ps -a #查看所有Containers
+    Docker Daemon #docker 的守护进程
+    docker tag my_img username/my_img #修改自建镜像的名字,否则会被hub.docker.com拒绝
+    docker login ＃ 登录到hub.docker.com
+    docker push username/my_image #将自建镜像上传到hub.docker.com
+
+    |重启一个Exited Container
+        docker start con_name | ContainerID;(&&) docker attach con_name| ContainerID
+    |把容器保存成新镜像mynewimage
+        docker commit ContainerID mynewimage
+
+    |打包／恢复 一个镜像
+        docker save -o myubt.tar myubt:latest
+        docker save myubt:latest > myubt.tar
+        docker load < my_ubt.tar
+
+    -> 无论是Mac,Windows或是Linux,你都可以在其上安装Docker Machine,使用docker-machine命令来创建和管理大量的Docker hosts.它会自动创建主机,在主机上安装Docker Engine,然后配置docker client.每个被管理的主机(“machine”)都是一个Docker 主机和一个配置过的client的组合
+
+    |docker_clean.sh: (source docker_clean.sh ImageID1 ImageID2 ImageID3)
+        -> 基本原理是用 docker save 命令保存要保留的image,然后关闭Docker,删除Docker.qcow2,再启动Docker,它会自动重建,最后用 docker load 命令恢复保留的image

@@ -1,0 +1,79 @@
+\Nginx
+    -> Nginx是一款轻量级的Web服务器/反向代理服务器及电子邮件(IMAP/POP3)代理服务器,并在一个BSD-like协议下发行.其特点是占有内存少,并发能力强,事实上nginx的并发能力确实在同类型的网页服务器中表现较好
+
+    sudo /usr/local/bin/nginx #启动
+    ps -ef | grep nginx,sudo kill --QUIT[--TERM] [PID] #关闭
+    sudo /usr/local/bin/nginx -s reload #重启
+
+    /usr/local/bin/nginx #主文件(非目录)
+    /usr/local/etc/nginx #安装目录(含配置文件nginx.conf)
+    /usr/local/cellar
+    /usr/local/var/log/nginx/ #access.log,error.log etc.
+
+    |nginx.conf
+        location / {
+            #设置主机头和客户端真实地址,以便服务器获取客户端真实IP
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+            #禁用缓存???
+            proxy_buffering off;
+
+            #禁用缓存
+            add_header Cache-Control no-store;
+
+            #反向代理的地址
+            proxy_pass ip | http://xxx.xxx;
+        }
+
+    |功能
+        |反向代理 -> 通过接收Internet上的连接请求,将请求转发给内网中(nginx.conf)的目标服务器,再将从目标服务器得到的结果返回给Internet上请求连接的客户端(比如浏览器)
+        |静态缓存 -> 将指定类型的静态文件缓存到浏览器端
+        |负载均衡
+            1.nginx的upstream默认是以轮询的方式实现负载均衡,这种方式中,每个请求按时间顺序逐一分配到不同的后端服务器,如果后端服务器down掉,能自动剔除
+                upstream test.com {
+                    server 192.168.232.132:80;
+                    server 192.168.232.133:80;
+                }
+            2.另外一种方式是ip_hash -> 每个请求按访问ip的hash结果分配,这样每个访客固定访问一个服务器,可以解决session的问题
+                upstream test.com {
+                     ip_hash;
+                     server 192.168.1.251;
+                     server 192.168.1.252;
+                     server 192.168.1.247;
+                 }
+                 -> 当后端服务器宕机后,session会丢失
+                 -> 来自同一局域网的客户端会被转发到同一个后端服务器,可能导致负载失衡
+                 -> 不适用于CDN网络,不适用于前段还有代理的情况
+
+    -> Django的部署可以有很多方式,采用nginx+uwsgi的方式是其中比较常见的一种方式
+    -> 在这种方式中,通常做法是将nginx作为服务器最前端,它将接收WEB的所有请求,统一管理请求
+    -> nginx把所有静态请求自己来处理(这是NGINX的强项).然后,NGINX将所有非静态请求通过uwsgi传递给Django,由Django来进行处理,从而完成一次WEB请求
+    -> uwsgi的作用就类似一个桥接器,起到桥梁的作用
+
+\gunicorn
+    -> gunicorn是一个高效的Python WSGI Server,通常用来运行WSGI(Web Server Gateway Interface,Web服务器网关接口)应用,默认长连接
+
+    gunicorn mypy.wsgi:application -b 127.0.0.1[:8000] --reload #启动Django
+    gunicorn -w 3 -b 127.0.0.1:5000 start-file-name:app -k gevent #启动Flask
+
+\supervisor
+    -> supervisor是一个web可视化进程管理工具,可以很方便地启动、关闭和重启进程等
+    /usr/local/etc/supervisord.ini #配置文件
+
+    brew services start supervisord
+    brew services stop supervisord
+    brew services restart supervisord
+
+    |添加进程模块(在supervisord.ini中添加或者在/usr/local/etc/supervisor.d/目录下添加myapp.ini)
+     -> [program:myapp]
+        directory = path
+        command = shell_cmd
+
+\UWSGI:
+    -> uwsgi是一个快速的.纯C语言开发的.自维护.对开发者友好的WSGI服务器,旨在提供专业的Python Web应用和发布功能(源码安装或pip安装)
+
+    uwsgi --ini HelloWorld/hw_uwsgi.ini #使用uwsgi启动监听服务
+    uwsgi --http :8001 --wsgi-file test.py #使用uwsgi启动web服务
+    uwsgi --http :8001 --chdir ~/HelloWorld --wsgi-file mypy/wsgi.py --master --processes 4 --threads 2 --stats 127.0.0.1:9191 #启动项目

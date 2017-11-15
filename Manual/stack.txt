@@ -1,0 +1,27 @@
+\Skill
+	|**Deployment
+	-> Release(Fabric, Ansible)
+	-> Build(Travis-CI, Jenkins, Docker)
+	-> Pack(Setup, Wheel, Pip, Makefile, VirtualEnv)
+	-> Test(UnitTest, PyTest)
+
+	|**Coding
+	-> Debug(iPython, PDB/iPDB)
+	-> Tools(Linux&Vim&SSH, Git, Atom)
+	-> Algrithm(String, Array, Tree, list, Hash)
+
+	FrontEnd(RESTful,DOM&H5,JS&ES6,CSS&LESS&SASS,React&Redux&Webpack&Node&Gulp)
+    Network(Process Message, Socket, Multiple Thread, Coroutine)
+
+	|**Data
+	-> Storage(BigData, Mysql, Redis, MongoDB)
+
+	Python(Flask, Django, Tornado, Mako)
+	WebServer(Nginx, Gunicorn, UWsgi)
+
+\HighConcurrency
+    前端 -> 异步请求+资源静态化+cdn
+    后端 -> 请求队列+轮询分发+负载均衡+共享缓存
+    数据层 -> redis缓存+数据分表+写队列
+    存储 -> raid阵列+热备
+    网络 -> dns轮询+DDOS攻击防护

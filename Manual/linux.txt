@@ -1,0 +1,186 @@
+\环境变量
+    $HOME = ~/ #当前用户根目录
+    echo $PATH #使用echo命令查看单个环境变量
+    env #使用env查看所有环境变量
+
+\bash多命令执行
+    *; *   #命令会连续的执行下去
+    * && * #中间有错误则不再执行后面的命令,没错则执行到完为止
+    *|*    #前一命令生成结果作为后一命令的参数进行传递
+    echo x.txt|xargs cat > y.txt #echo xxx.txt->"x.txt"->xargs->cat @xargs > y.txt
+    echo y.txt|xargs rm #echo y.txt->"y.txt"->xargs->rm @xargs
+
+\gdb
+    gdb #调试C/C++程序
+    bt/backtrace #gdb指令,查看core文件中的堆栈信息
+
+\进程
+    "working process | master" #主进程
+
+    |top作为日常管理工作中最常用也是最重要的Linux系统监控工具之一可以动态观察系统进程状况方便系统管理员实时了解系统资源现状
+    -> -i #显示空闲的进程
+    -> -p #监控指定的进程,当监控多个进程时,进程ID以逗号分隔,这个选项只能在命令行下使用
+    -> -u/U #监控指定用户相关进程
+    -> -c #显示执行任务的命令行
+
+    |ps -l #查看进程的优先级
+    -> niceness值(NI)
+    -> PRI表示进程当前的总优先级,值越小表示优先级越高,由进程默认的PRI加上NI得到,即PRI(new) = PRI(old) + NI
+
+    ps [aux|-ef] | grep xxx #查看进程是否存在xxx进程
+    |aux 用BSD格式显示
+    -> 显示项:USER, PID, %CPU, %MEM, VSZ, RSS, TTY, STAT, START, TIME, COMMAND
+    |-ef 用标准格式显示
+    -> 显示项:UID, PID, PPID, C, STIME, TTY, TIME, CMD
+
+    |awk [-F 'seperator'] '/pattern/{action}' <file>
+    ps -ef|grep xxx|grep -v grep|awk '{print "kill -9 " $2}' |sh #批量删除含xxx进程
+    -> "ps -ef"是linux里查看所有进程的命令.这时检索出的进程将作为下一条命令"grep xxx"的输入
+    -> "grep xxx"是获取所有含有关键字"xxx"的进程
+    -> "grep -v grep"是在前句的结果中排除含有关键字"grep"的进程
+    -> "awk '{print "kill -9 " $2}'"是根据搜索结果批量打印出"kill -9 nnn"指令
+    -> "print"是打印指令,"kill -9"会强行杀掉指定进程,"$2"就是"ps -ef"结果的第二列显示的PID
+    -> "|sh"是执行awk打印的"kill -9 nnn"命令
+
+    file xxx.txt|awk -F ':' '{cmd="rm "$1;system(cmd)}' #执行"rm xxx.txt"命令
+
+    cat /etc/passwd|awk -F ':' '{print $1}'
+    -> 等于"awk -F ':' '{print $1}' /etc/passwd"
+    -> "cat /etc/passwd"获取文件内容给awk
+    -> "-F ':'"为以":"分割文件内容的每行文本为两部分,"-F ':'"为域分隔符,"$1"为取每行第一部分,"$0"为取整条记录
+    -> 在不指明"-F"域分隔符的情况下，默认的域分隔符是"空格"
+    -> 适用于
+    1."ps -ef|grep xxx"
+    2."ls -l"
+    3."awk '{}' <file>"
+    4."cat <file>"
+    5."ifconfig"
+    6."find dir -name xxx"
+
+    awk [-F:] '/xxx/{action}' #正则获取包含"xxx"的结果,action为空则默认全部输出
+
+\网络 - (以太网和WIFI无线)
+    telnet IP port #测试端口是否可用,获取端口信息
+    sudo service ssh --full-restart #启动 ssh server
+    ifconfig eth0 #显示一个以太网卡的配置
+    ifup eth0 #启用一个 'eth0' 网络设备
+    ifdown eth0 #禁用一个 'eth0' 网络设备
+    ifconfig eth0 192.168.1.1 netmask 255.255.255.0 #控制IP地址
+    ifconfig eth0 promisc #设置 'eth0' 成混杂模式以嗅探数据包 (sniffing)
+    dhclient eth0 #以dhcp模式启用 'eth0'
+    route -n #show routing table
+    route add -net 0/0 gw IP_Gateway #configura default gateway
+    route add -net 192.168.0.0 netmask 255.255.0.0 gw 192.168.1.1 #configure static route to reach network '192.168.0.0/16'
+    route del 0/0 gw IP_gateway #remove static route
+    echo "1" > /proc/sys/net/ipv4/ip_forward #activate ip routing
+    ip link #show link status of all interfaces
+    mii-tool eth0 #show link status of 'eth0'
+    ethtool eth0 #show statistics of network card 'eth0'
+    netstat -tup #show all active network connections and their PID
+    netstat -tupl #show all network services listening on the system and their PID
+    netstat -an |grep :80 |wc -l #显示全部互联网端口80连接数量
+    netstat -ant | grep LISTEN #显示机器上监听的所有端口
+    nmap ip #在你的LAN上面用nmap命令扫描一个机器，并且获悉它的哪些端口是开放的
+    tcpdump tcp port 80 #show all HTTP traffic
+    iwlist scan #show wireless networks
+    iwconfig eth1 #show configuration of a wireless network card
+    hostname #show hostname
+    host www.example.com #lookup hostname to resolve name to ip address and viceversa
+    nslookup www.example.com #lookup hostname to resolve name to ip address and viceversa
+    whois www.example.com #lookup on Whois database
+
+\系统信息
+    arch #显示机器的处理器架构(1)
+    uname -m #显示机器的处理器架构(2)
+    uname -r #显示正在使用的内核版本
+    dmidecode -q #显示硬件系统部件 - (SMBIOS / DMI)
+    hdparm -i /dev/hda #罗列一个磁盘的架构特性
+    hdparm -tT /dev/sda #在磁盘上执行测试性读取操作
+    cat /proc/cpuinfo #显示CPU info的信息
+    #总核数 = 物理CPU个数 X 每颗物理CPU的核数
+    #总逻辑CPU数 = 物理CPU个数 X 每颗物理CPU的核数 X 超线程数
+    cat /proc/cpuinfo| grep "physical id"| sort| uniq| wc -l #查看物理CPU个数
+    cat /proc/cpuinfo| grep "cpu cores"| uniq #查看每个物理CPU中core的个数(即核数)
+    cat /proc/cpuinfo| grep "processor"| wc -l #查看逻辑CPU的个数
+    cat /proc/interrupts #显示中断
+    cat /proc/meminfo #校验内存使用
+    cat /proc/swaps #显示哪些swap被使用
+    cat /proc/version #显示内核的版本
+    cat /proc/net/dev #显示网络适配器及统计
+    cat /proc/mounts #显示已加载的文件系统
+    lspci -tv #罗列 PCI 设备
+    lsusb -tv #显示 USB 设备
+    date #显示系统日期
+    cal 2007 #显示2007年的日历表
+    date 041217002007.00 #设置日期和时间 - 月日时分年.秒
+    clock -w #将时间修改保存到 BIOS
+
+\用户和群组
+    groupadd group_name #创建一个新用户组
+    groupdel group_name #删除一个用户组
+    groupmod -n new_group_name old_group_name #重命名一个用户组
+    useradd -c "Name Surname " -g admin -d /home/user1 -s /bin/bash user1 #创建一个属于 "admin" 用户组的用户
+    useradd user1 #创建一个新用户
+    userdel -r user1 #删除一个用户 ( '-r' 排除主目录)
+    usermod -c "User FTP" -g system -d /ftp/user1 -s /bin/nologin user1 #修改用户属性
+    passwd #修改口令
+    passwd user1 #修改一个用户的口令 (只允许root执行)
+    chage -E 2005-12-31 user1 #设置用户口令的失效期限
+    pwck 检查 '/etc/passwd' #的文件格式和语法修正以及存在的用户
+    grpck 检查 '/etc/passwd' #的文件格式和语法修正以及存在的群组
+    newgrp group_name #登陆进一个新的群组以改变新创建文件的预设群组
+
+\YUM 软件包升级器 - (Fedora, RedHat及类似系统)
+    yum install package_name #下载并安装一个rpm包
+    yum localinstall package_name.rpm #将安装一个rpm包,使用你自己的软件仓库为你解决所有依赖关系
+    yum update package_name.rpm #更新当前系统中所有安装的rpm包
+    yum update package_name #更新一个rpm包
+    yum remove package_name #删除一个rpm包
+    yum list #列出当前系统中安装的所有包
+    yum search package_name #在rpm仓库中搜寻软件包
+    yum clean packages #清理rpm缓存删除下载的包
+    yum clean headers #删除所有头文件
+    yum clean all #删除所有缓存的包和头文件
+
+\DEB 包 (Debian, Ubuntu 以及类似系统)
+    dpkg -i package.deb #安装/更新一个 deb 包
+    dpkg -r package_name #从系统删除一个 deb 包
+    dpkg -l #显示系统中所有已经安装的 deb 包
+    dpkg -l | grep httpd #显示所有名称中包含 "httpd" 字样的deb包
+    dpkg -s package_name #获得已经安装在系统中一个特殊包的信息
+    dpkg -L package_name #显示系统中已经安装的一个deb包所提供的文件列表
+    dpkg --contents package.deb #显示尚未安装的一个包所提供的文件列表
+    dpkg -S /bin/ping #确认所给的文件由哪个deb包提供
+
+\APT 软件工具 (Debian, Ubuntu 以及类似系统)
+    apt-get install package_name #安装/更新一个 deb 包
+    apt-cdrom install package_name #从光盘安装/更新一个 deb 包
+    apt-get update #升级列表中的软件包
+    apt-get upgrade #升级所有已安装的软件
+    apt-get remove package_name #从系统删除一个deb包
+    apt-get check #确认依赖的软件仓库正确
+    apt-get clean #从下载的软件包中清理缓存
+    apt-cache search searched-package #返回包含所要搜索字符串的软件包名称
+
+-关机 (系统的关机、重启以及登出)
+    shutdown -h now #关闭系统(1)
+    init 0 #关闭系统(2)
+    telinit 0 #关闭系统(3)
+    shutdown -h hours:minutes & #按预定时间关闭系统
+    shutdown -c #取消按预定时间关闭系统
+    shutdown -r now #重启(1)
+    reboot #重启(2)
+    logout #注销
+
+-光盘
+    cdrecord -v gracetime=2 dev=/dev/cdrom -eject blank=fast -force #清空一个可复写的光盘内容
+    mkisofs /dev/cdrom > cd.iso #在磁盘上创建一个光盘的iso镜像文件
+    mkisofs /dev/cdrom | gzip > cd_iso.gz #在磁盘上创建一个压缩了的光盘iso镜像文件
+    mkisofs -J -allow-leading-dots -R -V "Label CD" -iso-level 4 -o ./cd.iso data_cd #创建一个目录的iso镜像文件
+    cdrecord -v dev=/dev/cdrom cd.iso #刻录一个ISO镜像文件
+    gzip -dc cd_iso.gz | cdrecord dev=/dev/cdrom - #刻录一个压缩了的ISO镜像文件
+    mount -o loop cd.iso /mnt/iso #挂载一个ISO镜像文件
+    cd-paranoia -B #从一个CD光盘转录音轨到 wav 文件中
+    cd-paranoia -- "-3" #从一个CD光盘转录音轨到 wav 文件中(参数-3)
+    cdrecord --scanbus #扫描总线以识别scsi通道
+    dd if=/dev/hdc | md5sum #校验一个设备的md5sum编码,例如一张 CD

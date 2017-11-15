@@ -1,19 +1,9 @@
-\SkillStack
-	Release(Fabric)
-	Build(Travis-CI, Jenkins, Docker)
-	UnitTest(pytest)
-	Coding(Linux&Vim&SSH, Git, Atom)
-	Algrithm(String, Array, Tree, list, Hash)
-	FrontEnd(DOM&H5, JS&ES6, CSS&CSS3&LESS&SASS, React&Redux&Webpack&Node&Gulp)
-	Data(BigData, Mysql, Redis)
-	Python(Pip, VirtualEnv, Flask, Django, Tornado, Mako)
-	WebServer(Nginx, Gunicorn)
-
-\WorkFlow
-	algorithm -> major -> python
-
-\vim
+\Vim
+    -> vim比vi好用
     ~/.vimrc #配置文件
+	/ -> 查找
+	: -> 命令
+	:%s/old/new/g #全局替换
     F2 -> i -> ctl+v #外部文本完美粘贴
     shift+a #就是A,可直接到行尾添加内容
 
@@ -47,36 +37,24 @@
 	    6.清除至当前行尾 ->   ctrl + k
 	    7.单词为单位移动 ->   option + 方向键
 
-\shell脚本
-    参数: 命令行输入, 以空格分割
+\Shell
+    参数 -> 命令行输入, 以空格分割
     $0  ->  ./test.sh,即命令本身, 相当于c/c++中的argv[0]
-    $1  ->  -f,第一个参数.
+    $1  ->  -f,第一个参数
     $2  ->  config.conf
-    $3, $4 ...  -> 类推。
-    $# 参数的个数, 不包括命令本身, 上例中$#为4.
+    $3, $4 ...  -> 类推
+    $   -> 参数的个数, 不包括命令本身, 上例中$#为4
     $@  -> 参数本身的列表, 也不包括命令本身, 如上例为 -f config.conf -v --prefix=/home
     $*  -> 和$@相同, 但"$*" 和 "$@"(加引号)并不同, "$*"将所有的参数解释成一个字符串, 而"$@"是一个参数数组。
 
 \Windows & PowerShell
+    Atom -> C:\Users\duhui\AppData\Local\atom\app-1.21.2\resources\app\apm\bin\apm
 	> '"Hello,Powershell Script"' > MyScript.ps1 #创建脚本
 	> .\MyScript.ps1 #执行脚本
-	install: cinst <package>
+	-> $args外部传入参数数组
+	cinst <package> #PowerShell下的安装工具
 	taskkill /F /IM python.exe #批量删除进程
-	Alt+F4: 关闭当前所有窗口
-
-\linux
-	-> gdb调试程序
-	-> nice命令
-	-> 性能监控命令uptime
-	-> 平均负载
-	-> bt指令查看core文件中的堆栈信息
-	-> 系统平均负载被定义为在特定时间间隔内运行队列中的平均进程数.
-	-> 如果一个进程满足以下条件则其就会位于运行队列中:
-		-> 它没有在等待I/O操作的结果
-		-> 它没有主动进入等待状态(也就是没有调用'wait')
-		-> 没有被停止(例如:等待终止)
-	-> 一般来说,每个CPU内核当前活动进程数不大于3,则系统运行表现良好！当然这里说的是每个cpu内核,也就是如果你的主机是四核cpu的话,那么只要uptime最后输出的一串字符数值小于12即表示系统负载不是很严重
-	-> 当然如果达到20,那就表示当前系统负载非常严重,估计打开执行web脚本非常缓慢
+	Alt+F4 #关闭当前所有窗口
 
 \Future
 	-> 遗传算法
