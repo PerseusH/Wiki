@@ -5,15 +5,6 @@
 	redis-cli > info #查看redis信息
 	redis-sentinel /etc/sentinel.conf #start sentinel
 
-	|特性
-		1.开源免费
-		2.原子性 -> 事务操作命令(单线程, 不能打断, 不能回滚, 支持多操作合并后事务操作)
-		3.多数据类型 -> string, list, set, sorted set, hash obj
-		4.快速运算 -> 内存数据库(读的速度是110000次/s, 写的速度是81000次/s)
-		5.数据持久化 -> 保存数据(rdb | aof)文件到磁盘, 重启时再次加载使用
-		6.丰富的特性 -> 支持publish/subscribe, 通知, key过期等特性
-		7.master-slave模式数据备份 -> 可建立高性能读写分离服务器集群
-
 	|数据存储模式
 		1.cache-only
 		-> 只做为'{缓存}'服务,不持久数据,数据在服务终止后将消失,此模式下也将不存在'{数据恢复}'的手,是一种安全性低/效率高/容易扩展的方式

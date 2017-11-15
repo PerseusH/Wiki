@@ -47,6 +47,10 @@
                  -> 来自同一局域网的客户端会被转发到同一个后端服务器,可能导致负载失衡
                  -> 不适用于CDN网络,不适用于前段还有代理的情况
 
+        |epoll
+        epoll fd -> socket描述符
+        running -> epoll_create(epoll instance) -> epoll_ctl(create RB-Tree & Ready-List for socket on epoll instance) -> epoll_ctl(insert socket into RB-Tree and register callback-function on kernel) -> data sent to a socket -> kernel(execute callback-function, set the socket readable/writeable/etc. and insert it into Event-List) -> epoll_wait(get socket from Event-List and send socket to User-State and read/write/etc. data on socket)
+
     -> Django的部署可以有很多方式,采用nginx+uwsgi的方式是其中比较常见的一种方式
     -> 在这种方式中,通常做法是将nginx作为服务器最前端,它将接收WEB的所有请求,统一管理请求
     -> nginx把所有静态请求自己来处理(这是NGINX的强项).然后,NGINX将所有非静态请求通过uwsgi传递给Django,由Django来进行处理,从而完成一次WEB请求
