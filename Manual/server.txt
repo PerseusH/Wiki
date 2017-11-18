@@ -11,20 +11,21 @@
     /usr/local/var/log/nginx/ #access.log,error.log etc.
 
     |nginx.conf
+        events {
+            worker_connections 2048;
+            multi_accept on;
+            #默认use select/poll;
+            use epoll; #默认ET模式,仅用于linux2.6以上内核,可大大提高nginx性能,mac用不了
+        }
         location / {
             #设置主机头和客户端真实地址,以便服务器获取客户端真实IP
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 
-            #禁用缓存???
-            proxy_buffering off;
-
-            #禁用缓存
-            add_header Cache-Control no-store;
-
-            #反向代理的地址
-            proxy_pass ip | http://xxx.xxx;
+            proxy_buffering off; #禁用缓存???
+            add_header Cache-Control no-store; #禁用缓存
+            proxy_pass ip | http://xxx.xxx; #反向代理的地址
         }
 
     |功能
@@ -47,22 +48,18 @@
                  -> 来自同一局域网的客户端会被转发到同一个后端服务器,可能导致负载失衡
                  -> 不适用于CDN网络,不适用于前段还有代理的情况
 
-        |epoll
-        epoll fd -> socket描述符
-        running -> epoll_create(epoll instance) -> epoll_ctl(create RB-Tree & Ready-List for socket on epoll instance) -> epoll_ctl(insert socket into RB-Tree and register callback-function on kernel) -> data sent to a socket -> kernel(execute callback-function, set the socket readable/writeable/etc. and insert it into Event-List) -> epoll_wait(get socket from Event-List and send socket to User-State and read/write/etc. data on socket)
-
     -> Django的部署可以有很多方式,采用nginx+uwsgi的方式是其中比较常见的一种方式
     -> 在这种方式中,通常做法是将nginx作为服务器最前端,它将接收WEB的所有请求,统一管理请求
     -> nginx把所有静态请求自己来处理(这是NGINX的强项).然后,NGINX将所有非静态请求通过uwsgi传递给Django,由Django来进行处理,从而完成一次WEB请求
     -> uwsgi的作用就类似一个桥接器,起到桥梁的作用
 
-\gunicorn
+\Gunicorn
     -> gunicorn是一个高效的Python WSGI Server,通常用来运行WSGI(Web Server Gateway Interface,Web服务器网关接口)应用,默认长连接
 
     gunicorn mypy.wsgi:application -b 127.0.0.1[:8000] --reload #启动Django
     gunicorn -w 3 -b 127.0.0.1:5000 start-file-name:app -k gevent #启动Flask
 
-\supervisor
+\Supervisor
     -> supervisor是一个web可视化进程管理工具,可以很方便地启动、关闭和重启进程等
     /usr/local/etc/supervisord.ini #配置文件
 

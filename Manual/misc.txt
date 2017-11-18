@@ -1,6 +1,10 @@
 \Vim
-    -> vim比vi好用
-    ~/.vimrc #配置文件
+    |.vimrc #配置文件
+    -> 安装Vim,比vi好用
+    -> set incompatible
+    -> set nu #行号
+    -> set paste #无缩进粘贴
+
 	/ -> 查找
 	: -> 命令
 	:%s/old/new/g #全局替换
@@ -24,7 +28,7 @@
     -> :e! #放弃所有修改, 并打开原来文件
 
 \Mac CMD
-    Finder->Go: /etc/hosts #hosts
+    Finder -> Go -> /etc/hosts #hosts
     Atom -> opt+cmd+i #es6 console
 	desktop -> cmd+k #远程连接
 
@@ -38,11 +42,12 @@
 	    7.单词为单位移动 ->   option + 方向键
 
 \Shell
+    ctrl+alt+t #打开终端
     参数 -> 命令行输入, 以空格分割
-    $0  ->  ./test.sh,即命令本身, 相当于c/c++中的argv[0]
-    $1  ->  -f,第一个参数
-    $2  ->  config.conf
-    $3, $4 ...  -> 类推
+    $0  -> ./test.sh,即命令本身, 相当于c/c++中的argv[0]
+    $1  -> -f,第一个参数
+    $2  -> config.conf
+    $3, $4 ... -> 类推
     $   -> 参数的个数, 不包括命令本身, 上例中$#为4
     $@  -> 参数本身的列表, 也不包括命令本身, 如上例为 -f config.conf -v --prefix=/home
     $*  -> 和$@相同, 但"$*" 和 "$@"(加引号)并不同, "$*"将所有的参数解释成一个字符串, 而"$@"是一个参数数组。

@@ -1,0 +1,121 @@
+\os
+    os.environ.get('PYTHONPATH') | os.getenv('PYTHONPATH') #获取环境变量
+    os.remove(filename) #删除文件
+    os.rename(filename, new) #重命名文件
+    os.listdir(dir) #目录中所有文件名(包括子目录名)组成的列表
+    os.getcwd() #获得当前工作目录
+    os.chdir(dir) #改变当前工作目录
+    os.pardir #父级工作目录(..)
+    os.makedirs(dir) #创建目录层
+    os.removedirs(dir) #删除目录层
+    -> os.removedirs(dir)函数会删除所给路径中最后一个目录下所有的空目录.而os.mkdir(dir)和os.rmdir(dir)函数只能处理单个目录级
+    os.stat(file) #获取文件信息
+    os.system(cmd) | os.exec(cmd) #执行shell命令
+    os.fork() #复制进程
+    os.wait() #等待一个进程执行结束
+    -> 在Unix环境下,你可以通过组合使用os.exec(cmd),os.fork()以及os.wait()来从当前程序调用另一个程序
+    os._exit() #调用C语言的_exit()函数,直接退出Python程序,其后的代码也不会继续执行.用于在fork出来的子进程中退出
+
+\sys
+    -> 提供了许多函数和变量来处理Python运行时环境的不同部分
+    sys.argv #命令行参数列表,sys.argv[0]是文件名,即python后第一个字符串
+    sys.path #由目录名构成的列表,Python从中查找扩展模块(Python源模块,编译模块,或者二进制扩展).启动Python时,这个列表从根据内建规则,PYTHONPATH环境变量的内容,以及注册表( Windows系统)等进行初始化
+    sys.builtin_module_names #包含Python解释器中所有内建模块名称的列表
+    sys.modules #包含所有加载模块的字典
+    sys.getrefcount(variable) #返回给定对象的引用记数,即这个对象使用次数.注意这个值总是比实际的数量大, 因为该函数本身在确定这个值的时候依赖这个对象
+    sys.platform #获得当前系统平台
+    sys.getsizeof(arg) #获取变量所占内存大小
+    sys.setprofiler(profiler) #函数允许你配置一个分析函数(profiling function).这个函数会在每次调用某个函数或方法时被调用(明确或隐含的),或是遇到异常的时候被调用
+    sys.settrace(tracer) 函数与setprofiler类似,但是trace函数会在解释器每执行到新的一行时被调用
+    sys.exit(0) #引发一个SystemExit异常,退出程序(解释器).0为正常退出,其他数值(1-127)为不正常,可抛异常事件供捕获.用于在主线程中退出
+    -> __builtin__.exit是一个Quitter对象,这个对象的__call__ 方法会抛出一个SystemExit异常
+    sys.exitfunc = exitfunc #在sys.exit执行前调用exitfunc函数
+
+\errno
+    -> 定义了许多的符号错误码, 比如ENOENT("没有该目录入口")以及 EPERM("权限被拒绝").它还提供了一个映射到对应平台数字错误代码的字典.在大多情况下,IOError异常会提供一个二元元组, 包含对应数值错误代码和一个说明字符串. 如果你需要区分不同的错误代码, 那么最好在可能的地方使用符号名称
+
+re -> 正则查找
+
+pdb -> 调试
+
+urllib/urllib2/httplib -> http lib
+
+\logging
+    > import logging
+    > logging.basicConfig(level = logging.INFO)
+    > logging.info('xxx xxx') #调试程序, 记录信息
+
+\shutil
+    rmtree #删除非空目录
+    make_archive('archive_xxx', 'bztar') #打包为archive_xxx.tar.bz2
+
+json/simplejson -> simplejson的性能要高于json
+
+\cgi
+    escape('<script>') #html转义
+
+\subprocess
+    -> 系统命令执行、执行结果获取和解析.其中最有用的是call（执行系统命令）、check_call（执行结果不为0则抛出异常）、check_output（最方便的获取执行的输出的函数）、Popen+PIPE（支持管道的多命令执行）
+
+contextlib
+
+\argparse
+    -> 用来替代optparse的命令行解析库.如果你考虑用更直观的,推荐docopt,它使用docstring所见即所得实现命令行解析
+
+glob -> 文件名的shell模式匹配,你不用遍历整个目录判断每个文件是不是符合,使用glob一句话就解决
+contextmanager -> decorator
+multiprocessing.dummy
+operator
+
+\functools
+    -> 其中的partial(偏函数)、wraps(将被包装函数的信息拷贝过来)、total_ordering(只需要定义2个__XX__方法就可实现对象对比的类装饰器)、cmp_to_key(将老式的比较函数转化为关键字函数)非常常用
+
+Profile/cProfile -> 输出程序运行信息(时间, 堆栈)
+
+time
+
+timeit -> 计算代码运行的时间
+
+crontab -> 定时任务
+
+\Queue
+    -> 这个模块用于多线程编程,它是一个线程安全的FIFO（先进先出）的队列实现。如果是多进程编程,选用multiprocessing.queues中的Queue、SimpleQueue、JoinableQueue这三个队列实现
+
+\SimpleHTTPServer
+    -> 最简单地HTTP Server实现(python -m SimpleHTTPServer PORT,就可以运行起来静态服务)
+
+multiprocessing -> 多进程
+threading -> 多线程模块
+
+\collections
+    -> 复杂类型。其中的OrderedDict(有序字典)、Counter(字典计数器)、defaultdict(带有默认值的字典)、namedtuple(通过创建带有字段属性的元组子类)和deque(高效实现插入和删除操作的双向列表)非常常用
+
+    |defaultdict
+    > from collections import defaultdict
+    > d = defaultdict(list|str|int|lambda: n) #[]|''|0|n
+
+    |Counter
+    > from collections import Counter
+    > c = Counter() #内置计数字典cdict,内部自动按value倒序排序
+    > c = Counter(k0=v0, k1=v1)|Counter(dictobj) #统计字典keys,cdict={k0:v0, k1:v1}
+    > c = Counter([items]) #统计list,cdict={k0: n0, k1: n1, k2: n2}
+    > c = Counter(a_str) #统计字符串,cdict={s0: n0, s1: n1, s2: n2}
+    > c.most_common(n) #统计前n最多
+    > c.update({key: val}) #key存在则合并值;若key不存在,val只能为int,新增{key: 1}
+    > c.update([items]) #item存在则{item: val+1};item不存在则新增{item: 1}
+    > c.update(a_str) #字符存在则{ch: val+1};字符不存在则新增{ch: 1}
+    > c.subtract(obj) #减少记录
+
+\Third party
+    1.requests #人性化的HTTP请求库
+    2.pip #Python包和依赖关系管理工具
+    3.virtualenv #创建独立Python环境的工具
+    4.IPython #附带额外功能的交互环境
+    5.httpie #一个命令行HTTP客户端,cURL的替代品,易用性更好
+    6.Cython #优化的Python静态编译器.使用类型混合使Python编译成C/C++模块来极大地提升性能
+    7.pycodestyle #就是原来的pep8,帮你检查代码是否符合PEP8标准
+    8.Flake8 #静态检查工具,包含PyFlakes(静态检查Python代码逻辑错误)、pycodestyle和McCabe(分析Python代码复杂度)三个工具
+    9.gevent #为Python提供了比较完善的协程支持
+    10.PyPy #用Python实现的Python编译器,速度超快,是对CPython的替代
+        -> PyPy集成了一种即时(JIT)编译器。和许多编译器，解释器不同，它不关心Python代码的词法分析和语法树.因为它是用Python语言写的，所以它直接利用Python语言的Code Object.Code Object是Python字节码的表示，也就是说，PyPy直接分析Python代码所对应的字节码,这些字节码即不是以字符形式也不是以某种二进制格式保存在文件中，而在Python运行环境中
+    11.objgraph #对于查找内存泄露非常有用

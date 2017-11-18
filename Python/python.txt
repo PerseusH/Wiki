@@ -1,8 +1,6 @@
-\Core
-    -> Python的内存管理是由私有heap空间管理的
-    -> 所有的Python对象和数据结构都在一个私有heap中.程序员没有访问该heap的权限,只有解释器才能对它进行操作
-    -> Python的内存管理模块为Python的heap空间分配内存.其核心API提供一些访问该模块的方法供程序员使用
-    -> Python的垃圾回收: 1.引用计数 2.标记清除 3.分代回收
+\System
+    -> 遇到权限问题, 尝试sudo python xxx.py
+    monkey patch -> 在运行时动态地对已定义的函数或对象进行修改或添加
 
 \Debug
     PyChecker -> 静态分析工具,它报告源代码中的错误并且会报告错误类型和复杂度
@@ -34,7 +32,7 @@
 \Calculation
     +|-|*|/ > and|or|not|== > = #计算顺序
     5/2=2.5('{python2.x}'=2) | 5.0/2=2.5 | 5//2=2 | 5.0//2.0=2.0 | 5.0//2=2.0
-    -> is是对比地址, ==是对比值
+    -> is是对比引用地址, ==是对比值
     a, b = i, j #集中赋值(a, b = b, a #数值互换)
     x ** n #x的n次方
     |短路运算
@@ -44,18 +42,6 @@
     any(i % 3 == 0 for i in data_list) #判断data_list是否包含3的倍数,返回True/False
     2 ** 16 = 65536 | 0xFFFF = 2 ** 16 - 1
     1111 1111 = 2 ** 8 - 1 | 0.1111 1111 = 1 - 2 ** -8
-
-\System
-    -> 遇到权限问题, 尝试sudo python xxx.py
-    monkey patch -> 在运行时动态地对已定义的函数或对象进行修改或添加
-    os.system("ps -ef | grep xxx") #执行shell脚本
-    sys.exit() #退出运行环境
-    sys.getsizeof(arg) #获取变量所占内存大小
-
-    |logging
-    > import logging
-    > logging.basicConfig(level = logging.INFO)
-    > logging.info('xxx xxx') #调试程序, 记录信息
 
 \Function
     -> 每个函数都有一个__name__属性, 即函数签名
@@ -87,10 +73,14 @@
     -> '{python3.x}':__next__(), '{python2.x}': next()
     -> python类属性默认用dict存储,__slots__是用list存储属性名,而不会再使用dict,__slots__里没有的属性,类实例不能随便添加.节省了内存, 限制了属性添加
 
-\List & Tuple & Dict
+\List & Tuple & Dict & Set
+    -> list是一个数组而不是一个链表
     -> 数组(list)和元组(tuple)之间的区别是数组内容是可以被修改的而元组内容是只读的.元组可以被哈希比如作为字典的关键字
     list(dict.keys()), list(dict.values()), list(dict.items()) #字典对象操作
+    l[-n] #倒序取值
+    l.pop() #删除并返回list最后一个元素
     dict.clear() #dict -> {}
+    -> dict和set都是使用hash表来实现的
 
     |list comprehension
         nums=[i for i in data_list if i%3 == 0] #列表推导式(list comprehension)
@@ -99,12 +89,19 @@
         [dict[key] for key in dict] #return values of dict
 
     |dict operation
-        zip((1, 2, 3), ('a', 'b', 'c')) = [(1, 'a'), (2, 'b'), (3, 'c')]
+        list(zip((1, 2, 3), ('a', 'b', 'c'))) = [(1, 'a'), (2, 'b'), (3, 'c')]
         dict([(1, 'a'), (2, 'b'), (3, 'c')]) = {1: 'a', 2: 'b', 3: 'c'}
         dict([('a', 1), ('b', 2), ('c', 3), ('d', 4), ('e', 5), ('f', 6)]) =
               {'a': 1, 'c': 3, 'b': 2, 'e': 5, 'd': 4, 'f': 6} #'{python2.x}'
         dict(data_list)在'{python3.x}'中有序, 在'{python2.x}'中无序
         dc={'a': 1, 'b': 2, 'c': 3} #'a' in dc (True) | 1 in dc (False)
+        sorted(zip(d.keys(), d.values()), reverse=True) #dict排序
+
+        |设置字典默认值
+        > equities = {}
+        > for key, value in enumerate(data):
+        >     equities.setdefault(key, []).append(value) #equities[key]=[value,]
+        >  or equities.setdefault(key, value) #equities[key]=value
 
     |list operation
         > l=[[], [], [], [], []]
@@ -121,10 +118,16 @@
         > l[0|1|2|3|4].append(10) l[0|1|2|3|4].append(20) -> l=[[10,20], [10,20], [10,20], [10,20], [10,20]]
 
     |sort
-        data_list[::-1] #对data_list按原序倒序排列, 不改变列表本身
-        data_list.sort() #正序排序, 改变列表本身, 返回值为None
-        data_list.reverse() #倒序排序, 改变列表本身, 返回值为None
-        sorted(data_list, key=lambda x: x.name reverse=True) #按key排序,不改变列表本身,返回值为排序后列表
+        |不改变列表本身,返回排序后列表
+        data_list[::-1] #按原序倒序排列
+        sorted(data_list, key=str|int|len|lambda x: x.id, reverse=True) #按key排序
+
+        |改变列表本身,返回None
+        from operator import itemgetter, attrgetter
+        data_list.sort(key=itemgetter(0)|attrgetter(key)) #正序排序
+        data_list.sort(key=itemgetter(0, 1)|attrgetter(key0, key1)) #多级正序排序
+        data_list.reverse(key=itemgetter(0)|attrgetter(key)) #倒序排序
+        data_list.reverse(key=itemgetter(0, 1)|attrgetter(key0, key1)) #多级倒序排序
 
 \Lambda
     lambda x: x ** n #匿名函数(lambda), x为参数
@@ -156,13 +159,15 @@
     -> 正则表达式中?表示尽可能少地匹配(非贪婪匹配)
 
 \DataBase
-    -> 数据库增删改操作必须有 db.commit()
+    conn_str = %(dbn)s://(%user)s:%(pw)s@%(host)s:%(port)s/%(db)s #数据库连接字符串
+    -> 数据库增删改操作必须有db.commit()
 
 \File
     open('new.txt', '[w|a][+|b[+]]') #创建一个新文件
     read -> 读取整个文件
     readline -> 读取下一行,使用生成器方法
     readlines -> 读取整个文件到一个迭代器以供我们遍历
+    'xt'-> 写一个文件，如果该文件已经存在，则不写
 
 \Time
     > import datetime
@@ -172,13 +177,15 @@
     > >>>  2017-10-13 10:10:10
 
 \Copy
+    嵌套items -> 浅copy始终共享,主改从变
+    非嵌套items -> 所有copy一开始都是共享,若主对象更改item,会在本容器新建item,从对象不变
     > import copy
     > t = ['abc', [123]]
-    > t1 = copy.copy(t) | t.copy()(if t is list|dict) #new obj, share nested obj
+    > t1=copy.copy(t)|t.copy()(if t is list|dict) #new obj, share nested
     > t2 = copy.deepcopy(t) #absolutely new obj
     > print(t1 == t) #True
     > print(t1 is t) #False
-    > print(t1[1] is t[1])#True, share nested obj: ([[123]] | {key: [123]})
+    > print(t1[1] is t[1])#True, share nested
     > print(t2[1] is t[1])#False, absolutely new obj
     > t3 = t #new ref, same obj
     > print(t3 == t) #True
@@ -189,15 +196,32 @@
     |实例
        > ?????????????
 
+\Error
+    '{python3.x}' -> except SystemExit as e:
+    '{python2.x}' -> except SystemExit, e:
+    raise ValueError(msg) #主动触发异常
+    import traceback; traceback.print_exc() #获取详细异常信息
+        format_exc() #返回字符串
+        print_exc() #直接打印或写入文件traceback.print_exc(file=open('tb.txt','w+'))
+
+    |用户自定义异常
+    > class Networkerror(RuntimeError):
+    >     def __init__(self, arg):
+    >         self.args = arg
+
 \Arch
     Django -> 大而全,模板引擎运算慢
     Flask -> 小而少,模板引擎运算快
-    Tornado -> 适合大型项目
+    Celery -> ????????
+    Tornado -> 适合大型项目,丰富的异步API
+    Asyncio -> 异步框架
     Mako -> 前端模板
 
 \Test
     框架 -> pytest
     python -m pytest -v #启动'test_'开头的function,module,'Test'开头的class
+
+    |DocTest????????????
 
     |UnitTest
     > import unittest
@@ -210,11 +234,3 @@
     >         self.assertTrue(if_true) #if if_true
     > if __name__ == '__main__':
     >     unittest.main()
-
-\OOP
-    -> 控制反转 -> (Inversion of Control,缩写为IoC),是面向对象编程中的一种设计原则
-    -> 用来降低代码之间的耦合度
-    -> 最常见的方式是依赖注入(Dependency Injection,简称DI)
-    -> 还有一种方式是依赖查找(Dependency Lookup)
-    -> 通过控制反转,对象在被创建的时候,由一个调控系统内所有对象的外界实体
-    -> 将其所依赖的对象的引用传递给它.也可以说,依赖被注入到对象中

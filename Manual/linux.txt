@@ -17,6 +17,9 @@
 \进程
     "working process | master" #主进程
 
+    lsof -p pid|wc -l #查看某个进程开了哪些句柄
+    lsof path/filename #查看目录/文件被什么进程占用,显示已打开该目录或文件的所有进程信息
+
     |top作为日常管理工作中最常用也是最重要的Linux系统监控工具之一可以动态观察系统进程状况方便系统管理员实时了解系统资源现状
     -> -i #显示空闲的进程
     -> -p #监控指定的进程,当监控多个进程时,进程ID以逗号分隔,这个选项只能在命令行下使用
@@ -27,7 +30,7 @@
     -> niceness值(NI)
     -> PRI表示进程当前的总优先级,值越小表示优先级越高,由进程默认的PRI加上NI得到,即PRI(new) = PRI(old) + NI
 
-    ps [aux|-ef] | grep xxx #查看进程是否存在xxx进程
+    ps [aux|-ef]|grep xxx #查看进程是否存在xxx进程
     |aux 用BSD格式显示
     -> 显示项:USER, PID, %CPU, %MEM, VSZ, RSS, TTY, STAT, START, TIME, COMMAND
     |-ef 用标准格式显示
@@ -60,6 +63,10 @@
     awk [-F:] '/xxx/{action}' #正则获取包含"xxx"的结果,action为空则默认全部输出
 
 \网络 - (以太网和WIFI无线)
+    ssh IP 'uname -a' #登陆远程机并执行指令
+    scp file root@192.168.1.232:/root/file #拷贝文件到远程
+    scp -r /home/www/ root@192.168.1.65:/root/scp #拷贝文件夹 (包括文件夹本身)
+    scp /home/www/* root@192.168.1.65:/root/scp #拷贝文件夹下所有文件(不包括文件夹本身)
     telnet IP port #测试端口是否可用,获取端口信息
     sudo service ssh --full-restart #启动 ssh server
     ifconfig eth0 #显示一个以太网卡的配置
@@ -76,6 +83,8 @@
     ip link #show link status of all interfaces
     mii-tool eth0 #show link status of 'eth0'
     ethtool eth0 #show statistics of network card 'eth0'
+    netstat -n | awk '/^tcp/ {++S[$NF]} END {for(a in S) print a, S[a]}'
+        #socket状态信息
     netstat -tup #show all active network connections and their PID
     netstat -tupl #show all network services listening on the system and their PID
     netstat -an |grep :80 |wc -l #显示全部互联网端口80连接数量
@@ -94,6 +103,9 @@
     uname -m #显示机器的处理器架构(2)
     uname -r #显示正在使用的内核版本
     dmidecode -q #显示硬件系统部件 - (SMBIOS / DMI)
+    sysctl -a #系统limit信息
+    cat /proc/sys/fs/file-max #系统文件句柄limit
+    cat /proc/sys/fs/file-nr #系统目前使用的文件句柄数量
     hdparm -i /dev/hda #罗列一个磁盘的架构特性
     hdparm -tT /dev/sda #在磁盘上执行测试性读取操作
     cat /proc/cpuinfo #显示CPU info的信息
@@ -116,6 +128,7 @@
     clock -w #将时间修改保存到 BIOS
 
 \用户和群组
+    ulimit -a #查看当前用户的文件句柄limit
     groupadd group_name #创建一个新用户组
     groupdel group_name #删除一个用户组
     groupmod -n new_group_name old_group_name #重命名一个用户组

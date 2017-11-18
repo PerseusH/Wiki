@@ -1,0 +1,7 @@
+-> 模板引擎Jinja2和Mako的使用
+-> Flask的上下文设计，并演示大型应用中使用上下文钩子
+-> 利用'{信号机制}'可以实现一部分的业务解耦
+-> 一些常用扩展，如Flask-Script、Flask-DebugToolbar、Flask-Migrate、Flask-WTF、Flask-Security、Flask-RESTful、Flask-Admin和Flask-Asset
+-> 依赖库Werkzeug的使用
+-> RESTful API
+-> Celery
