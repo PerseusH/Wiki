@@ -11,6 +11,10 @@
         ipython test.py --pdb #以调试模式运行程序,发现异常或断点则进入pdb控制台进行调试
         python -m [pdb/ipdb] test.py #以调试模式运行程序,直接进入pdb控制台
 
+    |objgraph #对于查找内存泄露和大内存对象
+    > import objgraph
+    > objgraph.show_most_common_types(25) #获取前n大内存对象
+
 \Type
     -> '{python3.x}'默认使用utf-8编码(支持特殊字符集)
     -> '{python3.x}'比'{python2.x}'慢, 主要慢在字符串和整数操作上
@@ -79,6 +83,7 @@
     list(dict.keys()), list(dict.values()), list(dict.items()) #字典对象操作
     l[-n] #倒序取值
     l.pop() #删除并返回list最后一个元素
+    dict.items() #乱序列表
     dict.clear() #dict -> {}
     -> dict和set都是使用hash表来实现的
 
@@ -212,7 +217,7 @@
 \Arch
     Django -> 大而全,模板引擎运算慢
     Flask -> 小而少,模板引擎运算快
-    Celery -> ????????
+    Celery ->
     Tornado -> 适合大型项目,丰富的异步API
     Asyncio -> 异步框架
     Mako -> 前端模板

@@ -1,5 +1,5 @@
 # Wiki
-Wiki for my knowlege.
+Wiki for my knowlege.:+1
 <!------------------
 |	::	item
 ->  ::	text

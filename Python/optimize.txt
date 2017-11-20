@@ -48,6 +48,19 @@ a**n > pow(a, n) #a的n次方
 
 set的union，intersection，difference操作要比list的迭代要快。因此如果涉及到求 list 交集，并集或者差的问题可以将list转换为set来操作
 
+\内存
+    -> {} > [] > () > 1|''|True|False #{} = [] * 4.5
+    |内存优化 -> 尽量使用immutable而不是mutable对象
+        -> tuple > list
+        -> frozenset > set
+        -> 尽量使用迭代器
+
+    |内存泄漏(Memory Leak)
+    -> 程序中己动态分配的堆内存由于某种原因程序未释放或无法释放,造成系统内存的浪费,导致程序运行速度减慢甚至系统崩溃等严重后果
+    原因 -> 全局变量未释放, 循环引用
+    > import gc; gc.collect() #强制进行垃圾回收
+    > import objgraph; objgraph.show_most_common_types(n) #打印前n大内存对象
+
 build-in函数通常较快，因为内置函数是C写的
 
 a,b=b,a > t=a;a=b;b=t #交换
@@ -59,8 +72,8 @@ port = dictobj.get('port', 3306) #获取字典对象中指定key的值,默认为
 
 使用关键字排序list.sort(key=operator.itemgetter(0))
 
-L1=list(L),d1 = dict(d) > 列表推导式 #复制一个列表或者字典
-L1=map(f,L) > L1=[f(x) for x in L] #对列表的每一个元素都调用函数
+L1 = list(L),d1 = dict(d) > 列表推导式 #复制一个列表或者字典
+L1 = map(f,L) > L1=[f(x) for x in L] #对列表的每一个元素都调用函数
 
 random.shuffle(list); print(list[0]) #把列表元素随机打乱,取首元素.改变列表结构
 random.sample(list, n) #随机取出n个列表元素,返回子列表.不改变列表结构
@@ -69,7 +82,7 @@ for循环使用生成器
 
 使用enumerate遍历list
     > L = [ i*i for i in range(5) ]
-    > for index, data in enumerate(L):
+    > for (index, data) in enumerate(L): #括号可省略.items<200时带括号性能高,>200时不带括号性能高
 
 循环外计算列表长度
 

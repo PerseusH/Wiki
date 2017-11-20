@@ -63,7 +63,8 @@
     awk [-F:] '/xxx/{action}' #正则获取包含"xxx"的结果,action为空则默认全部输出
 
 \网络 - (以太网和WIFI无线)
-    ssh IP 'uname -a' #登陆远程机并执行指令
+    ssh user@host #远程登录
+    ssh IP 'uname -a' #登录远程机并执行指令
     scp file root@192.168.1.232:/root/file #拷贝文件到远程
     scp -r /home/www/ root@192.168.1.65:/root/scp #拷贝文件夹 (包括文件夹本身)
     scp /home/www/* root@192.168.1.65:/root/scp #拷贝文件夹下所有文件(不包括文件夹本身)

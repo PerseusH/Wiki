@@ -26,6 +26,7 @@
     sys.platform #获得当前系统平台
     sys.getsizeof(arg) #获取变量所占内存大小
     sys.setprofiler(profiler) #函数允许你配置一个分析函数(profiling function).这个函数会在每次调用某个函数或方法时被调用(明确或隐含的),或是遇到异常的时候被调用
+    sys.setdefaultencoding('utf-8') #设置默认编码
     sys.settrace(tracer) 函数与setprofiler类似,但是trace函数会在解释器每执行到新的一行时被调用
     sys.exit(0) #引发一个SystemExit异常,退出程序(解释器).0为正常退出,其他数值(1-127)为不正常,可抛异常事件供捕获.用于在主线程中退出
     -> __builtin__.exit是一个Quitter对象,这个对象的__call__ 方法会抛出一个SystemExit异常
@@ -117,5 +118,8 @@ threading -> 多线程模块
     8.Flake8 #静态检查工具,包含PyFlakes(静态检查Python代码逻辑错误)、pycodestyle和McCabe(分析Python代码复杂度)三个工具
     9.gevent #为Python提供了比较完善的协程支持
     10.PyPy #用Python实现的Python编译器,速度超快,是对CPython的替代
-        -> PyPy集成了一种即时(JIT)编译器。和许多编译器，解释器不同，它不关心Python代码的词法分析和语法树.因为它是用Python语言写的，所以它直接利用Python语言的Code Object.Code Object是Python字节码的表示，也就是说，PyPy直接分析Python代码所对应的字节码,这些字节码即不是以字符形式也不是以某种二进制格式保存在文件中，而在Python运行环境中
+    -> PyPy集成了一种即时(JIT)编译器。和许多编译器，解释器不同，它不关心Python代码的词法分析和语法树.因为它是用Python语言写的，所以它直接利用Python语言的Code Object.Code Object是Python字节码的表示，也就是说，PyPy直接分析Python代码所对应的字节码,这些字节码即不是以字符形式也不是以某种二进制格式保存在文件中，而是在Python运行环境中
     11.objgraph #对于查找内存泄露非常有用
+    12.Pandas #大数据处理
+    13.pyspark #大数据处理
+    14.jieba #中文分词

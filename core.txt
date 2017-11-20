@@ -44,14 +44,26 @@
         '{python2.x}' -> twisted+tornado+gevent, socket消息队列轮询
         '{python3.x}' -> asyncio
 
-    -> RESTful API
-    -> Flask&Celery
-    -> 网络爬虫
+    -> Flask&Celery&RabbitMQ&MongoDB&Asyncio&RESTful API
+    -> 网络爬虫(beautifulsoup -> 简单, scrapy -> 复杂复杂)
+    -> 搜索引擎Solr搭建
+
+    |注释 -> docstring
+    > """
+    > xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    > """
+
     -> DataStructure(String, Array, Queue, Stack, Tree, List, Hash)
     -> Network(ProcessMsg,Socket,MultipleThread,Coroutine,Gevent,Asyncio,RabbitMQ)
 
 \Linux
     -> 用户态/内核态传递数据
+        -> 为了限制不同程序之间的访问能力,防止它们获取别的程序或外围设备的内存数据,并发送到网络,CPU划分出两个权限等级 -> 用户态和内核态(内存安全)
+        内核态(CPU) -> 可访问内存所有数据,包括外围设备(硬盘,网卡).也可以从一个程序切换到另一个
+        用户态 -> 只能访问受限内存,不能访问外围设备.占用CPU的能力被剥夺,CPU资源可以被其他程序获取
+        -> 系统调用是操作系统的最小功能单位(memory, IO(file&network), process, devices)
+        -> 用户空间的应用程序,通过'{系统调用}',进入内核空间.这个时候用户空间的进程要传递很多变量、参数的值给内核,内核态运行的时候也要保存用户进程的一些寄存器值、变量等.所谓的“进程上下文”,可以看作是用户进程传递给内核的这些参数以及内核要保存的那一整套的变量和寄存器值和当时的环境等
+
 	-> Systemtap/DTrace #收集操作系统和JVM中的性能瓶颈
 	-> tcpdump #抓包工具,将网络中传送的数据包的头部完全截获下来提供分析
     -> cron #周期执行任务的守护进程来处.cron读取一个或多个配置文件,这些配置文件中包含了命令行及其调用时间.cron的配置文件称为crontab,是cron table的简写
@@ -82,6 +94,9 @@
     4.外键有什么用,是否该用外键？外键一定需要索引吗？
     5.myisam与innodb的区别？innodb的两阶段锁定协议是什么情况？
     6.索引有什么用,大致原理是什么？设计索引有什么注意点？
+    7.分库分表
+    8.mysql-redis集群
+    9.数据库设计
 
 \Redis
     |原理
@@ -107,7 +122,7 @@
         2.全页缓存(FPC)-> 有磁盘的持久化,即使重启Redis实例,用户也不会看到页面加载速度的下降
         3.消息队列 -> 提供list和set操作,这使得Redis能作为一个很好的消息队列平台来使用
         4.排行榜/计数器 -> Redis在内存中对'{数字增减}'的操作实现的非常好.集合(Set)和有序集合(Sorted Set)也使得我们在执行这些操作的时候变的非常简单
-        5.'{数据变化快}'的应用 -> 股票交易, 消息队列, 排行榜, 计数器, 关注列表
+        5.'{数据变化快}'的应用 -> 消息队列, 排行榜, 计数器, 时间线, 关注列表, 股票交易
 
         -> mysql的'{磁盘IO}'操作,数据排序,表关联,锁机制
         -> 一般来说,写入数据是直接到mysql,读取的是redis. mysql->redis同步数据
@@ -147,6 +162,8 @@
         -> 存储引擎是rocksdb,性能比Redis低一些,一般使用SSD盘来存放数据
 
 \操作系统(Linux)
+    tcp/ip协议 -> ???????????
+
     1.tcp/udp的区别？tcp粘包是怎么回事,如何处理？udp有粘包吗？
         |保护消息边界 -> 把每条数据当作'{独立的消息}'传输,接收端一次只能接收一个数据包
         |流传输 -> '{无保护消息边界}',如果发送端连续发送数据,接收端可能一次收到多个数据包
@@ -210,12 +227,12 @@
         epoll fd -> socket描述符
         多路复用IO模型 -> 监视多个fd,一旦某个fd就绪(读就绪或写就绪),通知程序进行相应的读写操作
         -> 只轮询EventQueue,一个进程能打开的FD数目没有1024的限制=n*10W(系统内存nGB)
-        -> epoll_wait()获取就绪fd时，返回的并不是实际的描述符，而是一个代表就绪描述符数量的值，拿到这些值去EventQueue中依次取得相应数量的文件描述符即可.使用'{内存映射}'(mmap)技术，避免了复制大量文件描述符带来的开销
+        -> epoll_wait()获取就绪fd时,返回的并不是实际的描述符,而是一个代表就绪描述符数量的值,拿到这些值去EventQueue中依次取得相应数量的文件描述符即可.使用'{内存映射}'(mmap)技术,避免了复制大量文件描述符带来的开销
         running -> epoll_create(epoll instance) -> epoll_ctl(create RB-Tree & EventQueue for socket on epoll instance) -> epoll_ctl(insert socket into RB-Tree and register Callback on kernel) -> data sent to a socket -> kernel(execute Callback, activate the socket to readable/writeable/etc., put it into EventQueue and inform epoll_wait) -> epoll_wait(get socket from EventQueue, send socket to UserState then read/write/etc. data on socket)
 
         |select
         -> 获取就绪fd时轮询,遍历全部socket,一个进程能打开的'{FD数目有限制}'(默认1024)
-        -> 轮询时会将所有socket从内核态'{复制}'到用户态.随着fd量的增长,此复制开销也会线性增长
+        -> 轮询时会将所有socket从用户态'{复制}'到内核态.随着fd量的增长,此复制开销也会线性增长
 
         |边缘触发(Edge Triggered) -> Nginx-epoll默认工作方式
         -> 只有在监视的文件句柄上'{发生事件}'的时候ET模式才会通知进程fd准备就绪,之后不再通知

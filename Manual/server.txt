@@ -72,6 +72,14 @@
         directory = path
         command = shell_cmd
 
+\监控
+    nagios -> 服务器各类参数监控,负载,内存,IO,网络等,也可以配置对进程进行监控报警
+    sentry -> 实时收集事件日志,可以在管理后台查看到当前程序异常及报错具体信息,支持多种语言
+
+    |statsd+graphic
+    statsd -> 实时服务数据收集(e.g. counters and timers)收集后数据提供给graphic进行展示
+    graphic -> 企业级开源监控工具(数据绘图工具),用于采集服务器实时信息并进行统计制台前端项目
+
 \UWSGI:
     -> uwsgi是一个快速的.纯C语言开发的.自维护.对开发者友好的WSGI服务器,旨在提供专业的Python Web应用和发布功能(源码安装或pip安装)
 

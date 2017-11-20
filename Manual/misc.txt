@@ -54,6 +54,7 @@
 
 \Windows & PowerShell
     Atom -> C:\Users\duhui\AppData\Local\atom\app-1.21.2\resources\app\apm\bin\apm
+    pip -> "E:\Program Files\Python 3.5\Scripts\pip.exe" install objgraph
 	> '"Hello,Powershell Script"' > MyScript.ps1 #创建脚本
 	> .\MyScript.ps1 #执行脚本
 	-> $args外部传入参数数组
