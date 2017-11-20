@@ -1,6 +1,6 @@
 # Wiki #
 Wiki for my *knowlege*.
-@[me](perseush@foxmail.com) <br>
+@[me](mailto:perseush@foxmail.com) <br>
 
 [Google](https://google.com)
 
