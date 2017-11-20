@@ -4,8 +4,10 @@ Wiki for my *knowlege*.
 
 [Google](https://google.com)
 
-> `os.environ.get('HOME')`
-> `os.getenv('HOME')`
+```
+def env(s_env='HOME')
+	return os.environ.get(s_env) or os.getenv(s_env)
+```
 
 ---
 ### grammar:
