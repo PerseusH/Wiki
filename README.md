@@ -6,7 +6,7 @@ Wiki for my *knowlege*.
 
 ```
 def env(s_env='HOME')
-return os.environ.get(s_env) or os.getenv(s_env)
+    return os.environ.get(s_env) or os.getenv(s_env)
 ```
 
 ---
