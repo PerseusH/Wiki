@@ -2,7 +2,7 @@
 Wiki for my *knowlege*.
 @[me](mailto:perseush@foxmail.com) <br>
 
-[Google](https://google.com)
+<!-- [Google](https://google.com) -->
 
 ```
 def env(s_env='HOME')
