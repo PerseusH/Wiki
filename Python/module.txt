@@ -28,6 +28,8 @@
     sys.setprofiler(profiler) #函数允许你配置一个分析函数(profiling function).这个函数会在每次调用某个函数或方法时被调用(明确或隐含的),或是遇到异常的时候被调用
     sys.setdefaultencoding('utf-8') #设置默认编码
     sys.settrace(tracer) 函数与setprofiler类似,但是trace函数会在解释器每执行到新的一行时被调用
+    sys.stdout.write('hello'+'\n') = print('hello')
+    hi=raw_input('hello? ') = print('hello? '); hi=sys.stdin.readline()[:-1]
     sys.exit(0) #引发一个SystemExit异常,退出程序(解释器).0为正常退出,其他数值(1-127)为不正常,可抛异常事件供捕获.用于在主线程中退出
     -> __builtin__.exit是一个Quitter对象,这个对象的__call__ 方法会抛出一个SystemExit异常
     sys.exitfunc = exitfunc #在sys.exit执行前调用exitfunc函数
@@ -57,6 +59,10 @@ json/simplejson -> simplejson的性能要高于json
 
 \subprocess
     -> 系统命令执行、执行结果获取和解析.其中最有用的是call（执行系统命令）、check_call（执行结果不为0则抛出异常）、check_output（最方便的获取执行的输出的函数）、Popen+PIPE（支持管道的多命令执行）
+
+    |Popen
+    > pipe = Popen("cmd, shell=True, bufsize=1024, stdout=PIPE).stdout
+    > result = pipe.read()
 
 contextlib
 

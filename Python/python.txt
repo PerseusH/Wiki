@@ -12,8 +12,12 @@
         python -m [pdb/ipdb] test.py #以调试模式运行程序,直接进入pdb控制台
 
     |objgraph #对于查找内存泄露和大内存对象
-    > import objgraph
-    > objgraph.show_most_common_types(25) #获取前n大内存对象
+        import objgraph; objgraph.show_most_common_types(n) #获取前n大内存对象
+
+    |comment for docstring
+    > """
+    > xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    > """
 
 \Type
     -> '{python3.x}'默认使用utf-8编码(支持特殊字符集)
@@ -123,11 +127,11 @@
         > l[0|1|2|3|4].append(10) l[0|1|2|3|4].append(20) -> l=[[10,20], [10,20], [10,20], [10,20], [10,20]]
 
     |sort
-        |不改变列表本身,返回排序后列表
+        |'{不改变}'列表本身,返回排序后列表
         data_list[::-1] #按原序倒序排列
         sorted(data_list, key=str|int|len|lambda x: x.id, reverse=True) #按key排序
 
-        |改变列表本身,返回None
+        |'{改变}'列表本身,返回None
         from operator import itemgetter, attrgetter
         data_list.sort(key=itemgetter(0)|attrgetter(key)) #正序排序
         data_list.sort(key=itemgetter(0, 1)|attrgetter(key0, key1)) #多级正序排序
@@ -161,7 +165,7 @@
     '{python2.x}' -> range(m, n)生成list对象;xrange(m, n)生成一个生成器(generator)
 
 \Regex
-    -> 正则表达式中?表示尽可能少地匹配(非贪婪匹配)
+    -> 正则表达式中?表示尽可能少地匹配('{非贪婪匹配}')
 
 \DataBase
     conn_str = %(dbn)s://(%user)s:%(pw)s@%(host)s:%(port)s/%(db)s #数据库连接字符串

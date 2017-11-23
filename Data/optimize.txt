@@ -1,0 +1,119 @@
+\Execution
+    SELECT DISTINCT <select_list>
+    FROM <left_table> <join_type>
+    JOIN <right_table> ON <join_condition>
+    WHERE <where_condition>
+    GROUP BY <group_by_list>
+    HAVING <having_condition>
+    ORDER BY <order_by_condition>
+    LIMIT <limit_number>
+    >>>>>>
+    FROM <left_table>
+    ON <join_condition>
+    <join_type> JOIN <right_table>
+    WHERE <where_condition>
+    GROUP BY <group_by_list>
+    HAVING <having_condition>
+    SELECT
+    DISTINCT <select_list>
+    ORDER BY <order_by_condition>
+    LIMIT <limit_number>
+
+\设计优化
+    -> 经常需要计算和排序等消耗CPU的字段,应该尽量选择更为迅速的字段
+        TIMESTAMP(4个字节,最小值1970-01-01 00:00:00) -> Datetime（8个字节,最小值1001-01-01 00:00:00）
+        整型 -> 浮点型和字符型
+
+    -> 引擎在处理查询和连接时会'{逐个比较字符串中每一个字符}',而对于数字型只需要比较一次就够了
+    -> 对于二进制多媒体数据,流水队列数据(如日志),超大文本数据不要放在数据库字段中
+    -> 业务逻辑执行过程必须读到的表中必须要有初始值.避免读出负值或无穷大的值导致程序失败
+    -> 适度的字段冗余,让Query尽量减少Join
+    -> '{访问频率较低的大字段}'拆分出数据表.有些大字段占用空间多,访问频率较其他字段明显要少很多,这种情况进行拆分,频繁的查询中就不需要读取大字段,造成IO资源的浪费
+
+    |分库分表
+    -> 分库降低了单点机器的负载; 分表提高了数据操作的效率
+        |分库 -> 按照功能,城市,业务块分库;每个分库再分为主从库
+
+        |分表
+        1.水平分表 -> 解决行数过大问题
+        -> 根据id,时间拆分
+            1.id,时间号段分区
+            2.Hash取模(id%数据库个数)
+                create table hash(
+                　　a int(11),
+                　　b datetime
+                　　)partition by hash(YEAR(b))
+                　　partitions 4;
+        2.垂直分表 -> 解决列过多问题
+        -> 经常组合查询的列放在一张表中,不常用的字段单独放在一张表,把text，blob等大字段拆分出来放在附表中
+
+    -> insert 或 update 时有可能会重建索引
+    -> 索引是根据实际的设计所构造sql语句的where条件来确定的,'{业务不需要的不要建索引}',不允许在联合索引（或主键）中存在多余的字段.特别是该字段根本不会在条件语句中出现
+    -> 对于取值不能重复,'{经常作为查询条件}'的字段,应该建'{唯一索引}'(主键默认唯一索引),'{查询语句中该字段条件置于第一个}'位置.没有必要再建立与该字段有关的联合索引
+    -> 对于'{经常作为查询条件值不唯一}'的字段,也应该考虑建立'{普通索引}',查询语句中该字段条件置于第一个位置,对联合索引处理的方法同样
+    -> Mysql在并发量太高的时候,整体性能会急剧下降,这主要与Mysql内部资源的争用锁定控制有关,MyIsam用表锁,InnoDB好一些用行锁.'{避免大事务操作,提高系统并发能力}'
+    -> 合理使用cache,对于'{变化较少的活跃数据}'通过应用层的cache缓存到内存中
+    -> 当索引列有'{大量数据重复}'时,SQL查询可能不会去利用索引
+
+\Query优化
+    -> 对重复执行相同的query进行合并,减少IO次数
+    -> 根据测试,'{一次Insert1000条}'时效率最高,应该合并多次同样插入.query语句长度要小于mysqld参数max_allowed_packet
+    -> 查询条件中各种逻辑操作符性能顺序是'{and>or>in}',因此应该尽量避免使用在大集合中使用in
+    -> 永远用小结果集驱动大记录集,因为在mysql中,只有Nested Join一种Join方式,就是说mysql的join是通过嵌套循环来实现的.通过小结果集驱动大记录集这个原则来减少嵌套循环的循环次数,以减少IO总量及CPU运算次数
+    -> 优化Nested Join内层循环
+    -> 只取需要的columns,'{尽量别select *}';仅使用最有效的过滤字段,where的过滤条件越少越好
+    -> 避免复杂的Join和子查询
+    -> 避免频繁创建和删除'{临时表}',以减少系统表资源的消耗.尽量使用表变量来代替临时表
+    -> 需要'{重复引用}'大型表或常用表中'{某个数据集}'时,适当使用'{临时表}'可以使某些例程更有效
+    -> 若使用临时表,在存储过程的最后务必将所有的临时表显式删除,先truncate table,然后drop table,这样可以避免系统表的长时间锁定
+    -> 避免使用游标,因为游标的效率较差,如果游标操作的数据超过1万行,那么就应该考虑改写
+    -> 对小型数据集使用FAST_FORWARD游标通常要优于其他逐行处理方法,尤其是在必须引用几个表才能获得所需的数据时
+
+    |Order By
+    -> MySQL查询最多'{只能使用一个索引}'.若WHERE条件已经占用了索引,Order By就不能使用了
+    -> where查询字段和order by的字段是同一字段(索引)则使用indexsort,否则使用filesort
+
+    |LIMIT分页(limit offset, rows)
+    -> limit n,m 工作原理就是先读取n条记录，然后抛弃前n条，读m条想要的，所以n越大，性能会越差
+        SELECT * FROM member ORDER BY last_active LIMIT 50,5 -> SELECT * FROM member INNER JOIN (SELECT member_id FROM member ORDER BY last_active LIMIT 50, 5) USING (member_id)
+        -> 优化前的SQL需要更多I/O浪费，因为先读索引，再读数据，然后抛弃无需的行。而优化后的SQL(子查询那条)只读索引就可以了，然后通过member_id读取需要的列
+
+        select * from Member limit 10, 100 -> select * from Member where MemberID >= (select MemberID from Member limit 10,1) limit 100
+        -> 利用'{子查询优化limit分页}'
+
+    |避免表扫描
+    -> 避免在where子句中使用!=, or或<>操作符,否则引擎将'{放弃使用索引而进行全表扫描}'
+        select id from t where num=10 or num=20 -> select id from t where num=10 union all select id from t where num=20
+    -> in和not in要慎用(代以between, exists, <,<=,=,>,>=)
+        select id from t where num in(1,2,3) -> select id from t where num between 1 and 3
+        select num from a where num in(select num from b) -> select num from a where exists(select 1 from b where num=a.num)
+    -> 避免左模糊匹配
+        select id from t where name like '%李%' -> select id from t where name like '李%'
+    -> 避免在where子句中使用参数
+        select id from t where num=@num -> select id from t with(index(index_col)) where num=@num
+    -> 避免在where中=左边进行函数、算术运算或其他表达式运算,否则引擎将放弃使用索引而进行表扫描
+        select id from t where num/2=100 -> select id from t where num=100*2
+    -> 避免在where子句中对字段进行函数操作,这将导致引擎放弃使用索引而进行全表扫描
+        select id from t where substring(name,1,3)='abc'
+    -> 避免使用count(*)
+        select count(*) from member -> select count(1) from member
+
+\影响结果集 -> 查询条件与索引的关系决定影响结果集
+    -> 影响结果集不是输出结果数,不是查询返回的记录数,而是'{索引所扫描的结果数}'
+        select * from user where area=’厦门’ and sex=’女’
+        -> 假设索引为area,user表中area=’厦门’的有125000条,而搜索返回结果为60233条. 影响结果集是125000条,索引先命中125000条厦门用户,再遍历以sex=’女’进行筛选,得到60233条结果
+        -> 如果该SQL增加'{limit 0,30}'的后缀.查询时,先命中area=’厦门’,然后依顺序执行 sex=’女’ 筛选操作,直到满足可以返回30条为止,所涉及记录数未知.除非满足条件的结果不足30条,否则不会遍历125000条记录
+        -> '{limit 0,30}'先根据area索引树，从最右侧叶子节点，反序取出n条，然后逐条去跟where条件匹配.若匹配上，则得出一条数据，直至取满30条为止
+        -> 如果SQL中有'{排序}',再有limit 0,30会遍历所有area=’厦门’的记录,而非返回30条即止
+    -> 影响结果集越趋近于实际输出或操作的目标结果集,索引效率越高
+    -> 影响结果集与查询开销的关系可以理解为线性相关.减少一半影响结果集,即可提升一倍查询效率！当一条搜索query可以符合多个索引时,选择影响结果集最少的索引
+    -> SQL优化'{核心是对影响结果集的优化}',认识索引是增强对结果集的判断,基于索引的认识,可以在编写SQL的时候,对该SQL可能的影响结果集有预判,并做出适当的优化和调整
+
+    |Limit
+    -> 如果索引与查询条件和排序条件完全命中,影响结果集就是limit后面的数字（$start + $end）,比如limit 200,30影响结果集是230,而不是30
+    -> 如果索引只命中部分查询条件,甚至无命中条件,在无排序条件情况下,会在索引命中的结果集中遍历到满足所有其他条件为止.
+        select * from user limit 10; 虽然没用到索引,但是因为不涉及二次筛选和排序,系统直接返回前10条结果,影响结果集依然只有10条,就不存在效率影响
+    -> 如果timeline不是索引,影响结果集是全表,就需要全表数据排序,这个效率影响就巨大
+        Select * from user order by timeline desc limit 10;
+    -> 如果area是索引,而area+timeline未建立索引,则影响结果集是所有命中area=’厦门’的用户,然后在影响结果集内排序
+        Select * from user where area=’厦门’ order by timeline desc limit 10;

@@ -1,4 +1,4 @@
-# Wiki #
+# Wiki
 Wiki for my *knowlege*.
 @[me](mailto:perseush@foxmail.com) <br>
 
@@ -9,7 +9,6 @@ def env(s_env='HOME')
     return os.environ.get(s_env) or os.getenv(s_env)
 ```
 
----
 ### grammar:
 - |		::	item
 - ->  	::	text

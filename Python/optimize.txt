@@ -1,8 +1,8 @@
 CPython
 
-PyPy
+PyPy -> python JIT编译器
 
-Profile/cProfile
+Profile/cProfile -> python性能分析
     import profile; profile.run("profileTest()")
     python -m cProfile filename.py
 
@@ -13,8 +13,7 @@ Profile/cProfile
     percall -> （第二个 percall）即函数运行一次的平均时间，等于 cumtime/ncalls
     filename:lineno(function) -> 每个函数调用的具体信息
 
-timeit
-    -> timeit返回运行时间
+timeit -> 返回代码运行时间
     -> number可以省略，默认值为1000000
     -> repeat和timeit相似,repeat参数表示重复测试的次数(可以省略.默认值为3),返回一个时间列表
 
