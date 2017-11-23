@@ -81,13 +81,14 @@
     -> '{python3.x}':__next__(), '{python2.x}': next()
     -> python类属性默认用dict存储,__slots__是用list存储属性名,而不会再使用dict,__slots__里没有的属性,类实例不能随便添加.节省了内存, 限制了属性添加
 
-\List & Tuple & Dict & Set
+\Container(List & Tuple & Dict & Set)
     -> list是一个数组而不是一个链表
     -> 数组(list)和元组(tuple)之间的区别是数组内容是可以被修改的而元组内容是只读的.元组可以被哈希比如作为字典的关键字
     list(dict.keys()), list(dict.values()), list(dict.items()) #字典对象操作
     l[-n] #倒序取值
     l.pop() #删除并返回list最后一个元素
-    dict.items() #乱序列表
+    dict.iteritems() #迭代器python2.x
+    dict.items() #乱序列表python3.x
     dict.clear() #dict -> {}
     -> dict和set都是使用hash表来实现的
 
@@ -101,8 +102,7 @@
         list(zip((1, 2, 3), ('a', 'b', 'c'))) = [(1, 'a'), (2, 'b'), (3, 'c')]
         dict([(1, 'a'), (2, 'b'), (3, 'c')]) = {1: 'a', 2: 'b', 3: 'c'}
         dict([('a', 1), ('b', 2), ('c', 3), ('d', 4), ('e', 5), ('f', 6)]) =
-              {'a': 1, 'c': 3, 'b': 2, 'e': 5, 'd': 4, 'f': 6} #'{python2.x}'
-        dict(data_list)在'{python3.x}'中有序, 在'{python2.x}'中无序
+              {'a': 1, 'c': 3, 'b': 2, 'e': 5, 'd': 4, 'f': 6} #无序
         dc={'a': 1, 'b': 2, 'c': 3} #'a' in dc (True) | 1 in dc (False)
         sorted(zip(d.keys(), d.values()), reverse=True) #dict排序
 
@@ -221,7 +221,7 @@
 \Arch
     Django -> 大而全,模板引擎运算慢
     Flask -> 小而少,模板引擎运算快
-    Celery ->
+    Celery -> 分布式异步任务队列管理
     Tornado -> 适合大型项目,丰富的异步API
     Asyncio -> 异步框架
     Mako -> 前端模板

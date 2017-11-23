@@ -61,7 +61,7 @@ json/simplejson -> simplejson的性能要高于json
     -> 系统命令执行、执行结果获取和解析.其中最有用的是call（执行系统命令）、check_call（执行结果不为0则抛出异常）、check_output（最方便的获取执行的输出的函数）、Popen+PIPE（支持管道的多命令执行）
 
     |Popen
-    > pipe = Popen("cmd, shell=True, bufsize=1024, stdout=PIPE).stdout
+    > pipe = Popen(cmd, shell=True, bufsize=1024, stdout=PIPE).stdout
     > result = pipe.read()
 
 contextlib
