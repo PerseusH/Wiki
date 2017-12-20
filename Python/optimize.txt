@@ -1,20 +1,20 @@
 CPython
 
-PyPy -> python JIT编译器
+|PyPy -> python JIT编译器
 
-Profile/cProfile -> python性能分析
-    import profile; profile.run("profileTest()")
+|Profile/cProfile -> python性能分析
+    import profile; profile.run("func()")
     python -m cProfile filename.py
 
     ncalls -> 表示函数调用的次数
-    tottime -> 表示指定函数的总的运行时间，除掉函数中调用子函数的运行时间
-    percall -> （第一个 percall）等于 tottime/ncalls
-    cumtime -> 表示该函数及其所有子函数的调用运行的时间，即函数开始调用到返回的时间
-    percall -> （第二个 percall）即函数运行一次的平均时间，等于 cumtime/ncalls
+    tottime -> 表示指定函数的总的运行时间,除掉函数中调用子函数的运行时间
+    percall -> (第一个 percall)等于 tottime/ncalls
+    cumtime -> 表示该函数及其所有子函数的调用运行的时间,即函数开始调用到返回的时间
+    percall -> (第二个 percall)即函数运行一次的平均时间,等于cumtime/ncalls
     filename:lineno(function) -> 每个函数调用的具体信息
 
-timeit -> 返回代码运行时间
-    -> number可以省略，默认值为1000000
+|timeit -> 返回代码运行时间
+    -> number可以省略,默认值为1000000
     -> repeat和timeit相似,repeat参数表示重复测试的次数(可以省略.默认值为3),返回一个时间列表
 
     > from timeit import timeit
@@ -22,7 +22,7 @@ timeit -> 返回代码运行时间
     > print(t)
 
     > from timeit import timeit
-    > t = timeit('profileTest()', 'from __main__ import profileTest', number=1)
+    > t = timeit('func()', 'from __main__ import func', number=1)
     > print(t)
 
     > from timeit import repeat
@@ -43,9 +43,13 @@ if i is True > if i == True
 
 a**n > pow(a, n) #a的n次方
 
+a,b=b,a > t=a;a=b;b=t #交换
+
+build-in函数通常较快,因为内置函数是'{C}'写的
+
 查找访问等操作字典dict最快O(1)
 
-set的union，intersection，difference操作要比list的迭代要快。因此如果涉及到求 list 交集，并集或者差的问题可以将list转换为set来操作
+set的union,intersection,difference操作要比list的迭代要快.因此如果涉及到求list交集,并集或者差集的问题可以将list转换为set来操作
 
 \内存
     -> {} > [] > () > 1|''|True|False #{} = [] * 4.5
@@ -53,16 +57,15 @@ set的union，intersection，difference操作要比list的迭代要快。因此�
         -> tuple > list
         -> frozenset > set
         -> 尽量使用迭代器
+        -> for循环使'{用生成器}',循环外计算列表长度
+        -> list.append+join > +拼接字符串
+        -> 函数的开销很大.尽量把循环放在函数内进行.而不要让每次迭代都调用函数
 
     |内存泄漏(Memory Leak)
-    -> 程序中己动态分配的堆内存由于某种原因程序未释放或无法释放,造成系统内存的浪费,导致程序运行速度减慢甚至系统崩溃等严重后果
+    -> 程序中己动态分配的'{堆内存}'由于某种原因程序'{未释放或无法释放}',造成系统内存的浪费,导致程序运行速度减慢甚至系统崩溃等严重后果
     原因 -> 全局变量未释放, 循环引用
     > import gc; gc.collect() #强制进行垃圾回收
     > import objgraph; objgraph.show_most_common_types(n) #打印前n大内存对象
-
-build-in函数通常较快，因为内置函数是C写的
-
-a,b=b,a > t=a;a=b;b=t #交换
 
 port = dictobj.get('port', 3306) #获取字典对象中指定key的值,默认为3306
 
@@ -71,34 +74,26 @@ port = dictobj.get('port', 3306) #获取字典对象中指定key的值,默认为
 
 使用关键字排序list.sort(key=operator.itemgetter(0))
 
-L1 = list(L),d1 = dict(d) > 列表推导式 #复制一个列表或者字典
-L1 = map(f,L) > L1=[f(x) for x in L] #对列表的每一个元素都调用函数
+l1 = list(l),d1 = dict(d) > 列表推导式 #复制一个列表或者字典
+l1 = map(f,l) > l1 = [f(x) for x in l] #对列表的每一个元素都调用函数
+
+使用enumerate遍历list
+    > L = [i*i for i in range(5)]
+    > for (i,data) in enumerate(L) #括号可省略.items<200带括号性能高,>200不带括号性能高
+
+在循环中使用列表推导式和生成表达式代替list.append
+列表推导式的效率>=map ??????????
 
 random.shuffle(list); print(list[0]) #把列表元素随机打乱,取首元素.改变列表结构
 random.sample(list, n) #随机取出n个列表元素,返回子列表.不改变列表结构
 
-for循环使用生成器
-
-使用enumerate遍历list
-    > L = [ i*i for i in range(5) ]
-    > for (index, data) in enumerate(L): #括号可省略.items<200时带括号性能高,>200时不带括号性能高
-
-循环外计算列表长度
-
 itertools模块是以C语言编写，所以提供了最高效的迭代器
 
-函数的开销很大。尽量把循环放在函数内进行。而不要让每次迭代都调用函数
+反序列化使用'{json}'
 
-在耗时较多的循环中，可以把函数的调用改为内联的方式
+python中条件表达式是'{lazy evaluation}'的，也就是说如果存在条件表达式if x and y，在x 为false的情况下y表达式的值将不再计算。利用该特性在一定程度上可提高效率
 
-避免在循环内部使用+拼接字符串,把每次循环的结果放入一个list中,然后join,就能提高程序的性能
-在循环中使用列表推导式和生成表达式代替list.append,列表推导式的效率>=map
-
-反序列化使用json
-
-python 中条件表达式是 lazy evaluation 的，也就是说如果存在条件表达式 if x and y，在 x 为 false 的情况下 y 表达式的值将不再计算。因此可以利用该特性在一定程度上提高程序效率
-
-对于and，应该把满足条件少的放在前面，对于or，把满足条件多的放在前面
+对于and,应该把'{满足条件少}'的放在前面,对于or,把'{满足条件多}'的放在前面
 
 对于CPU密集型的程序，可以使用multiprocessing的Process,Pool，通过多进程的方式实现并行计算
 对于IO密集型的程序，multiprocessing.dummy模块使用threading，实现多线程

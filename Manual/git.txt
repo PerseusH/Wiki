@@ -1,6 +1,7 @@
 \Start
-    git init #初始化一个仓库(add .git dir,删除本级.git, 本级文件／目录权限收归上级.git)
+    git init #初始化一个本地仓库(add .git dir,删除本级.git, 本级文件／目录权限收归上级.git)
     git clone git@xbc.me:wordpress.git #Clone远程仓库
+    -> 暂存区是个简单的文件，放在.git目录中(index)
 
 \远程仓库管理
     git remote add origin git@github:robbin/robbin.git #添加远程版本库origin
@@ -64,11 +65,15 @@
 
     |分支合并和rebase
     git fetch origin                 #抓取远程仓库更新，但不会更新合并到本地，要merge
-    git merge origin/master          #将远程主分支合并到本地当前分支
+    git merge origin/master          #将远程主分支合并到本地当前分支,本地自动生成新提交
     git merge <branch>               #将branch分支合并到当前分支(快进当前分支到branch)
     git merge origin/master --no-ff  #不要Fast-Foward合并，这样可以生成merge提交
-    git rebase master <branch>       #将master rebase到branch(变基),相当于:
-        #git checkout br&&git rebase master&&git checkout master&&git merge br
+
+    -> rebase和merge合并得到的结果没有任何区别，但是rebase能产生一个'{更整洁有序}'的提交历史
+    git rebase master <branch>       #等于: git checkout br && git rebase master
+    (rebase后)git co master&&git merge br #快进到br的最新commit
+    git checkout br && git rebase master && git checkout master && git merge br
+        #把branch分支里的每个提交(commit)取消掉，并且把它们临时保存为补丁(patch)(放到.git/rebase目录中),然后把branch分支更新为最新的master分支，再把保存的补丁应用到branch分支上.最后快进master到branch的最新commit
     git rebase -i origin/master #合并多个commit为一个(pick a commit,squash else:'s')
 
 \查看、添加、提交、删除、找回，重置修改文件

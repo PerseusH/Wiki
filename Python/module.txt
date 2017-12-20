@@ -85,6 +85,8 @@ timeit -> 计算代码运行的时间
 
 crontab -> 定时任务
 
+itertools -> 高效迭代器
+
 \Queue
     -> 这个模块用于多线程编程,它是一个线程安全的FIFO（先进先出）的队列实现。如果是多进程编程,选用multiprocessing.queues中的Queue、SimpleQueue、JoinableQueue这三个队列实现
 
