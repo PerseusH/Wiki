@@ -1,3 +1,5 @@
+import flask; flask.__version__ #查看版本
+
 -> 模板引擎Jinja2和Mako的使用
 
 \上下文设计
@@ -15,7 +17,10 @@
         3.@after_request -> 注册一个函数，如果没有未处理的异常抛出，在每次请求之后运行
         4.@teardown_request -> 注册一个函数，即使有未处理的异常抛出，也在每次请求之后运行
 
--> 利用'{信号机制}'可以实现一部分的业务解耦
+|信号机制 -> 允许特定的发送端通知订阅者发生了什么(既然知道发生了什么,那我们可以知道接下来该做什么了),可以实现一部分的业务解耦.信号依赖于Blinker库
+
+-> 一般来说,钩子用于改变行为（比如身份验证或错误处理）,而信号用于记录事件（比如记录日志）
+
 |常用扩展 -> Flask-SQLAlchemy、Flask-Script、Flask-DebugToolbar、Flask-Migrate、Flask-WTF、Flask-Security、Flask-RESTful、Flask-Admin和Flask-Asset
 -> 依赖库Werkzeug的使用
 -> RESTful API

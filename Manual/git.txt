@@ -1,15 +1,21 @@
 \Start
-    git init #初始化一个本地仓库(add .git dir,删除本级.git, 本级文件／目录权限收归上级.git)
+    git init #初始化一个本地仓库(add .git dir,删除本级.git,本级文件／目录权限收归上级.git)
     git clone git@xbc.me:wordpress.git #Clone远程仓库
-    -> 暂存区是个简单的文件，放在.git目录中(index)
+    |暂存区 -> 是个简单的文件，放在.git目录中(index)
+    |HEAD -> 就是当前活跃分支的指针.指示当前位置
+    |origin -> 默认情况下的远程仓库的名字
+    |upstream -> fetch的上游目标仓库
+    -> Forking工作流需要2个远程别名 —— 一个指向正式仓库，另一个指向开发者自己的服务端仓库。别名的名字可以任意命名，常见的约定是使用origin作为远程克隆的仓库的别名（这个别名会在运行git clone自动创建），upstream（上游）作为正式仓库的别名
 
 \远程仓库管理
     git remote add origin git@github:robbin/robbin.git #添加远程版本库origin
     git remote set-url origin git@github:robbin/robbin.git #修改远程仓库地址
     git remote set-head origin master #设置远程仓库的HEAD指向master分支
-    git branch --set-upstream-to=origin/<branch> master(new) #设置跟踪远程库和本地库
-    git branch --set-upstream master origin/master(old)
-    git branch --set-upstream develop origin/develop(old)
+
+    |设置本地分支跟踪远程分支
+    git branch --set-upstream-to=origin/remote local #new
+    git branch --set-upstream local origin/remote #old
+
     git remote rm <repository> #删除远程仓库
     git remote -v #查看远程服务器地址和仓库名称
     git remote show origin #查看远程服务器仓库状态
@@ -20,15 +26,15 @@
 \提交修改
     git add .                 #添加当前修改的文件到暂存区
     git add -u                #自动追踪文件，包括你已经手动删除的，状态为Deleted的文件
-    git commit –m "你的注释"   #提交到本地库
+    git commit –[a]m "xxx"    #提交到本地库. -am = git add . + git commit -m 'xxx'
+    git commit <file>|.       #提交到本地库. 需在文件中写注释
+    git commit --a            #git add + git rm + git commit
+    git commit --amend        #修改最后一次提交注释
     git push origin master    #推送到远程服务器
-    git commit --amend        #修改最后一次提交注释的，利用–amend参数
     git cherry-pick <cmt_id>  #把已经提交的commit从一个分支添加到另一个分支
 
     |忘记提交某些修改，下面的三条命令只会得到一个提交
-    git commit –m "add readme.txt"
-    git add readme_forgotten
-    git commit –amend
+    git commit –m "xxx" && git add readme_forgotten && git commit --amend
 
 \分支
     git br -r                 #查看远程分支
@@ -40,28 +46,22 @@
     git br -D <branch>        #强制删除某个分支 (未被合并的分支被删除的时候需要强制)
 
     git checkout <branch>     #切换到某个分支
-    git checkout -b <new_branch> #创建新的分支，并且切换过去
-    git checkout -b <new_branch> <branch>  #基于branch创建新的new_branch
-    git checkout $id          #把某次提交checkout出来,但无分支信息,切换到其他分支会自动删除
-    git checkout $id -b <new_branch>  #把某次提交checkout出来，创建成一个分支
+    git checkout -b <new_br> #创建新的分支，并切换过去
+    git checkout -b <new_br> <branch>  #基于branch创建新的new_br，并切换过去
+    git checkout $id          #checkout出某次提交,但无分支信息,切换到其他分支会自动删除
+    git checkout $id -b <new_branch>  #checkout出某次提交并新建一个分支
 
-    git pull <远程主机名> <远程分支名>:<本地分支名>
-    git pull <远程主机名> <远程分支名>
-    git pull                         #抓取远程仓库所有分支更新并合并到本地
-    git pull --no-ff                 #抓取远程仓库所有分支更新并合并到本地,不要快进合并
-    git checkout --track origin/branch #跟踪某个远程分支创建相应的本地分支
-    git checkout –b dev origin/dev   #根据远程仓库的dev分支建立本地的dev分支
+    git pull <远程主机名> <远程分支名>[:<本地分支名>]
+    git pull                        #抓取远程仓库所有分支更新并合并到本地
+    git pull --no-ff                #抓取远程仓库所有分支更新并合并到本地,不要快进合并
+    git checkout --track origin/br  #跟踪某个远程分支创建相应的本地分支
+    git checkout –b br origin/br    #根据远程分支建立本地分支
 
-    git push <远程主机名> <本地分支名>:<远程分支名>
-    git push <远程主机名> <本地分支名>
-    git push                         #push所有分支
-    git push origin master           #将本地主分支推到远程主分支
-    git push origin master -f        #将本地主分支强制推到远程主分支
-    git push -u origin master #将本地主分支首次推到远程,如无远程主分支则创建,以初始化远程仓库
-    git push -u origin dev #将本地dev分支首次推到远程,如无远程dev分支则创建并跟踪
-    git push origin <local_branch>   #创建远程分支， origin是远程仓库名
-    git push origin <local_branch>:<remote_branch>  #创建远程分支
-    git push origin :<remote_br> #先删除本地分支(git br -d <branch>),再push删除远程分支
+    git push <远程主机名> <本地分支名>[:<远程分支名>] [-f] #将本地推到远程(-f为强制执行)
+    git push                        #push所有分支
+    git push origin <br>[:<remote_br>] #创建本地分支到远程.不跟踪(upstream)
+    git push origin :<remote_br>    #本地分支删除后,再删除对应远程分支
+    git push --set-upstream|-u origin <br> #将本地分支首次推到远程,如无则创建并跟踪(add upstream br->origin/br)
 
     |分支合并和rebase
     git fetch origin                 #抓取远程仓库更新，但不会更新合并到本地，要merge
@@ -74,7 +74,20 @@
     (rebase后)git co master&&git merge br #快进到br的最新commit
     git checkout br && git rebase master && git checkout master && git merge br
         #把branch分支里的每个提交(commit)取消掉，并且把它们临时保存为补丁(patch)(放到.git/rebase目录中),然后把branch分支更新为最新的master分支，再把保存的补丁应用到branch分支上.最后快进master到branch的最新commit
-    git rebase -i origin/master #合并多个commit为一个(pick a commit,squash else:'s')
+    git rebase -i [origin/master]    #合并多个commit为一个(pick a commit,squash else:'s'), 默认为合并当前分支commits
+    git rebase -i HEAD~2             #合并前两个commit
+
+\Tag
+    -> 指向某个commit的指针,commit的别名.用作代码的历史版本管理
+    git tag                   #查看当前分支下所有标签信息
+    git tag -a <tag> [-m <comment>] <commitid> #给指定commit打标签
+    git tag -d <tag>          #删除标签
+    git push origin :<tag>    #删除远程标签(必须先删除本地标签)
+    git show <tag>            #查看标签下某版本信息
+    git checkout tag          #切换到标签
+    git push origin <tag>     #发布标签到远程(必须先创建本地标签)
+    git push origin --tags    #发布全部标签到远程
+
 
 \查看、添加、提交、删除、找回，重置修改文件
     git status                #查看文件状态
@@ -85,54 +98,36 @@
     git log -p <file>         #查看每次详细修改内容的diff
     git log -p -2             #查看最近两次详细修改内容的diff
     git log --stat            #查看提交统计信息
+    cat .git/config           #查看分支详情
 
-    git checkout  <file>      #撤销工作文件修改
-    git checkout  .           #撤销所有工作文件修改
-
-    git add <file>            #将工作文件修改提交到本地暂存区
-    git add .                 #将所有修改过的工作文件提交暂存区
-    ?????????????????
-    git reset <file>          #从暂存区恢复到工作文件
-    git reset -- .            #从暂存区恢复到工作文件
-    git reset HEAD b          #git add .将修改过的文件a、b加到暂存区后,撤回b文件,保留a文件
+    git checkout <file>|.     #撤销工作文件(所有)修改
+    git add <file>|.          #将工作文件(所有)修改提交到本地暂存区并跟踪
+    git reset <file>|.        #从暂存区恢复到(所有)工作文件
+    git reset HEAD b          #git add .将修改过的文件a、b加到暂存区后,撤回b,保留a
     git reset --hard          #恢复最近一次提交过的状态，即放弃上次提交后的所有本次修改
     git reset --hard <cmt_id> #彻底回退到某个版本
-    ?????????????????
-    git rm <file>             #从版本库中删除文件
-    git rm <file> --cached    #从版本库中删除文件，但不删除文件
+    git rm <file>             #从当前跟踪列表移除文件，并完全删除
+    git rm –cached <file>     #仅在暂存区删除，保留文件在当前目录，不再跟踪
+    git mv <file> <file1>     #重命名文件
 
-    git add readme.txt        #跟踪新文件
-    git rm readme.txt         #从当前跟踪列表移除文件，并完全删除
-    git rm –cached readme.txt #仅在暂存区删除，保留文件在当前目录，不再跟踪
-    git mv reademe.txt readme #重命名文件
-
-    git stash                 #暂存
-    git stash list            #列所有stash
-    git stash apply           #恢复暂存的内容
-    git stash drop            #删除暂存区
-
-    git ci <file> | git ci .
-    git ci -a                 #将git add, git rm和git ci等操作都合并在一起做
-    git ci -am "some comments"
-    git ci --amend            #修改最后一次提交记录
+    git stash                 #暂存所有修改
+    git stash list|apply|drop #列出|恢复|删除暂存内容
 
     git revert <$id>          #恢复某次提交的状态，恢复动作本身也创建了一次提交对象
     git revert HEAD           #恢复最后一次提交的状态
 
 \初始化配置(用户的git配置文件~/.gitconfig)
-    git config --global user.name "USERNAME" #配置姓名
-    git config --global user.email email@example.checkoutm #配置email
+    git config --global user.name "USERNAME"    #配置姓名
+    git config --global user.email email        #配置email
+    git config -l                               #列举所有配置
+    git config --global credential.helper 'cache --timeout=3600' #修改缓存时间
     git config --global credential.helper cache #配置到缓存 默认15分钟
-    git config -l                    #列举所有配置
-
-    |修改缓存时间
-    git config --global credential.helper 'cache --timeout=3600'
-    git config --global checkoutlor.ui true
-    git config --global alias.checkout checkout
+    git config --global color.ui true
+    git config --global alias.co checkout
     git config --global alias.ci commit
     git config --global alias.st status
     git config --global alias.br branch
-    git config --global checkoutre.editor "mate -w"    #设置Editor使用textmate
+    git config --global core.editor "mate -w"   #设置Editor使用textmate
 
 \git diff
     git diff <file>                  #比较当前文件和暂存区文件差异
@@ -157,7 +152,7 @@
 
     3."There is no tracking information for the current branch...""
     -> 说明本地分支和远程分支的链接关系没有创建，用命令：
-    -> git branch --set-upstream branch-name origin/branch-name
+    -> git branch --set-upstream-to=origin/remote local
 
     4."![rejected] dev -> dev (non-fast-forward)  ... Updates were rejected because the tip of your current branch"
     -> 推送失败，因为远程的最新提交和推送的提交有冲突
@@ -166,6 +161,10 @@
     5."Your branch is behind 'origin/master' by 1 commit, and can be fast-forwarded"
     -> 意思是，有一个更新还没有反应到本地来，可能是别人往server上提交了一点东西
     -> 使用git pull命令更新到本地来
+
+    6."pull或rebase后大量冲突"
+    -> 当前分支是基于一个较旧的分支建立或很久没有更新
+    -> git co -b newbr origin/master && cherry-pick #基于最新分支新建一个开发分支
 
 \github(acfdc768bd59823972b74f3f5391f702720b6b89)
     -> repo -> settings(last part) -> delete #删除repo

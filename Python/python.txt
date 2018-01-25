@@ -29,6 +29,7 @@
 
     |字符&字符串
         -*- coding:utf-8 -*- #兼容特殊字符集, '{python2.x}'
+        (u'\uxxxxxxx').encode('utf-8') -> utf-8字符 #python2.x
         ord('a') #字符转换为数字
         chr(97) #数字转换为字符
         'a' < 'c' #字符直接比较
@@ -47,11 +48,16 @@
         None|False|'' or 123 -> 123  None|False|'' and 123 -> None|False|''
         1|True|'a' or 123 -> 1|True|'a'  1|True|'a' and 123 -> 123
 
+    True if 5 else False #True
+    True if 0 else False #False
+    True if -5 else False #True
     any(i % 3 == 0 for i in data_list) #判断data_list是否包含3的倍数,返回True/False
     2 ** 16 = 65536 | 0xFFFF = 2 ** 16 - 1
     1111 1111 = 2 ** 8 - 1 | 0.1111 1111 = 1 - 2 ** -8
+    n/9 = 0.nnnnnnnnnnn...
 
 \Function
+    -> 当一个函数调用另一个函数，被调用函数获得控制权。直到它返回或发生异常，才把控制权还给调用者
     -> 每个函数都有一个__name__属性, 即函数签名
     -> 主函数签名为__main__
     -> pass是为了防止报错而占位, 本身没有意义
@@ -64,10 +70,12 @@
     -> 类是一个对象,在运行时由type()动态创建,每个class都是type类的一个实例
     -> class的类型是type, 类实例的类型是类名(type(xxx))
     -> 在类中不在self中的属性是类字段, 类的所有实例都能访问, 但只有类才能修改其值
+    -> 修改实例中的类字段值后, 该实例的类字段不再受类的影响
     -> 创建一个类时, python会将该类所有'{属性}'收集到一个'{字典dict}'中
     -> python多继承链: super(Parent, self): #mro序列->拓扑排序(从下到上,从左到右)
     -> metaclass的意义在于对'{类属性字典}'的统一抽象操作(数据库读写, orm框架)
     -> 添加了@classmethod的函数的第一个参数总是该函数所在类的类名
+    -> 使用了静态方法，则不能再使用self
 
     |property
     -> @property #为了使对类属性的操作可控, 可以检查参数
@@ -109,6 +117,11 @@
         sorted(zip(d.keys(), d.values()), reverse=True) #dict排序
 
         |设置字典默认值
+        > d = {'k': 'value'}
+        > x = d.get('k', 'v')
+        > y = d.get('k1', 'v1')
+        > x = 'value', y = 'v1'
+
         > equities = {}
         > for key, value in enumerate(data):
         >     equities.setdefault(key, []).append(value) #equities[key]=[value,]
@@ -120,6 +133,7 @@
 
     |slice
         data_list[::n] #每隔n-1个数对data_list进行切片
+        data_list[1: -1] #去掉头尾
 
     |*效应
         ['a'] * 5 = ['a', 'a', 'a', 'a', 'a']
@@ -133,6 +147,7 @@
         |'{不改变}'列表本身,返回排序后列表
         data_list[::-1] #按原序倒序排列
         sorted(data_list, key=str|int|len|lambda x: x.id, reverse=True) #按key排序
+        reversed([1,2,3]) #生成list_reverseiterator, 倒序迭代器
 
         |'{改变}'列表本身,返回None
         from operator import itemgetter, attrgetter

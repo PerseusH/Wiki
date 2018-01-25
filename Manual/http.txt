@@ -2,6 +2,7 @@
 -> GET和POST只有一点根本区别, GET用于获取数据, POST用于修改数据
 PV(page view) -> 浏览量,用户每打开一个页面就被记录1次.用户多次打开同一页面,浏览量值累计
 UV(user view) -> 访客量,一天之内的独立访客数(以Cookie为依据).一天内同一访客多次访问只计算1个
+日活 -> 每日活跃用户数
 
 \HTTP Code
     |300 Multiple Choices

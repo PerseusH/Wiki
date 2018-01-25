@@ -6,7 +6,7 @@
     python manage.py runserver 0.0.0.0:8000 #启动一个web项目|manage.py:项目启动文件
 
     |包
-    -> Package是模块的集合,当解释器发现目录下有'{__init__.py}',就会认为此目录是一个Package
+    -> 任意一个python文件都是一个module,Package是module的集合,当解释器发现目录下有'{__init__.py}',就会认为此目录是一个Package
 
     |pyenv
         source .pyenvrc && pyenv local 3.6.3 #python版本切换
