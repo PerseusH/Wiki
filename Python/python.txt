@@ -14,7 +14,7 @@
     |objgraph #对于查找内存泄露和大内存对象
         import objgraph; objgraph.show_most_common_types(n) #获取前n大内存对象
 
-    |comment for docstring
+    |comment for docstring #在class或function内部
     > """
     > xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     > """
@@ -26,6 +26,7 @@
     type(a) #获取a的类型信息
     dir(a) #获取a的所有属性和方法, 返回一个list
     hasattr(a, 'xxx'), setattr(a, 'xxx', val), getattr(a, 'xxx') #属性操作
+    type(file.py) -> <type 'module'>
 
     |字符&字符串
         -*- coding:utf-8 -*- #兼容特殊字符集, '{python2.x}'
@@ -62,6 +63,7 @@
     -> 主函数签名为__main__
     -> pass是为了防止报错而占位, 本身没有意义
     -> C++的内联inline是把'{函数体的机器指令}'直接在需要的地方'{复制}'一遍.python是解释语言,运行由运行环境决定.所以没有内联函数
+    -> 条件判断语句过长, 可在and|or|not后加 \ 换行
 
     > def func(*args, **kwargs) #*args为可变数目参数, **kwargs为任意内容字典型参数
         > func(1, 2, 3, a = 'xxx', b = 'yyy', c = 'zzz')
@@ -221,8 +223,16 @@
 
 \Decorator
     -> 装饰器(decorator)通过@function_name, 可以扩展现有函数功能(安全, 追踪, 锁定)
+    -> 被装饰后的函数其实是另外一个函数(wrapper),__name__和docstring等属性会发生改变
+    -> functools.wraps能保持原函数属性
     |实例
-       > ?????????????
+       > from functools import wraps
+       > def decorator(func):
+       >    @wraps(func)
+       >    def wrapper(*args, **kvargs):
+       >        # do something
+       >        return func(*args, **kvargs)
+       >    return wrapper
 
 \Error
     '{python3.x}' -> except SystemExit as e:
@@ -246,10 +256,19 @@
     Mako -> 前端模板
 
 \Test
-    框架 -> pytest
-    python -m pytest -v #启动'test_'开头的function,module,'Test'开头的class
+    |pytest -> 测试框架
+    $ python -m pytest -v #启动'test_'开头的function,module,'Test'开头的class
 
-    |DocTest????????????
+    |DocTest -> 在docstring中建立测试用例及期望结果
+    $ python -m doctest test.py -v
+    > def my_function(a, b):
+    >     """
+    >     >>> my_function(2, 3)
+    >     6
+    >     >>> my_function('a', 3)
+    >     'aaa'
+    >     """
+    >     return a * b
 
     |UnitTest
     > import unittest

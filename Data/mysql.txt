@@ -1,10 +1,12 @@
 \CMD
+    /usr/local/mysql/bin #程序目录,含mysql,mysqld,mysqiadmin等
+    /usr/local/mysql/support-files/ #含mysql.server等
     mysql [-hIP] -uuser -p[pwd] [-Pport] #进入mysql | pwd: root
     mysqladmin -uusr -p[pwd] shutdown或brew services mysqld restart #重启mysql服务器
     brew services mysqld restart|brew services start|stop|restart mysql #Mac
     sudo /etc/init.d/mysql start|stop|restart #Ubuntu
+    mysql.server [start|stop|restart|status]
 
-    mysql> mysql.server [start|stop|restart|status] #mysql控制台
     mysql> show variables like 'xxx%'; #查看参数'xxxabcd'
     mysql> select version(); #查看Mysql服务器上的版本
     mysql> show engins; #查看存储引擎
@@ -23,6 +25,14 @@
 
     |函数 -> COUNT SUM AVG MAX MIN
 
+\配置文件/etc/my.cnf
+    [mysqld]
+    lower_case_table_names=1 //不区分大小写, 0为要区分.
+    default-character-set=utf8 //设置服务端的默认字符集
+    default-collation = utf8_general_ci //排序规则
+    [client]
+    default-character-set=utf8 //设置客户端默认字符集
+
     -> mac上mysql没有自带配置文件，需手动生成/etc/my.cnf
     -> linux上mysql自带配置文件在/etc/mysql下,my.cnf和./mysql.conf.d/mysqld.cnf
     -> mysql'{默认只允许本机访问}'.在[mysqld]下设置'{bind-address=0.0.0.0}'后能远程访问
@@ -32,37 +42,37 @@
     -> 远程访问一个MySQL-server时需要在server上添加客户端用户和权限,'%'指所有IP都能访问
         grant all privileges on *.* to client_user@'%' identified by 'pwd';
 
-    |master-slave -> 同步前需确保主从库有相同的数据库/表结构.第一个数据行不能为空,否则报1032
-        |master
-            > [mysqld]
-            > bind-address=0.0.0.0
-            > log-bin=mysql-bin
-            > server-id=last_num_of_IP
+\master-slave -> 同步前需确保主从库有相同的数据库/表结构.第一个数据行不能为空,否则报1032
+    |master
+        > [mysqld]
+        > bind-address=0.0.0.0
+        > log-bin=mysql-bin
+        > server-id=last_num_of_IP
 
-            mysql> grant all privileges on *.* to client_usr@'%' identified by 'pwd';
-            mysql> show master status; #查看master状态
+        mysql> grant all privileges on *.* to client_usr@'%' identified by 'pwd';
+        mysql> show master status; #查看master状态
 
-        |slave
-            > [mysqld]
-            > log-bin=mysql-bin
-            > server-id=last_num_of_IP
+    |slave
+        > [mysqld]
+        > log-bin=mysql-bin
+        > server-id=last_num_of_IP
 
-            mysql> change master to
-                    master_host='IP',
-                    master_user='client_usr',
-                    master_password='pwd',
-                    master_log_file='mysql-bin-file',
-                    MASTER_LOG_POS=master-pos;
-            mysql> stop slave; #终止slave
-            mysql> start slave; #启动slave
-            mysql> show slave status; #查看slave状态
+        mysql> change master to
+                master_host='IP',
+                master_user='client_usr',
+                master_password='pwd',
+                master_log_file='mysql-bin-file',
+                MASTER_LOG_POS=master-pos;
+        mysql> stop slave; #终止slave
+        mysql> start slave; #启动slave
+        mysql> show slave status; #查看slave状态
 
-        |errcode:1032 -> slave缺少master中数据行对象，同步失败
-            |解决(slave)
-            1.手动在slave中添加指定数据行
-            2.mysql> stop slave;
-            3.mysql> set global sql_slave_skip_counter=1; #跳过本次同步,转向下一次
-            3.mysql> start slave;
+    |errcode:1032 -> slave缺少master中数据行对象，同步失败
+        |解决(slave)
+        1.手动在slave中添加指定数据行
+        2.mysql> stop slave;
+        3.mysql> set global sql_slave_skip_counter=1; #跳过本次同步,转向下一次
+        3.mysql> start slave;
 
 \设计范式
     1.字段原子性 -> 表字段'{不能再分}'成其他几列
@@ -194,11 +204,3 @@
     -> 以下情况时,进行表扫描然后排序可能比使用联合索引更加有效
     1.表已经按照索引组织好了
     2.被查询的数据站所有数据的很多比例
-
-\配置文件/etc/my.cnf
-    [mysqld]
-    lower_case_table_names=1 //不区分大小写, 0为要区分.
-    default-character-set=utf8 //设置服务端的默认字符集
-    default-collation = utf8_general_ci //排序规则
-    [client]
-    default-character-set=utf8 //设置客户端默认字符集

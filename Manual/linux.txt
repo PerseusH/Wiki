@@ -88,6 +88,7 @@ perror err_code #查看错误代码信息
     ethtool eth0 #show statistics of network card 'eth0'
     netstat -n | awk '/^tcp/ {++S[$NF]} END {for(a in S) print a, S[a]}'
         #socket状态信息
+    netstat -tap #show port status, PID, ProgramName
     netstat -tup #show all active network connections and their PID
     netstat -tupl #show all network services listening on the system and their PID
     netstat -an |grep :80 |wc -l #显示全部互联网端口80连接数量

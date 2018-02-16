@@ -771,6 +771,6 @@ jQuery:
 
 
 Html5:
-
+    用pre标签在页面中直接显示html代码需先对html代码转义
 
 CSS3:
