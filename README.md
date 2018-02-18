@@ -1,6 +1,6 @@
 # Wiki
-Wiki for my *knowlege*.
-@[me](mailto:perseush@foxmail.com) <br>
+Wiki for my knowlege.
+*@[me](mailto:perseush@foxmail.com)* <br>
 
 <!-- [Google](https://google.com) -->
 
@@ -10,7 +10,7 @@ def env(s_env='HOME')
 ```
 
 ### Grammar for Wiki:
-####    based on Atom Editor
+    based on Atom Editor
 - |		::	item
 - ->  	::	text
 - \>	::	continous code
