@@ -9,7 +9,8 @@ def env(s_env='HOME')
     return os.environ.get(s_env) or os.getenv(s_env)
 ```
 
-### grammar:
+### grammar for Wiki:
+#### based on Atom Editor
 - |		::	item
 - ->  	::	text
 - \>	::	continous code

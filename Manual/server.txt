@@ -50,6 +50,10 @@
                  -> 来自同一局域网的客户端会被转发到同一个后端服务器,可能导致负载失衡
                  -> 不适用于CDN网络,不适用于前段还有代理的情况
 
+    |错误:
+    1.nginx: [emerg] a duplicate default server for 0.0.0.0:80 ...
+        -> 删除/etc/nginx/sites-available/default文件，重新启动服务即可
+
     -> Django的部署可以有很多方式,采用nginx+uwsgi的方式是其中比较常见的一种方式
     -> 在这种方式中,通常做法是将nginx作为服务器最前端,它将接收WEB的所有请求,统一管理请求
     -> nginx把所有静态请求自己来处理(这是NGINX的强项).然后,NGINX将所有非静态请求通过uwsgi传递给Django,由Django来进行处理,从而完成一次WEB请求

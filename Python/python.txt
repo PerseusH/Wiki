@@ -19,6 +19,15 @@
     > xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     > """
 
+    |log级别从高到低: CRITICAL > ERROR > WARNING > INFO > DEBUG > NOTSET
+    -> level以下级别的log不会执行
+    > import logging
+    > logging.basicConfig(format='%(asctime)s: %(levelname)s:
+    >   %(message)s',level=logging.WARNING)
+    > logging.debug('This message should appear on the console')
+    > logging.info('So should this')
+    > logging.warning('And this, too')
+
 \Type
     -> '{python3.x}'默认使用utf-8编码(支持特殊字符集)
     -> '{python3.x}'比'{python2.x}'慢, 主要慢在字符串和整数操作上
