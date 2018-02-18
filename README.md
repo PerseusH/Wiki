@@ -9,11 +9,10 @@ def env(s_env='HOME')
     return os.environ.get(s_env) or os.getenv(s_env)
 ```
 
-### Grammar for Wiki:
-    based on Atom Editor
-- |		::	item
+### Grammar for Wiki (based on Atom Editor)
+- |		::	term
 - ->  	::	text
-- \>	::	continous code
+- \>	::	continuous code
 - \#	::	comment
 - \		::	directory
 - n.	::	ordered list
