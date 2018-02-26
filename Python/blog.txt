@@ -1,0 +1,18 @@
+\modules
+    |frame -> flask+mako
+
+    |db -> mysql
+
+    |orm -> metaclass+mysql.connector
+
+    |login
+
+    |paging
+
+    |cache -> redis
+
+    |seckill
+
+    |test -> doctest
+
+    |deploy -> fabric

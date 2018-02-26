@@ -27,7 +27,7 @@
     cp -a dir1 dir2 #复制一个目录
     find dir -name [xxx.txt | dir_x] #从目录'dir'开始搜索文件或目录
     find . -maxdepth 1 -name *.jpg -print -exec convert "{}" -resize 80x60 "thumbs/{}" \; #batch resize files in the current directory and send them to a thumbnails directory (requires convert from Imagemagick)
-    ln -s file1 lnk1 #创建一个指向文件或目录的软链接
+    ln -s file1 lnk1 #创建一个指向文件或目录的软链接(快捷方式)
     ln file1 lnk1 #创建一个指向文件或目录的物理链接
     CMD > xxx.xx #xxx.xx不存在则生成文件,内容为CMD结果;文件存在则以CMD结果覆盖内容
     CMD >> xxx.xx #xxx.xx不存在则生成文件,内容为CMD结果;文件存在则新添CMD内容

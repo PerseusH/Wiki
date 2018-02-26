@@ -57,12 +57,12 @@ urllib/urllib2/httplib -> http lib
 
 \shutil
     rmtree #删除非空目录
-    make_archive('archive_xxx', 'bztar') #打包为archive_xxx.tar.bz2
+    shutil.make_archive('archive_xxx', 'bztar') #打包为archive_xxx.tar.bz2
 
 json/simplejson -> simplejson的性能要高于json
 
 \cgi
-    escape('<script>') #html转义
+    cgi.escape('<script>') #html转义
 
 \subprocess
     -> 系统命令执行、执行结果获取和解析.其中最有用的是call（执行系统命令）、check_call（执行结果不为0则抛出异常）、check_output（最方便的获取执行的输出的函数）、Popen+PIPE（支持管道的多命令执行）
@@ -78,7 +78,36 @@ contextlib
 
 glob -> 文件名的shell模式匹配,你不用遍历整个目录判断每个文件是不是符合,使用glob一句话就解决
 contextmanager -> decorator
-multiprocessing.dummy
+
+\multiprocessing
+    -> 基于multi process实现了类multi thread的API接口，并且用pickle部分地实现了变量共享, 使用多进程实现了concurrency
+        > from multiprocessing import Pool
+
+    -> multiprocessing.Pool和gevent有冲突不能同时使用
+
+    -> 用multiprocessing.queues中的Queue、SimpleQueue、JoinableQueue这三个队列实现数据共享
+
+\multiprocessing.dummy
+    -> 基于multithread实现了multiprocessing的API, 使用多线程实现concurrency???
+        > from multiprocessing.dummy import Pool
+
+\threading
+    -> 多线程模块
+
+    threading模块对象    | 描述
+    Thread              | 表示一个线程的执行对象
+    Lock                | 锁原语对象（跟thread模块里的锁对象相同）
+    RLock               | 可重入锁对象。使单线程可以再次获得已经获得了的锁（递归锁定）
+    Condition           | 条件变量对象能让一个线程停下来，等待其他线程满足了某个条件。如状态的改变或值的改变
+    Event               | 通用的条件变量。多个线程可以等待某个事件的发生，在事件发生后，所有的线程都被激活
+    Semaphore           | 为等待锁的线程提供一个类似“等候室”的结构
+    BoundedSemaphore    | 与Semaphore类似，只是它不允许超过初始值
+    Timer               | 与thread类似，只是它要等待一段时间后才开始运行
+
+\Queue
+    -> 允许用户创建一个可用于多个'{线程间共享数据}'的队列数据结构
+    -> 这个模块用于多线程编程,它是一个'{线程安全}'的FIFO（先进先出）的队列实现
+
 operator
 
 \functools
@@ -86,22 +115,14 @@ operator
 
 Profile/cProfile -> 输出程序运行信息(时间, 堆栈)
 
-time
-
 timeit -> 计算代码运行的时间
 
 crontab -> 定时任务
 
 itertools -> 高效迭代器
 
-\Queue
-    -> 这个模块用于多线程编程,它是一个线程安全的FIFO（先进先出）的队列实现。如果是多进程编程,选用multiprocessing.queues中的Queue、SimpleQueue、JoinableQueue这三个队列实现
-
 \SimpleHTTPServer
-    -> 最简单地HTTP Server实现(python -m SimpleHTTPServer PORT,就可以运行起来静态服务)
-
-multiprocessing -> 多进程
-threading -> 多线程模块
+    -> 最简单的HTTP Server实现(python -m SimpleHTTPServer PORT,就可以运行起来静态服务)
 
 \collections
     -> 复杂类型。其中的OrderedDict(有序字典)、Counter(字典计数器)、defaultdict(带有默认值的字典)、namedtuple(通过创建带有字段属性的元组子类)和deque(高效实现插入和删除操作的双向列表)非常常用

@@ -1,0 +1,58 @@
+\ConnectionPool
+    #redis.ConnectionPool(...)
+    > def __init__(self, connection_class=Connection, max_connections=None,
+    >              **connection_kwargs):
+    >     max_connections = max_connections or 2 ** 31
+    >     if not isinstance(max_connections, (int, long)) or max_connections < 0:
+    >         raise ValueError('"max_connections" must be a positive integer')
+
+    >     self.connection_class = connection_class
+    >     self.connection_kwargs = connection_kwargs
+    >     self.max_connections = max_connections
+
+    #core method of rdconn.[set|get|etc.]
+    > def execute_command(self, *args, **options):
+    >     pool = self.connection_pool
+    >     command_name = args[0]
+    >     connection = pool.get_connection(command_name, **options)
+    >     try:
+    >         connection.send_command(*args)
+    >         return self.parse_response(connection, command_name, **options)
+    >     except (ConnectionError, TimeoutError) as e:
+    >         connection.disconnect()
+    >         if not connection.retry_on_timeout and isinstance(e, TimeoutError):
+    >             raise
+    >         connection.send_command(*args)
+    >         return self.parse_response(connection, command_name, **options)
+    >     finally:
+    >         pool.release(connection)
+
+    > def get_connection(self, command_name, *keys, **options):
+    >     "Get a connection from the pool"
+    >     self._checkpid()
+    >     try:
+    >         connection = self._available_connections.pop()
+    >     except IndexError:
+    >         connection = self.make_connection()
+    >     self._in_use_connections.add(connection)
+    >     return connection
+
+    > def make_connection(self):
+    >     "Create a new connection"
+    >     if self._created_connections >= self.max_connections:
+    >         raise ConnectionError("Too many connections")
+    >     self._created_connections += 1
+    >     return self.connection_class(**self.connection_kwargs)
+
+    -> 在ConnectionPool的实例中,有两个list,依次是_available_connections,_in_use_connections,分别表示可用的连接集合和正在使用的连接集合,在上面的get_connection中,获取连接的过程是
+        1.从可用连接集合尝试获取连接
+        2.如果获取不到, 重新创建连接
+        3.将获取到的连接添加到_in_use_connections
+    -> 每次执行完redis command后pool.release将连接从_in_use_connections放回 _available_connections,这样后续的连接获取就能再次使用这个连接了
+
+    #usage
+    > import redis
+    > rdconnpool = redis.ConnectionPool(host='127.0.0.1', port=6379, > password='xxxxx', socket_timeout=3, max_connections=10)
+    > rdconn = redis.StrictRedis(connection_pool=rdconnpool)
+    > rdconn.set('name', 'Perseus')
+    > rdconn.get('name')

@@ -1,19 +1,38 @@
-\Redis(Remote Dictionary Server)
+\CMD
 	redis-server /etc/redis.conf #start redis
-	redis-cli [-h IP] [-p port] #客户端连接
 	pkill redis-server | redis-cli > shutdown #stop redis-server
-	redis-cli > info #查看redis信息
+	redis-cli [-h IP] [-p port] #客户端连接
 	redis-sentinel /etc/sentinel.conf #start sentinel
+	redis-benchmark -n 10000 #压力测试工具. -n 10000为并发数
 
-    |特性
-    1.开源免费
-    2.原子性 -> 事务操作命令('{单线程}',不能打断,不能回滚,支持多操作合并后事务操作)
+	redis-cli> info #查看redis信息
+	redis-cli> info memory #查看redis内存使用情况
+		used_memory_peak : Redis 的内存消耗峰值（以字节为单位）
+		used_memory_peak_human : 以人类可读的格式返回 Redis 的内存消耗峰值
+		used_memory_lua : Lua 引擎所使用的内存大小（以字节为单位）
+		mem_fragmentation_ratio : used_memory_rss 和 used_memory 之间的比率
+		mem_allocator : 在编译时指定的内存分配器。可以是 libc、jemalloc或tcmalloc
+		1.当 rss > used ，且两者的值相差较大时，表示存在（内部或外部的）内存碎片。
+		内存碎片的比率可以通过 mem_fragmentation_ratio 的值看出。
+		2.当 used > rss 时，表示 Redis 的部分内存被操作系统换出到交换空间了，在这种情况下，操作可能会产生明显的延迟
+		当 Redis 释放内存时，分配器可能会，也可能不会，将内存返还给操作系统。
+		如果 Redis 释放了内存，却没有将内存返还给操作系统，那么 used_memory 的值可能和操作系统显示的 Redis 内存占用并不一致。查看 used_memory_peak 的值可以验证这种情况是否发生
+
+	redis-cli> GETSET key value #将key值设为value并返回key的旧值(old value).当key存在但不是字符串类型时，返回一个错误
+
+\特性
+    1.开源免费基于内存的高性能key-value数据库
+    2.原子性 -> 事务操作命令(watch,'{单线程}',不能打断,不能回滚,支持多操作合并后事务操作)
     3.多数据类型 -> string,list,set,sorted-set,hashset,'{比memcached多很多}'
     4.快速运算 -> '{内存}'数据库(读的速度是110000次/s,写的速度是81000次/s)
     5.数据持久化 -> 保存数据(rdb | aof)文件到磁盘,重启时再次加载使用
     6.丰富的特性 -> 支持publish/subscribe,通知,key过期等特性
     7.master-slave模式数据备份 -> 可建立高性能读写分离服务器集群
-    8.'{单线程问题}'
+	8.单线程 -> 避免了不必要的上下文切换开销和竞争条件
+    	|'{单线程问题}' -> 大量连接来不及释放造成服务器崩溃
+	9.epoll+自己实现的简单的事件框架 -> epoll中的读、写、关闭、连接都转化成了事件，然后利用epoll的多路复用特性，实现了'{非阻塞IO}'
+	10.说到底redis还是一个key-value的数据库，不管它支持多少种数据结构，最终存储的还是以key-value的方式，只不过value可以是链表，set，sorted set，hash table等
+
     -> 一条命令搞死Redis.例如:keys * (建议禁用该命令并用scan替代)、对一个巨大的hash key(例如含有上亿元素的hash key)执行hget all、执行一个巨型的set bit等等,因为Redis是单线程的,在出现这些请求的时候由于它们执行速度极其缓慢而Redis的每秒请求量又比较大,因此在这些请求执行完毕前其它所有请求都会被阻塞住
 
 	|数据存储模式
@@ -23,6 +42,61 @@
 		-> 为内存中的数据持久备份到磁盘文件,在服务重启后可以恢复,此模式下数据相对安全
 		|方式 -> rdb | aof
 
+	|性能压力测试(生产环境条件下)
+		测试前提
+		Redis version 2.4.1
+		Jmeter version 2.4
+		Network 1000Mb
+		Payload size = 100 bytes #超过1k性能迅速下降
+		测试结果
+		SET: 32643.4/s
+		GET: 32478.8/s
+
+	|性能优化
+		1.Master最好不要做任何持久化工作，包括RDB和AOF，特别是不要启用内存快照做持久化
+		2.如果数据比较关键，某个Slave开启AOF备份数据，策略为每秒同步一次
+		3.为了主从复制的速度和连接的稳定性，Slave和Master最好在同一个局域网内
+		4.尽量避免在压力较大的主库上增加从库
+		5.为了Master的稳定性，主从复制不要用图状结构，用单向链表结构更稳定，即主从关系为：Master<--Slave1<--Slave2<--Slave3.......，这样的结构也方便解决单点故障问题，实现Slave对Master的替换，也即，如果Master挂了，可以立马启用Slave1做Master，其他不变
+		6.根据业务需要选择合适的数据类型，并为不同的应用场景设置相应的紧凑存储参数
+		7.当业务场景不需要数据持久化时，关闭所有的持久化方式可以获得最佳的性能以及最大的内存使用量
+		8.如果需要使用持久化，根据是否可以容忍重启丢失部分数据在快照方式与语句追加方式之间选择其一，不要使用虚拟内存以及 diskstore 方式
+		9.不要让你的 Redis 所在机器物理内存使用超过实际内存总量的3/5
+		10.VM 选项，即虚拟内存功能，这个本来是作为 Redis 存储超出物理内存数据的一种数据在内存与磁盘换入换出的一个持久化策略，但是其内存管理成本也非常的高，并且我们后续会分析此种持久化策略并不成熟，所以要关闭 VM 功能，请检查你的 redis.conf 文件中 vm-enabled 为 no
+		11.设置下 redis.conf 中的 maxmemory 选项，该选项是告诉 Redis 当使用了多少物理内存后就开始拒绝后续的写入请求，该参数能很好地保护好你的 Redis 不会因为使用了过多的物理内存而导致 swap，最终严重影响性能甚至崩溃
+		12.Redis 为不同数据类型分别提供了一组参数来控制内存使用，我们在前面详细分析过 Redis Hash 是 value 内部为一个 HashMap，如果该 Map 的成员数比较少，则会采用类似一维线性的'{紧凑格式}'来存储该 Map，即省去了大量指针的内存开销，这个参数控制对应在 redis.conf 配置文件中下面2项：
+
+		hash-max-zipmap-entries 64
+
+		hash-max-zipmap-value 512
+
+		hash-max-zipmap-entries
+
+		含义是当 value 这个 Map 内部不超过多少个成员时会采用线性紧凑格式存储，默认是64，即 value 内部有64个以下的成员就是使用线性紧凑存储，超过该值自动转成真正的 HashMap。
+
+		hash-max-zipmap-value 含义是当 value 这个 Map 内部的每个成员值长度不超过多少字节就会采用线性紧凑存储来节省空间。
+
+		以上2个条件任意一个条件超过设置值都会转换成真正的 HashMap，也就不会再节省内存了，那么这个值是不是设置的越大越好呢，答案当然是否定的，HashMap 的优势就是查找和操作的时间复杂度都是 O(1) 的，而放弃 Hash 采用一维存储则是 O(n) 的时间复杂度，如果成员数量很少，则影响不大，否则会严重影响性能，所以要权衡好这个值的设置，总体上还是最根本的时间成本和空间成本上的权衡。
+
+		同样类似的参数还有：
+
+		list-max-ziplist-entries 512
+
+		说明：list 数据类型多少节点以下会采用去指针的紧凑存储格式。
+
+		list-max-ziplist-value 64
+
+		说明：list 数据类型节点值大小小于多少字节会采用紧凑存储格式。
+
+		set-max-intset-entries 512
+
+		注：set 数据类型内部数据如果全部是数值型，且包含多少节点以下会采用紧凑格式存储
+		13.有 Redis 线上运维经验的人会发现 Redis 在物理内存使用比较多，但还没有超过实际物理内存总容量时就会发生不稳定甚至崩溃的问题，有人认为是基于快照方式持久化的 fork 系统调用造成内存占用加倍而导致的，这种观点是不准确的，因为 fork 调用的 copy-on-write 机制是基于操作系统页这个单位的，也就是只有有写入的脏页会被复制，但是一般你的系统不会在短时间内所有的页都发生了写入而导致复制，那是什么原因导致 Redis 崩溃呢？
+
+		答案是 Redis 的持久化使用了 Buffer IO 造成的，所谓 Buffer IO 是指 Redis 对持久化文件的写入和读取操作都会使用物理内存的 Page Cache，而大多数数据库系统会使用 Direct IO 来绕过这层 Page Cache 并自行维护一个数据的 Cache，而当 Redis 的持久化文件过大（尤其是快照文件），并对其进行读写时，磁盘文件中的数据都会被加载到物理内 存中作为操作系统对该文件的一层 Cache，而这层 Cache 的数据与 Redis 内存中管理的数据实际是'{重复存储}'的，虽然内核在物理内存紧张时会做 Page Cache 的剔除工作，但内核很可能认为某块 Page Cache 更重要，而让你的进程开始'{Swap}'，这时你的系统就会开始出现不稳定或者崩溃了。我们的经验是当你的 Redis 物理内存使用超过内存总容量的3/5时就会开始比较危险了
+
+		14.Redis的主要缺点是数据库容量受到物理内存的限制，不能用作海量数据的高性能读写，因此Redis适合的场景主要局限在较小数据量的高性能操作和运算上
+
 \rdb(Redis DataBase)
 	|主要在
 		1.客户端发起bgsave命令后
@@ -30,12 +104,17 @@
 		3.配置文件中指定的save parameters满足时
 		-> Redis实例会启动rdb持久化
 
-	-> 在检测到需要产生rdb文件时,fork出一个子进程做rdb持久化,将数据写入一个临时文件,持久化结束后,用这个临时文件替换上次持久化的文件.然后Redis父进程会检测到子进程是否正常结束,对产生对rdb文件做处理
+	-> 在检测到需要产生rdb文件时,fork出一个子进程做rdb持久化,将数据写入一个临时文件,持久化结束后,用这个临时文件替换上次持久化的文件.然后Redis父进程会检测到子进程是否正常结束,对产生的rdb文件做处理
 
 	|优点 -> 使用单独子进程来进行持久化,主进程不会进行任何IO操作,保证了redis的高性能
-	|缺点 -> RDB是间隔一段时间进行持久化,如果持久化之间redis发生故障,会发生数据丢失.所以这种方式更适合数据要求不严谨的时候
+	|缺点 -> RDB是间隔一段时间进行持久化,如果下次持久化之前redis发生故障,会发生数据丢失.所以这种方式更适合数据要求不严谨的时候
 
-	-> 这里说的执行数据写入到临时文件的时间点是可以通过配置来自己确定的,通过配置redis在n秒内如果超过m个key被修改这执行一次RDB操作.这个操作就类似于在这个时间点来保存一次Redis的所有数据,一次快照数据.所有这个持久化方法也通常叫做snapshot(快照)
+	|数据恢复
+		-> RDB的启动时间会更短，原因有两个
+		1.RDB文件中'{每条数据只有一条记录}'，不会像AOF日志那样可能有一条数据的多次操作记录。所以每条数据只需要写一次就行了。
+		2.RDB文件的存储格式和Redis数据在内存中的'{编码格式}'是一致的，不需要再进行数据编码工作，所以在CPU消耗上要远小于AOF日志的加载
+
+	-> 这里说的执行数据写入到临时文件的时间点是可以通过配置来自己确定的,通过配置redis在n秒内如果超过m个key被修改这执行一次RDB操作.这个操作就类似于在这个时间点来保存一次Redis的所有数据,一次快照数据.所有这个持久化方法也通常叫做snapshot(快照)，是默认的持久化方式
 
 \AOF(Append-Only File)
 	-> 将'{操作+数据}'以格式化指令的方式追加到操作日志文件的尾部,在append操作返回后(已经写入到文件或者即将写入),才进行实际的数据变更,日志文件保存了历史所有的操作过程
@@ -64,18 +143,48 @@
 	-> 在架构良好的环境中,master通常使用AOF,slave使用snapshot,主要原因是master需要首先确保数据完整性,它作为数据备份的第一选择;slave提供只读服务(目前slave只能提供读取服务),它的主要目的就是快速响应客户端read请求
 	-> 但是如果你的redis运行在网络稳定性差/物理环境糟糕情况下,建议你master和slave均采取AOF,这个在master和slave角色切换时,可以减少'{人工数据备份}'/'{人工引导数据恢复}'的时间成本
 	-> 如果你的环境一切非常良好,且服务需要接收密集性的write操作,那么建议master采取snapshot,而slave采用AOF
+	-> 在进行快照的时候（save），fork出来进行dump操作的子进程会占用与父进程一样的内存，真正的copy-on-write，对性能的影响和内存的耗用都是比较大的。比如机器8G内存，Redis已经使用了6G内存，这时save的话会再生成6G，变成12G，大于系统的8G。这时候会发生交换；要是虚拟内存不够则会崩溃，导致数据丢失。所以在用redis的时候一定对系统内存做好容量规划。
+    -> 目前，通常的设计思路是利用Replication机制来弥补aof、snapshot性能上的不足，达到了数据可持久化。即Master上Snapshot和AOF都不做，来保证Master的读写性能，而Slave上则同时开启Snapshot和AOF来进行持久化，保证数据的安全性
+
+\Transaction
+	-> redis能用的的加锁命令分表是INCR、SETNX、SET
+
+	|乐观锁(OptimisticLock)
+	redis-cli> val = get _key
+	redis-cli> multi
+	redis-cli> [operation]
+	redis-cli> exec
+
+	-> 默认事务在高并发时有原子性被破坏的风险, 此时提前加'{watch _key}'可为事务加上'{乐观锁}'.若事务执行期间_key对象被其他请求修改, exec将执行失败
+
+	|分布式锁(DistributedLock)
+	-> 为解决分布式系统中不同节点间的共享数据同步更新问题
+	-> Lua脚本可以把非原子性的操作变成原子性操作
+
+		|setnx(set if not exists)
+		redis-cli> SET key value [EX seconds] [PX milliseconds] [NX|XX]
+		.value 一般为随机值
+		.EX seconds − 设置指定的过期时间(以秒为单位)
+		.PX milliseconds - 设置指定的过期时间(以毫秒为单位)
+		.NX - 仅在键不存在时设置键
+		.XX - 只有在键已存在时才设置
+		-> setnx跟set的区别在于，setnx是原子性的操作，用set会出现一个问题，比如我先get key看看key是否存在，当我再次去判断的时候，有可能别人把这个key给配置了，这就成了非原子操作
 
 \双机热备
-	-> 也就是一台主服务器对外提供访问,而从服务器stand by,当主服务器挂了,然后从服务器自动升为主服务器,保证系统能正常运行,而原来的主服务器修复好了之后,变为从服务器.双机热备,能提高项目的高可用
-	-> 为了解决服务器单点风险问题
-	-> 单点问题,也就是说在真实的生产环境中,只有一台服务器使用,然而服务器不可能永远不出问题,当服务器由于某种原因不能正确响应请求,或者宕机了,整个应用就无法使用了,这存在着很大的风险.在生产环境中,无论哪一层,都应该规避单点问题,包括数据库层,负载均衡层,中间件层等
-	-> 对于redis而言,实现双机热备功能有很多实现方式,可用通过keepalived+redis,zookeeper+redis,或者redis本身自带的sentinel都是可以实现的
+	-> 也就是一台主服务器对外提供访问,而从服务器stand by,当主服务器挂了,然后从服务器自动升为主服务器,保证系统能正常运行,而原来的主服务器修复好了之后,变为从服务器.双机热备,能提高项目的高可用.为了解决服务器单点问题
+	|单点问题 -> 在真实的生产环境中,只有一台服务器使用,然而服务器不可能永远不出问题,当服务器由于某种原因不能正确响应请求,或者宕机了,整个应用就无法使用了,这存在着很大的风险.在生产环境中,无论哪一层,都应该规避单点问题,包括数据库层,负载均衡层,中间件层等
+	-> redis可通过keepalived+redis,zookeeper+redis,或redis自带的sentinel实现双机热备
 
 \主从同步
 	|redis.conf
 	-> daemonize yes #redis server后台运行
 	-> 需要bind 本机外网IP [127.0.0.1], protect-mode -> no, requirepass -> pwd
 	-> slave -> slaveof MasterIP Port
+
+	-> 读写分离架构的'{缺陷}'在于，不管是Master还是Slave，每个节点都必须保存完整的数据，如果在数据量很大的情况下，集群的扩展能力还是受限于单个节点的存储能力，而且对于Write-intensive类型的应用，读写分离架构并不适合
+	-> 为了解决读写分离模型的缺陷，可以应用'{数据分片}'模型
+	-> 可以将每个节点看成都是独立的master，然后通过业务实现数据分片
+	-> 结合上面两种模型，可以将每个master设计成由一个master和多个slave组成的模型
 
 \Sentinel
 	-> protected-mode no #sentinel.conf添加
@@ -87,6 +196,50 @@
 	|原理分析
 		1.keepalived主要是虚拟ip(VIP),两台服务器虚拟出一个共同的ip,但是同一时间只能有一台服务器拥有此虚拟ip,当主服务器挂了,自动进行ip漂移
 		2.keepalived主要采取的是健康检测方式,检测本身redis服务是否正常,如果出现了异常,则降低自己的优先级(和weight做加法),然后keepavlied内部进行推选新的主服务器
+
+\Elimination
+	-> 可以通过配置redis.conf中的maxmemory这个值来开启内存淘汰功能.maxmemory为0的时候表示我们对Redis的内存使用没有限制
+
+	|Redis提供了下面几种淘汰策略(redis.conf: maxmemory-policy [policy])
+		1.noeviction(默认策略)：当内存使用达到阈值的时候，所有引起申请内存的命令会报错。
+		2.allkeys-lru：在主键空间中，优先移除最近未使用的key。
+		3.volatile-lru：在设置了过期时间的键空间中，优先移除最近未使用的key。
+		4.allkeys-random：在主键空间中，随机移除某个key。
+		5.volatile-random：在设置了过期时间的键空间中，随机移除某个key。
+		6.volatile-ttl：在设置了过期时间的键空间中，具有更早过期时间的key优先移除
+	-> 将key设置过期时间实际上会消耗更多的内存，因此我们建议使用allkeys-lru策略从而更有效率的使用内存
+	-> 如果是VOLATILE的LRU，则每次从可失效的数据集中，每次随机采样maxmemory-samples(默认为5)个key,从中选取'{idletime最大}'的key进行淘汰。否则，如果是ALLKEYS_LRU则从全局数据中进行采样，每次随机采样maxmemory-samples个key，并从中选择idletime最大的key进行淘汰
+
+	|冷热数据分离
+	-> redis热, mysql冷.设mysql中总数据m条中有n条热数据
+	1.(估算n条数据所占空间)在redis中设置
+		> maxmemory=xxxmb
+		> maxmemory-policy=xxx-lru
+		> maxmemory-samples=xxx
+		-> 开启淘汰策略
+	2.从mysql中加载前n条数据到redis
+	3.redis运行一段时间
+	4.继续从mysql中加载数据到redis,redis开启淘汰策略xxx-lru,淘汰最大空闲对象,添加新对象
+	5.若客户端访问一个redis中不存在的对象,则转向数据库获取,然后加载到redis中
+
+\HighConcurrency
+	|too many open files
+		-> ConnectionPool
+	|缓存穿透 -> 重复获取一个不存在的缓存对象,获取不到则访问持久层(DB),穿透了缓存
+		-> 可暂时为该key设一个默认值
+	|缓存失效 -> 发很高时可能会出在某一个时间同时生成了很多的缓存，并且过期时间都一样，这个时候就可能引发一当过期时间到后，这些缓存同时失效，请求全部转发到DB，DB可能会压力过重
+	|雪崩 -> 缓存大量失效的时候，引发大量查询数据库
+		-> 将缓存失效时间分散开，比如我们可以在原有的失效时间基础上增加一个随机值，比如1-5分钟随机，尽量让'{失效时间点均匀分布}',这样每一个缓存的过期时间的重复率就会降低，就很难引发集体失效的事件
+	|热点key -> 某key访问非常频繁，当key失效时有大量进程同时查询DB，同时设置缓存，导致DB负载过大，系统崩溃
+		1.使用锁，单机用synchronized,lock等，分布式用'{分布式锁}'
+		2.不设置缓存过期时间，而是在value里设置过期时间。如果检测到存的时间超过过期时间则异步更新缓存
+		3.在value设置一个比过期时间t0小的过期时间值t1，当t1过期的时候，延长t1并做更新缓存操作
+
+\ConnectionPool
+	-> 项目在运行一段时间后老是莫名其妙的挂掉。查看错误日志，报too many open files,想到应该是有打开的资源忘记关闭。经过分析排查，发现redis连接数飙升的同时服务器open files也飙升，因而确定是redis导致。当时redis未使用连接池，每次获取一个新的客户端对象，且在使用后没有关闭，gc 也来不及回收无引用的客户端对象，导致服务器open files达到上限
+	-> 当并发量比较高的时候, 频繁的连接创建和释放对性能会有较高的影响, 于是, 连接池就发挥作用了
+
+	|原理 -> 通过预先创建多个连接, 当进行redis操作时, 直接获取已经创建的连接进行操作, 而且操作完成后, 不会释放, 用于后续的其他redis操作.这样就避免了频繁创建和释放redis连接
 
 \mysql-redis集群
 	?????

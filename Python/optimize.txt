@@ -1,4 +1,4 @@
-CPython
+|CPython -> python默认解释器
 
 |PyPy -> python JIT编译器
 

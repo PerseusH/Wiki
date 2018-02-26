@@ -1,0 +1,87 @@
+|Memory
+-> 所有对象和数据结构都在一个私有heap中,程序员没有访问该heap的权限,只有解释器才能进行操作
+-> 内存管理模块为Python的heap空间分配内存.其核心API提供一些访问该模块的方法供程序员使用
+垃圾回收 -> 1.引用计数 2.标记清除 3.分代回收
+
+-> 包含内置名称的命名空间是在python解释器启动的时候创建的,并且不会被删除.一个模块的全局命名空间是在模块定义代码被读入的时候创建的,一般情况下,模块命名空间会持续到解释器结束
+-> 传递参数的时候,python不允许程序员选择采用传值还是传引用.Python传参用的是传对象引用
+-> if/elif/else、try/except/finally、for/while不能更改变量作用域,
+也就是说这些代码块中的变量,在外部也是可以访问的
+-> 能改变变量作用域的代码段是'{def、class、lambda}'
+
+|序列化(Serialization)(或持久化)
+-> 在程序运行的过程中,所有的变量都是在内存中,一旦程序结束,变量所占用的内存就被操作系统全部回收.我们把变量从内存中变成可存储或传输的过程称之为序列化,在Python中叫pickling,在其他语言中也被称之为serialization,marshalling,flattening等.可以把序列化后的内容写入磁盘,或远程传输到别的机器上
+-> 可将一个对象从一个进程传递给另一个;方便保存及读取;
+
+-> 当我们从Python官方网站下载并安装好Python 3.x后，我们就直接获得了一个官方版本的解释器:CPython。这个解释器是用C语言开发的，所以叫CPython。在命令行下运行python就是启动CPython解释器
+
+1.看过的书 -> python参考手册, mysql技术内幕
+2.谈谈python的装饰器,迭代器,yield
+    |可以直接用于for循环的对象统称为可迭代对象('{Iterable}')
+    -> 实现了__iter__方法
+    1.集合数据类型,如list、tuple、dict、set、str等
+    2.generator,包括生成器和带yield的generator function
+
+    |generator
+        |next -> 启动生成器|生成下一个值
+            > next(gen) #python3.x
+            > gen.next() #python2.x
+        |send -> val指定的是上一次被挂起的yield语句的返回值.send返回值为下一个yield val
+            > gen.send(val)
+        |throw -> 通过向生成器对象在上次被挂起处，抛出一个异常。之后会继续执行生成器对象中后面的语句，直至遇到下一个yield语句返回。如果在生成器对象方法执行完毕后，依然没有遇到yield语句，抛出StopIteration异常
+            > gen.throw(Exception, msg)
+        |close -> 在生成器对象方法的挂起处(yield)抛出一个GeneratorExit异常。GeneratorExit异常产生后，系统会继续把生成器对象方法后续的代码执行完毕
+            > def myGenerator():
+            >     try:
+            >         yield 1
+            >         print "Statement after yield"
+            >     except GeneratorExit:
+            >         print "Generator error caught" #生成器对象结束
+            >
+            >     print "End of myGenerator"
+            > #当调用gen.close()时，恢复生成器方法的执行过程。系统在yield语句处抛出GeneratorExit异常，执行过程跳到except语句块。当except语句块处理完毕后，系统会继续往下执行，直至生成器方法执行结束
+            > #GeneratorExit异常的产生意味着生成器对象的生命周期已经结束。因此，一旦产生了GeneratorExit异常，生成器方法后续执行的语句中，不能再有yield语句，否则会产生RuntimeError
+            > #GeneratorExit异常继承自BaseException类。BaseException类与Exception类不同。一般情况下，BaseException类是所有内建异常类的基类，而Exception类是所有用户定义的异常类的基类
+            > except Exception: pass #只能捕获用户定义的异常,不能捕获BaseException
+
+    |yield -> next执行到yield时方法的执行过程被'{挂起}'，而next方法返回值为yield关键字后面表达式的值.gen.next()|gen.send(n)唤醒被挂起的方法继续执行
+
+    |可以被next()函数调用并不断返回下一个值的对象是Iterator(迭代器)
+    -> 实现了__iter__和(__next__(python3.x)|next(python2.x))方法
+    -> __iter__返回迭代器自身,__next__返回容器中的下一个值
+    -> Iterator对象表示的是一个数据流,可以被next()函数调用并不断返回下一个数据,直到没有数据时抛出'{StopIteration}'错误.这个数据流是一个有序序列,我们'{不能提前知道序列长度}',只能不断通过next()函数实现按需计算下一个数据,所以Iterator的计算是'{惰性}'的,只有在需要'{返回下一个数据}'时它才会计算
+    -> 生成器是一种特殊的'{Iterator}',不需要实现__iter__和__next__,只需yiled关键字
+    -> list、dict、str不是'{Iterator}'
+    -> iter()可以把list、dict、str等变成'{Iterator}' -> iter([]),iter('abc')
+    -> Python的for循环就是通过不断调用next()函数实现的(for = loop(next(iterator)))
+        > for x in [1, 2, 3, 4, 5]:
+        >     pass
+        -> 等价于
+        > it = iter([1, 2, 3, 4, 5]) #首先获得Iterator对象
+        > while True: #循环
+        >     try:
+        >         x = next(it) #获得下一个值
+        >     except StopIteration:
+        >         break #遇到StopIteration就退出循环
+
+3.标准库线程安全的队列是哪一个？不安全的是哪一个？logging是线程安全的吗？
+    线程安全 -> 多线程同时操作时不会发生写冲突
+    非线程安全 -> 多线程同时操作时会发生写冲突
+    -> Queue模块提供一个适用于多线程编程的先进先出(first-in,first-out,FIFO)数据结构,可以用来在生产者消费者'{线程之间安全}'地传递消息或其他数据.它会为调用者'{处理锁定}',使用多线程可以安全地处理同一个Queue实例
+    -> list,set,dict是'{非线程安全}'的
+    -> logging是'{线程安全}'的,handler内部使用了threading.RLock()来保证同一时间只有一个线程能够输出
+
+4.python适合的场景有哪些？当遇到计算密集型任务怎么办？
+    -> 运维,爬虫,数据分析,web
+    -> 遇到'{计算密集型}'任务使用'{多进程multiprocessing}',利用多核
+
+5.python高并发解决方案？
+    '{python2.x}' -> twisted+tornado+gevent, socket消息队列轮询
+    '{python3.x}' -> asyncio
+
+-> Flask&Celery&RabbitMQ&MongoDB&Asyncio&RESTful API
+-> 网络爬虫(requests+beautifulsoup->简单, scrapy+xpath->复杂)
+-> 搜索引擎Solr搭建
+
+-> DataStructure(String, Array, Queue, Stack, Tree, List, Hash)
+-> Network(ProcessMsg,Socket,MultipleThread,Coroutine,Gevent,Asyncio,RabbitMQ)

@@ -105,13 +105,8 @@
 \Container(List & Tuple & Dict & Set)
     -> list是一个数组而不是一个链表
     -> 数组(list)和元组(tuple)之间的区别是数组内容是可以被修改的而元组内容是只读的.元组可以被哈希比如作为字典的关键字
-    list(dict.keys()), list(dict.values()), list(dict.items()) #字典对象操作
-    l[-n] #倒序取值
-    l.pop() #删除并返回list最后一个元素
-    dict.iteritems() #迭代器python2.x
-    dict.items() #乱序列表python3.x
-    dict.clear() #dict -> {}
     -> dict和set都是使用hash表来实现的
+
 
     |comprehension
         nums=[i for i in data_list if i%3 == 0] #列表推导式(list comprehension)
@@ -120,6 +115,12 @@
         [dict[key] for key in dict] #return values of dict
 
     |dict operation
+        dict.iteritems() #迭代器python2.x
+        dict.items() #乱序列表python3.x
+        dict.clear() #dict -> {}
+        dict.update(dict1) #把dict1中的内容更新到dict中
+        dict.pop(key, [default_value]) #删除key并返回其value,若key不存在则返回默认值,未设置默认值则报错
+
         list(zip((1, 2, 3), ('a', 'b', 'c'))) = [(1, 'a'), (2, 'b'), (3, 'c')]
         dict([(1, 'a'), (2, 'b'), (3, 'c')]) = {1: 'a', 2: 'b', 3: 'c'}
         dict([('a', 1), ('b', 2), ('c', 3), ('d', 4), ('e', 5), ('f', 6)]) =
@@ -139,6 +140,10 @@
         >  or equities.setdefault(key, value) #equities[key]=value
 
     |list operation
+        list(dict.keys() | dict.values() | dict.items()) #字典对象操作
+        l[-n] #倒序取值
+        l.pop(n) #删除并返回l[n], n为空则默认删除并返回list最后一个元素
+
         > l=[[], [], [], [], []]
         > l[0].append(10) -> l=[[10], [], [], [], []] #普通
 
@@ -269,7 +274,7 @@
     $ python -m pytest -v #启动'test_'开头的function,module,'Test'开头的class
 
     |DocTest -> 在docstring中建立测试用例及期望结果
-    $ python -m doctest test.py -v
+    -> doctest在docstring中寻找测试用例的时候，认为>>>是一个测试用例的开始，直到遇到空行或者下一个>>>，在两个测试用例之间有其他内容的话，会被doctest忽略.可以利用这个特性为测试用例编写一些注释
     > def my_function(a, b):
     >     """
     >     >>> my_function(2, 3)
@@ -278,6 +283,13 @@
     >     'aaa'
     >     """
     >     return a * b
+        |执行
+        1. $ python -m doctest test.py -v
+        2. > if __name__ == "__main__":
+           >    import doctest
+           >    doctest.testmod()
+           $ python test.py -v
+
 
     |UnitTest
     > import unittest
