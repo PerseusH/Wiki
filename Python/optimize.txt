@@ -1,6 +1,8 @@
-|CPython -> python默认解释器
+|CPython
+    -> Python'{默认解释器}'
+    -> 当我们从Python官方网站下载并安装好Python 3.x后，就直接获得了一个官方版本的解释器:CPython。这个解释器是用C开发的，所以叫CPython。在命令行下运行python就是启动CPython
 
-|PyPy -> python JIT编译器
+|PyPy -> 即时(JIT)编译器。它不关心Python代码的词法分析和语法树.用Python编写，直接利用Python的Code Object. Code Object是Python字节码的表示，也就是说，PyPy直接分析Python代码所对应的字节码,这些字节码即不是以字符形式也不是以某种二进制格式保存在文件中，而是在Python运行环境中
 
 |Profile/cProfile -> python性能分析
     import profile; profile.run("func()")
@@ -13,7 +15,7 @@
     percall -> (第二个 percall)即函数运行一次的平均时间,等于cumtime/ncalls
     filename:lineno(function) -> 每个函数调用的具体信息
 
-|timeit -> 返回代码运行时间
+|timeit -> 返回代码运行时间(secs)
     -> number可以省略,默认值为1000000
     -> repeat和timeit相似,repeat参数表示重复测试的次数(可以省略.默认值为3),返回一个时间列表
 
@@ -87,7 +89,7 @@ l1 = map(f,l) > l1 = [f(x) for x in l] #对列表的每一个元素都调用函�
 random.shuffle(list); print(list[0]) #把列表元素随机打乱,取首元素.改变列表结构
 random.sample(list, n) #随机取出n个列表元素,返回子列表.不改变列表结构
 
-itertools模块是以C语言编写，所以提供了最高效的迭代器
+|itertools -> 以C语言编写，所以提供了最高效的迭代器
 
 反序列化使用'{json}'
 

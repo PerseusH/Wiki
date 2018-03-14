@@ -1,5 +1,5 @@
-\性能
-    1.python -> twisted+tornado+gevent, socket消息队列轮询
+\性能(针对高并发)
+    1.python -> twisted+tornado+gevent, socket消息队列轮询, 多进程+多线程/协程
     2.nginx -> epoll+static_cache+load_balance+reverse_proxy
     3.redis -> memory_cache+epoll+cluster+connection_pool
     4.mysql -> index+no_join+no_table_scan+cluster+lock

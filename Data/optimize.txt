@@ -82,20 +82,20 @@
         -> 利用'{子查询优化limit分页}'
 
     |避免表扫描
-    -> 避免在where子句中使用!=, or或<>操作符,否则引擎将'{放弃使用索引而进行全表扫描}'
+    -> '{避免}'在where子句中使用!=, or或<>操作符,否则引擎将'{放弃使用索引而进行全表扫描}'
         select id from t where num=10 or num=20 -> select id from t where num=10 union all select id from t where num=20
-    -> in和not in要慎用(代以between, exists, <,<=,=,>,>=)
+    -> in和not in要'{慎用}'(代以between, exists, <,<=,=,>,>=)
         select id from t where num in(1,2,3) -> select id from t where num between 1 and 3
         select num from a where num in(select num from b) -> select num from a where exists(select 1 from b where num=a.num)
-    -> 避免左模糊匹配
+    -> '{避免}'左模糊匹配
         select id from t where name like '%李%' -> select id from t where name like '李%'
-    -> 避免在where子句中使用参数
+    -> '{避免}'在where子句中使用参数
         select id from t where num=@num -> select id from t with(index(index_col)) where num=@num
-    -> 避免在where中=左边进行函数、算术运算或其他表达式运算,否则引擎将放弃使用索引而进行表扫描
+    -> '{避免}'在where中=左边进行函数、算术运算或其他表达式运算,否则引擎将放弃使用索引而进行表扫描
         select id from t where num/2=100 -> select id from t where num=100*2
-    -> 避免在where子句中对字段进行函数操作,这将导致引擎放弃使用索引而进行全表扫描
+    -> '{避免}'在where子句中对字段进行函数操作,这将导致引擎放弃使用索引而进行全表扫描
         select id from t where substring(name,1,3)='abc'
-    -> 避免使用count(*)
+    -> '{避免}'使用count(*)
         select count(*) from member -> select count(1) from member
 
 \影响结果集 -> 查询条件与索引的关系决定影响结果集

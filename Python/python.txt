@@ -1,6 +1,7 @@
 \System
     -> 遇到权限问题, 尝试sudo python xxx.py
     monkey patch -> 在运行时动态地对已定义的函数或对象进行修改或添加
+    > import sys; sys.path.append(lib_path) #添加库模块路径后可以从其他目录import lib
 
 \Debug
     PyChecker -> 静态分析工具,它报告源代码中的错误并且会报告错误类型和复杂度
@@ -11,7 +12,7 @@
         ipython test.py --pdb #以调试模式运行程序,发现异常或断点则进入pdb控制台进行调试
         python -m [pdb/ipdb] test.py #以调试模式运行程序,直接进入pdb控制台
 
-    |objgraph #对于查找内存泄露和大内存对象
+    |objgraph #用于查找内存泄露和大内存对象
         import objgraph; objgraph.show_most_common_types(n) #获取前n大内存对象
 
     |comment for docstring #在class或function内部
@@ -19,20 +20,46 @@
     > xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     > """
 
-    |log级别从高到低: CRITICAL > ERROR > WARNING > INFO > DEBUG > NOTSET
-    -> level以下级别的log不会执行
+    |logging
+    > #级别从高到低: CRITICAL>ERROR>WARNING>INFO>DEBUG>NOTSET, level以下级别的logging不会执行
     > import logging
-    > logging.basicConfig(format='%(asctime)s: %(levelname)s:
-    >   %(message)s',level=logging.WARNING)
+    > #name为系统当前用户名
+    > logging.basicConfig(level=logging.INFO, format='%(asctime)s %(filename)s: %(lineno)s %(name)s %(levelname)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     > logging.debug('This message should appear on the console')
     > logging.info('So should this')
     > logging.warning('And this, too')
 
 \Type
+    |Python3有六个标准的数据类型
+        1.Number（数字）int、float、bool、complex（复数 4+3i）
+        2.String（字符串）
+        3.List（列表）
+        4.Tuple（元组）
+        5.Set（集合）
+        6.Dictionary（字典）
+
+    函数	                   描述
+    int(x [,base])          将x转换为整数,默认10进制 int() = 0
+    float(x)                将x转换到一个浮点数
+    complex(real [,imag])   创建一个复数
+    str(x)                  将对象 x 转换为字符串
+    repr(x)                 将对象 x 转换为表达式字符串
+    eval(str)               计算在字符串中的表达式,并返回一个对象.如 eval(bin(7))->7
+    tuple(s)                将序列 s 转换为一个元组
+    list(s)                 将序列 s 转换为一个列表
+    set(s)                  转换为可变集合
+    dict(d)                 创建一个字典。d 必须是一个序列 (key,value)元组。
+    frozenset(s)            转换为不可变集合
+    chr(x)                  将一个整数转换为一个字符
+    ord(x)                  将一个字符转换为整数
+    hex(x)                  将整数转换为十六进制字符串 int('0xFFFF', 16) 16进制->10进制
+    oct(x)                  将整数转换为八进制字符串 int('0o5', 8) 8进制->10进制
+    bin(x)                  将整数转换为二进制字符串 int('0b111', 2) 2进制->10进制
+
     -> '{python3.x}'默认使用utf-8编码(支持特殊字符集)
     -> '{python3.x}'比'{python2.x}'慢, 主要慢在字符串和整数操作上
     isinstance(a, type_name) #a是否为某类型实例, 对整个继承链的类都有效
-    type(a) #获取a的类型信息
+    type(a) #获取a的类型信息，不会认为子类是一种父类类型
     dir(a) #获取a的所有属性和方法, 返回一个list
     hasattr(a, 'xxx'), setattr(a, 'xxx', val), getattr(a, 'xxx') #属性操作
     type(file.py) -> <type 'module'>
@@ -40,42 +67,60 @@
     |字符&字符串
         -*- coding:utf-8 -*- #兼容特殊字符集, '{python2.x}'
         (u'\uxxxxxxx').encode('utf-8') -> utf-8字符 #python2.x
-        ord('a') #字符转换为数字
-        chr(97) #数字转换为字符
+
+        |统计字符串中子串或字符的个数
+            s.count(sub_str) #不重复统计  s.count('') -> len(s) + 1
+            import re; len(re.findall(r'(?=word)', s)) #重复统计
+
         'a' < 'c' #字符直接比较
+        'x' * n -> 'xxx...{n}'
         list(('sdgfdfgn')) #将字符串转换为单个字符数组, 不能用str.split('')
+        -> 反斜杠可以用来转义，使用'{r}'可以让反斜杠不发生转义
+        -> Python 字符串'{不能被改变}'。向一个索引位置赋值，比如word[0] = 'm'会导致错误
+        -> List中的元素是'{可以改变}'的
+        -> Python中的字符串有两种索引方式，从左往右以0开始，从右往左以-1开始
+        -> 正则表达式中+?, *?表示尽可能少地匹配('{非贪婪匹配}')
 
-    |数字
-        int('0xFFFF', 16) #16进制转10进制
+    |Calculation
+        +|-|*|/|%|>>|<<|~|&|||^ > is|not|in|==|!= > and > or > = #计算顺序
+        5/2=2.5('{python2.x}'=2) | 5.0/2=2.5 | 5/2.0=2.5 | 5//2=2 | 5.0//2.0=2.0 | 5.0//2=2.0
+        -> is是对比引用地址, ==是对比值
+        a, b = i, j #集中赋值
+        a = b = c = 1 #创建一个整型对象，值为1，三个变量被分配到相同的内存空间上
+        x ** n -> pow(x, n) #x的n次方
+        abs(n) #求绝对值
+        None, False, "", 0, [], {}, ()相当于False. not *prev* == True.负数相当于True
+            -> if not x 不严谨，这几项都符合; if x is *prev* 只有指定项符合
 
-\Calculation
-    +|-|*|/ > and|or|not|== > = #计算顺序
-    5/2=2.5('{python2.x}'=2) | 5.0/2=2.5 | 5/2.0=2.5 | 5//2=2 | 5.0//2.0=2.0 | 5.0//2=2.0
-    -> is是对比引用地址, ==是对比值
-    a, b = i, j #集中赋值
-    x ** n #x的n次方
-    |短路运算
-        None|False|'' or 123 -> 123  None|False|'' and 123 -> None|False|''
-        1|True|'a' or 123 -> 1|True|'a'  1|True|'a' and 123 -> 123
+        |短路运算
+            None|False|'' or 123 -> 123  None|False|'' and 123 -> None|False|''
+            1|True|'a' or 123 -> 1|True|'a'  1|True|'a' and 123 -> 123
 
-    True if 5 else False #True
-    True if 0 else False #False
-    True if -5 else False #True
-    any(i % 3 == 0 for i in data_list) #判断data_list是否包含3的倍数,返回True/False
-    2 ** 16 = 65536 | 0xFFFF = 2 ** 16 - 1
-    1111 1111 = 2 ** 8 - 1 | 0.1111 1111 = 1 - 2 ** -8
-    n/9 = 0.nnnnnnnnnnn...
+        any(i % 3 == 0 for i in data_list) #判断data_list是否包含3的倍数,返回True/False
+        2 ** 16 = 65536 | 0xFFFF = 2 ** 16 - 1
+        1111 1111 = 2 ** 8 - 1 | 0.1111 1111 = 1 - 2 ** -8
+        n/9 = 0.nnnnnnnnnnn...
+
+        |位运算 -> 数据默认为'{补码}'表示(正数补码为真值, 负数补码为真值'{取反加一}')
+            a & b #与运算, 有零得零
+                a & 1 #若a末位为1则返回1, 为0则返回零
+            a | b #或运算, 有一得一
+            a ^ b #异或运算, 相异得一, 相同得零
+            ~ a   #非运算, 取反, 结果为 -a-1
+            a<<n  #左移n位, 结果为 a * (2 ** n)
+            a>>n  #右移n位, 结果为 a / (2 ** n)
 
 \Function
     -> 当一个函数调用另一个函数，被调用函数获得控制权。直到它返回或发生异常，才把控制权还给调用者
     -> 每个函数都有一个__name__属性, 即函数签名
     -> 主函数签名为__main__
     -> pass是为了防止报错而占位, 本身没有意义
-    -> C++的内联inline是把'{函数体的机器指令}'直接在需要的地方'{复制}'一遍.python是解释语言,运行由运行环境决定.所以没有内联函数
+    -> C++的内联inline是把'{函数体的机器指令}'直接在需要的地方'{复制}'一遍.python是解释性语言,运行由运行环境决定.所以没有内联函数
     -> 条件判断语句过长, 可在and|or|not后加 \ 换行
+    -> 有默认值参数必须在无默认值参数后面
 
-    > def func(*args, **kwargs) #*args为可变数目参数, **kwargs为任意内容字典型参数
-        > func(1, 2, 3, a = 'xxx', b = 'yyy', c = 'zzz')
+    > def func(*args, **kwargs) #*args为tuple类可变数目参数,**kwargs为任意内容字典型参数
+    >     func(1, 2, 3, a = 'xxx', b = 'yyy', c = 'zzz')
 
 \Class
     -> 类是一个对象,在运行时由type()动态创建,每个class都是type类的一个实例
@@ -107,7 +152,6 @@
     -> 数组(list)和元组(tuple)之间的区别是数组内容是可以被修改的而元组内容是只读的.元组可以被哈希比如作为字典的关键字
     -> dict和set都是使用hash表来实现的
 
-
     |comprehension
         nums=[i for i in data_list if i%3 == 0] #列表推导式(list comprehension)
         dict={i: i**n for i in data_list if i>0} #字典推导式(dict comprehension)
@@ -120,12 +164,15 @@
         dict.clear() #dict -> {}
         dict.update(dict1) #把dict1中的内容更新到dict中
         dict.pop(key, [default_value]) #删除key并返回其value,若key不存在则返回默认值,未设置默认值则报错
+        dict(user='root', password='root') -> {'user': 'root', 'password': 'root'}
 
-        list(zip((1, 2, 3), ('a', 'b', 'c'))) = [(1, 'a'), (2, 'b'), (3, 'c')]
-        dict([(1, 'a'), (2, 'b'), (3, 'c')]) = {1: 'a', 2: 'b', 3: 'c'}
-        dict([('a', 1), ('b', 2), ('c', 3), ('d', 4), ('e', 5), ('f', 6)]) =
+        zip((1, 2, 3), ('a', 'b', 'c', 'd')) -> [(1, 'a'), (2, 'b'), (3, 'c')]
+
+        list(zip((1, 2, 3), ('a', 'b', 'c'))) -> [(1, 'a'), (2, 'b'), (3, 'c')]
+        dict([(1, 'a'), (2, 'b'), (3, 'c')]) -> {1: 'a', 2: 'b', 3: 'c'}
+        dict([('a', 1), ('b', 2), ('c', 3), ('d', 4), ('e', 5), ('f', 6)]) ->
               {'a': 1, 'c': 3, 'b': 2, 'e': 5, 'd': 4, 'f': 6} #无序
-        dc={'a': 1, 'b': 2, 'c': 3} #'a' in dc (True) | 1 in dc (False)
+        dc = {'a': 1, 'b': 2, 'c': 3} #'a' in dc (True) | 1 in dc (False)
         sorted(zip(d.keys(), d.values()), reverse=True) #dict排序
 
         |设置字典默认值
@@ -143,6 +190,7 @@
         list(dict.keys() | dict.values() | dict.items()) #字典对象操作
         l[-n] #倒序取值
         l.pop(n) #删除并返回l[n], n为空则默认删除并返回list最后一个元素
+        ['a'] + ['b'] -> ['a', 'b']
 
         > l=[[], [], [], [], []]
         > l[0].append(10) -> l=[[10], [], [], [], []] #普通
@@ -172,6 +220,31 @@
         data_list.reverse(key=itemgetter(0)|attrgetter(key)) #倒序排序
         data_list.reverse(key=itemgetter(0, 1)|attrgetter(key0, key1)) #多级倒序排序
 
+    |tuple
+        -> 元组的元素不能修改, 其他操作和List一样
+        t = ('x',) #一个元素的元组声明时要在元素后加逗号
+        type(('x',)) -> <type 'tuple'>
+        type(('x')) -> <type 'str'>
+
+    |set
+        -> 集合是一个无序不重复元素的序列. 基本功能是进行成员'{关系测试和删除重复}'元素
+        -> 可以用大括号{}或者set(list)函数创建集合({...}或set(val)). 创建一个空集合必须用set(list)而不是{}，因为{}是用来创建一个空字典. set([...]) == {...}
+
+        > student = {'Tom', 'Jim', 'Mary', 'Tom', 'Jack', 'Rose'}
+        > print(student)   #输出集合，重复的元素被自动去掉
+
+        > #成员关系测试
+        > if 'Rose' in student:
+        >     print('Rose 在集合中')
+
+        > #集合运算
+        > a = set('abracadabra')
+        > b = set('alacazam')
+        > print(a - b)     # a和b的差集
+        > print(a | b)     # a和b的并集
+        > print(a & b)     # a和b的交集
+        > print(a ^ b)     # a和b中不同时存在的元素
+
 \Lambda
     lambda x: x ** n #匿名函数(lambda), x为参数
     -> lambda的局限主要就是为了防止滥用.所以lambda'{只能写一行,不能赋值}',内部也不能定义等等
@@ -189,18 +262,71 @@
     > print([f(2) for f in fl()])
 
     |_add()返回一个匿名函数对象, _add()(n)为执行匿名函数
-      def _add():
-          return lambda x: x + 3
+    > def _add():
+    >     return lambda x: x + 3
 
-\Generator
+\Functional
+    -> python2.x中map, filter返回'{list}'
+    -> python3.x中map, filter返回'{迭代器}'
+    -> python2.x中有reduce, python3.x中需from functools import reduce
+
+\Iterator
+    |可以直接用于for循环的对象统称为可迭代对象('{Iterable}')
+    -> 实现了__iter__方法
+    1.集合数据类型,如list、tuple、dict、set、str等
+    2.generator,包括生成器和带yield的generator function
+
+    |generator
+        |next -> 启动生成器|生成下一个值
+            > next(gen) #python3.x
+            > gen.next() #python2.x
+        |send -> val指定的是上一次被挂起的yield语句的返回值.send返回生成器生成的下一个yield值或者StopIteration异常（如果生成器没有生成下一个yield值就退出了）
+            > gen.send(val)
+        |throw -> 通过向生成器对象在上次被挂起处，抛出一个异常。之后会继续执行生成器对象中后面的语句，直至遇到下一个yield语句返回。如果在生成器对象方法执行完毕后，依然没有遇到yield语句，抛出StopIteration异常
+            > gen.throw(Exception, msg)
+        |close -> 在生成器对象方法的挂起处(yield)抛出一个GeneratorExit异常。GeneratorExit异常产生后，系统会继续把生成器对象方法后续的代码执行完毕
+            > def myGenerator():
+            >     try:
+            >         yield 1
+            >         print "Statement after yield"
+            >     except GeneratorExit:
+            >         print "Generator error caught" #生成器对象结束
+            >
+            >     print "End of myGenerator"
+            > #当调用gen.close()时，恢复生成器方法的执行过程。系统在yield语句处抛出GeneratorExit异常，执行过程跳到except语句块。当except语句块处理完毕后，系统会继续往下执行，直至生成器方法执行结束
+            > #GeneratorExit异常的产生意味着生成器对象的生命周期已经结束。因此，一旦产生了GeneratorExit异常，生成器方法后续执行的语句中，不能再有yield语句，否则会产生RuntimeError
+            > #GeneratorExit异常继承自BaseException类。BaseException类与Exception类不同。一般情况下，BaseException类是所有内建异常类的基类，而Exception类是所有用户定义的异常类的基类
+            > except Exception: pass #只能捕获用户定义的异常,不能捕获BaseException
+
+    |yield -> next执行到yield时方法的执行过程被'{挂起}'，而next方法返回值为yield关键字后面表达式的值.gen.next()|gen.send(n)唤醒被挂起的方法继续执行
+
+    |可以被next()函数调用并不断返回下一个值的对象是Iterator(迭代器)
+    -> 实现了__iter__和(__next__(python3.x)|next(python2.x))方法
+    -> __iter__返回迭代器自身,__next__返回容器中的下一个值
+    -> Iterator对象表示的是一个数据流,可以被next()函数调用并不断返回下一个数据,直到没有数据时抛出'{StopIteration}'错误.这个数据流是一个有序序列,我们'{不能提前知道序列长度}',只能不断通过next()函数实现按需计算下一个数据,所以Iterator的计算是'{惰性}'的,只有在需要'{返回下一个数据}'时它才会计算
+    -> 生成器是一种特殊的'{Iterator}',不需要实现__iter__和__next__,只需yiled关键字
+    -> list、dict、str不是'{Iterator}'
+    -> iter()可以把list、dict、str等变成'{Iterator}' -> iter([]),iter('abc')
+    -> Python的for循环就是通过不断调用next()函数实现的(for = loop(next(iterator)))
+        > for x in [1, 2, 3, 4, 5]:
+        >     pass
+        -> 等价于
+        > it = iter([1, 2, 3, 4, 5]) #首先获得Iterator对象
+        > while True: #循环
+        >     try:
+        >         x = next(it) #获得下一个值
+        >     except StopIteration:
+        >         break #遇到StopIteration就退出循环
+
     -> 生成器每次迭代只生成一个数, 只占用一份内存空间, 随后中断进行下次迭代
     -> list: [x for x in range(n)] | generator: (x for x in range(n))
     -> 包含yield关键字的函数是一个generator
-    '{python3.x}' -> range(m, n)生成range对象,list(range(m, n))生成list;xrange去除
-    '{python2.x}' -> range(m, n)生成list对象;xrange(m, n)生成一个生成器(generator)
 
-\Regex
-    -> 正则表达式中?表示尽可能少地匹配('{非贪婪匹配}')
+    |range(start, stop[, step=1])
+        -> 返回从start, start+step,...到'{stop之前}'的所有结果, 最大结果为(stop-1)
+        '{python3.x}' -> range生成range对象,list(range(start, stop[, step]))生成list;xrange去除
+            -> 返回的range对象是'{迭代器}'
+        '{python2.x}' -> range生成list对象;xrange(start, stop[, step])生成一个生成器(generator)
 
 \DataBase
     conn_str = %(dbn)s://%(user)s:%(pw)s@%(host)s:%(port)s/%(db)s #数据库连接字符串
@@ -213,15 +339,8 @@
     readlines -> 读取整个文件到一个迭代器以供我们遍历
     'xt'-> 写一个文件,如果该文件已经存在,则不写
 
-\Time
-    > import datetime
-    > dt = datetime.datetime.strptime('2017-10-13 10:10:10', '%Y-%m-%d %H:%M:%S')
-    > now = datetime.datetime.now()
-    > now.strftime('%Y-%m-%d %H:%M:%S')
-    >>> 2017-10-13 10:10:10
-
 \Copy
-    嵌套items -> 浅copy始终共享,主改从变
+    嵌套items -> 浅copy始终共享,主改从变; deepcopy不共享
     非嵌套items -> 所有copy一开始都是共享,若主对象更改item,会在本容器新建item,从对象不变
     > import copy
     > t = ['abc', [123]]
@@ -239,19 +358,20 @@
     -> 装饰器(decorator)通过@function_name, 可以扩展现有函数功能(安全, 追踪, 锁定)
     -> 被装饰后的函数其实是另外一个函数(wrapper),__name__和docstring等属性会发生改变
     -> functools.wraps能保持原函数属性
+
     |实例
-       > from functools import wraps
-       > def decorator(func):
-       >    @wraps(func)
-       >    def wrapper(*args, **kvargs):
-       >        # do something
-       >        return func(*args, **kvargs)
-       >    return wrapper
+    > from functools import wraps
+    > def decorator(func):
+    >    @wraps(func)
+    >    def wrapper(*args, **kvargs):
+    >        # do something
+    >        return func(*args, **kvargs)
+    >    return wrapper
 
 \Error
     '{python3.x}' -> except SystemExit as e:
     '{python2.x}' -> except SystemExit, e:
-    raise ValueError(msg) #主动触发异常
+    raise XXXError(msg) #主动触发异常
     import traceback; traceback.print_exc() #获取详细异常信息
         format_exc() #返回字符串
         print_exc() #直接打印或写入文件traceback.print_exc(file=open('tb.txt','w+'))
@@ -260,45 +380,3 @@
     > class Networkerror(RuntimeError):
     >     def __init__(self, arg):
     >         self.args = arg
-
-\Arch
-    Django -> 大而全,模板引擎运算慢
-    Flask -> 小而少,模板引擎运算快
-    Celery -> 分布式异步任务队列管理
-    Tornado -> 适合大型项目,丰富的异步API
-    Asyncio -> 异步框架
-    Mako -> 前端模板
-
-\Test
-    |pytest -> 测试框架
-    $ python -m pytest -v #启动'test_'开头的function,module,'Test'开头的class
-
-    |DocTest -> 在docstring中建立测试用例及期望结果
-    -> doctest在docstring中寻找测试用例的时候，认为>>>是一个测试用例的开始，直到遇到空行或者下一个>>>，在两个测试用例之间有其他内容的话，会被doctest忽略.可以利用这个特性为测试用例编写一些注释
-    > def my_function(a, b):
-    >     """
-    >     >>> my_function(2, 3)
-    >     6
-    >     >>> my_function('a', 3)
-    >     'aaa'
-    >     """
-    >     return a * b
-        |执行
-        1. $ python -m doctest test.py -v
-        2. > if __name__ == "__main__":
-           >    import doctest
-           >    doctest.testmod()
-           $ python test.py -v
-
-
-    |UnitTest
-    > import unittest
-    > class XXXTest(unittest.TestCase):
-    >     def setUp(self):
-    >         pass
-    >     def test_ok(self):
-    >         self.assertEqual(a, b) #if a == b
-    >     def test_ok1(self):
-    >         self.assertTrue(if_true) #if if_true
-    > if __name__ == '__main__':
-    >     unittest.main()

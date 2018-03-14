@@ -36,19 +36,59 @@
     -> __builtin__.exit是一个Quitter对象,这个对象的__call__ 方法会抛出一个SystemExit异常
     sys.exitfunc = exitfunc #在sys.exit执行前调用exitfunc函数
 
-\time
-    t = time.ctime(secs) -> 'Sat Jan 27 19:09:51 2018' #fmt: %a %b %d %H:%M:%S %Y
-    tm = time.strptime(t, "%a %b %d %H:%M:%S %Y") -> <type 'time.struct_time'>
-    str_tm = time.strftime("%Y-%m-%d %H:%M:%S", tm) -> '2018-01-27 19:09:51'
-
 \errno
     -> 定义了许多的符号错误码, 比如ENOENT("没有该目录入口")以及 EPERM("权限被拒绝").它还提供了一个映射到对应平台数字错误代码的字典.在大多情况下,IOError异常会提供一个二元元组, 包含对应数值错误代码和一个说明字符串. 如果你需要区分不同的错误代码, 那么最好在可能的地方使用符号名称
 
-re -> 正则查找
+\Time
+    > import time
+    > secs = time.time() #返回当前时间的时间戳(1970纪元后经过的浮点秒数)
+    > t=time.ctime(secs) -> 'Sat Jan 27 19:09:51 2018' #fmt: %a %b %d %H:%M:%S %Y
+    > #time.ctime() -> 当前日期加时间字符串
+    > tm = time.strptime(t, "%a %b %d %H:%M:%S %Y") -> <type 'time.struct_time'>
+    > str_tm = time.strftime("%Y-%m-%d %H:%M:%S", tm) -> '2018-01-27 19:09:51'
 
-pdb -> 调试
+    > import datetime
+    > dt = datetime.datetime.strptime('2017-10-13 10:10:10', '%Y-%m-%d %H:%M:%S')
+    > now = datetime.datetime.now() #当前日期加时间 <class 'datetime.datetime'> obj
+    > now.strftime('%Y-%m-%d %H:%M:%S')
+    >>> 2017-10-13 10:10:10
 
-urllib/urllib2/httplib -> http lib
+\re -> 正则查找模块
+    > import re
+    > s = str_sample
+    > reg = re.compile(r'text') #编译要查找的正则对象
+    > #reg.xxx(s) == re.xxx(pattern, s)
+    > reg.findall(s) #返回所有匹配字符串数组, 加len()可获取符合的结果个数(重复查找)
+    > reg.findall(r'(?=word)', s) #返回匹配word结果个数的空字符串数组
+    > reg.finditer(s) #返回所有匹配字符串结果迭代器
+        # 遍历迭代器
+        # itr = reg.finditer(s)
+        # for item in itr:
+        #     print item.group()
+    > reg.match(s) #从头开始匹配,起始处不匹配则返回None. reg.match(s).group() 获取结果
+    > reg.search(s) #在整个样本中匹配,返回第一个结果. reg.search(s).group() 获取结果
+    > reg.split(s) #根据pattern将样本分割成字符串数组
+    > reg.sub(repl, s, [count]) #字符串替换,保旧返新. count为替换个数,默认为0全部替换
+    > reg.subn(repl, s, [count]) #同上. 返回一个元组(new_str, replace_number)
+
+    |flags
+        -> re.xxx(pattern, s, flags=re._x)
+        re.I | re.M #指定多个标志
+        re.I(IGNORECASE) -> 使匹配对大小写不敏感
+        re.L(LOCALE) -> 做本地化识别（locale-aware）匹配
+        re.M(MULTILINE) -> 多行匹配，影响 ^ 和 $
+        re.S(DOTALL) -> 使 . 匹配包括换行在内的所有字符
+        re.U(UNICODE) -> 根据Unicode字符集解析字符。这个标志影响 \w, \W, \b, \B.
+        re.X(VERBOSE) -> 该标志通过给予你更灵活的格式以便你将正则表达式写得更易于理解。
+
+|http
+    |urllib/urllib2/httplib
+
+    |requests
+
+    |scrapy
+
+    |BeautifulSoup
 
 \logging
     > import logging
@@ -56,10 +96,30 @@ urllib/urllib2/httplib -> http lib
     > logging.info('xxx xxx') #调试程序, 记录信息
 
 \shutil
-    rmtree #删除非空目录
+    shutil.rmtree(dir_path) #递归删除非空目录内容
     shutil.make_archive('archive_xxx', 'bztar') #打包为archive_xxx.tar.bz2
 
-json/simplejson -> simplejson的性能要高于json
+\json/simplejson -> simplejson的api和json相同
+    -> simplejson如果'{没有C扩展加速}',效率极其低下;使用C加速的情况下速度比json快很多(10x)
+        -> 1K的数据，2.9GHz的CPU，单核下每秒能dump 37000次
+        -> simplejson(未加速)同等条件下只有 1400次
+
+    import json
+    json_obj = json.loads('{"key2": "val2", "key1": "val123", "key0": "val0"}')
+    json_str = json.dumps(json_obj)
+
+    print json_obj
+    >>> {"key2": "val2", "key1": "val123", "key0": "val0"}
+
+    print json.dumps(json_obj, indent=4) #格式化打印json, 缩进为4空格
+    >>> {
+    >>>     "key2": "val2",
+    >>>     "key1": "val123",
+    >>>     "key0": "val0"
+    >>> }
+
+    import simplejson
+    print bool(getattr(simplejson, '_speedups', False)) #打印 True 说明已开启 C 加速(默认开启)
 
 \cgi
     cgi.escape('<script>') #html转义
@@ -71,29 +131,50 @@ json/simplejson -> simplejson的性能要高于json
     > pipe = Popen(cmd, shell=True, bufsize=1024, stdout=PIPE).stdout
     > result = pipe.read()
 
-contextlib
-
 \argparse
     -> 用来替代optparse的命令行解析库.如果你考虑用更直观的,推荐docopt,它使用docstring所见即所得实现命令行解析
 
-glob -> 文件名的shell模式匹配,你不用遍历整个目录判断每个文件是不是符合,使用glob一句话就解决
-contextmanager -> decorator
+\glob
+    -> 文件名的shell模式匹配,你不用遍历整个目录判断每个文件是不是符合,使用glob一句话就解决
+
+    > import glob
+    > #获取指定目录下的所有图片list
+    > print glob.glob(r"E:/Picture/*/*.jpg")
+    > #获取上级目录的所有.py文件
+    > print glob.glob(r'../*.py') #相对路径
+    > f = glob.iglob(r'../*.py') #返回一个generator
+
+\contextlib
+    > #通过yield，将f_obj传递出去，最终主调函数可以使用它。一旦with语句结束，控制就会返回给file_open函数，它继续执行yield语句后面的代码。这个最终会执行finally语句--关闭文件。如果我们在打开文件时遇到了OSError错误，它就会被捕获，最终finally语句依然会关闭文件句柄
+    > from contextlib import contextmanager
+
+    > @contextmanager
+    > def file_open(path):
+    >     try:
+    >         f_obj = open(path,"w")
+    >         yield f_obj
+    >     except OSError:
+    >         print("We had an error!")
+    >     finally:
+    >         print("Closing file")
+    >         f_obj.close()
+
+    > if __name__ == "__main__":
+    >     with file_open("test/test.txt") as fobj:
+    >         fobj.write("Testing context managers")
 
 \multiprocessing
     -> 基于multi process实现了类multi thread的API接口，并且用pickle部分地实现了变量共享, 使用多进程实现了concurrency
         > from multiprocessing import Pool
 
     -> multiprocessing.Pool和gevent有冲突不能同时使用
-
     -> 用multiprocessing.queues中的Queue、SimpleQueue、JoinableQueue这三个队列实现数据共享
 
 \multiprocessing.dummy
     -> 基于multithread实现了multiprocessing的API, 使用多线程实现concurrency???
         > from multiprocessing.dummy import Pool
 
-\threading
-    -> 多线程模块
-
+\threading -> 多线程模块
     threading模块对象    | 描述
     Thread              | 表示一个线程的执行对象
     Lock                | 锁原语对象（跟thread模块里的锁对象相同）
@@ -108,21 +189,74 @@ contextmanager -> decorator
     -> 允许用户创建一个可用于多个'{线程间共享数据}'的队列数据结构
     -> 这个模块用于多线程编程,它是一个'{线程安全}'的FIFO（先进先出）的队列实现
 
-operator
+|operator -> 操作符模块(+-*/%//>><<~^&|><==!=...)
 
 \functools
     -> 其中的partial(偏函数)、wraps(将被包装函数的信息拷贝过来)、total_ordering(只需要定义2个__XX__方法就可实现对象对比的类装饰器)、cmp_to_key(将老式的比较函数转化为关键字函数)非常常用
 
 Profile/cProfile -> 输出程序运行信息(时间, 堆栈)
-
 timeit -> 计算代码运行的时间
 
-crontab -> 定时任务
+\random
+    > import random
+    > random.random() #随机生成小于1的小数
+    > random.randint(start, end) #随机生成指定范围的整数
 
-itertools -> 高效迭代器
+\itertools -> 高效迭代器
+    -> step为负数意为倒序
 
-\SimpleHTTPServer
-    -> 最简单的HTTP Server实现(python -m SimpleHTTPServer PORT,就可以运行起来静态服务)
+    |切片
+        itertools.islice(iterables, stop) #返回索引stop之前的序列结果集
+        itertools.islice(iterables, start, stop[, step])
+
+    |无限迭代器(Infinite Iterators) -> 默认无限生成
+        itertools.count(start, step) #返回从start开始step步长
+        itertools.cycle(iterable) #重复返回iterable对象的元素
+        itertools.repeat(obj[, times=infinite]) #重复生成obj
+
+    |终止于最短输入序列的迭代器(Iterators terminating on the shortest input sequence)
+        itertools.chain(*iterables) #将若干个iterable对象组合为一个迭代器
+        itertools.compress(list, selector) #返回和selector中True元素对应的list元素
+            > list, selector = [1, 2, 3], [True, 0, 1]
+            > itertools.compress(list, selector) -> iter([1, 3])
+
+        |filter -> 同filter(func, iterable)
+            itertools.filterfalse(func, iterable) #python3.x 返回不符合条件结果
+            itertools.ifilter(func, iterable) #python2.x 返回符合条件结果
+            itertools.ifilterfalse(func, iterable) #python2.x 返回不符合条件结果
+
+        itertools.starmap(func, iterable) #类似map, 但func参数已经在iterable中提供,iterable必须是一个元组序列
+        itertools.imap(func,*iterables) #python2.x 同map(func,iterable);python3.x没有
+        itertools.izip(la, lb) #python2.x 同zip(la, lb); python3.x没有
+        itertools.izip_longest(la, lb) #python2.x 最长序列压缩, 空值用None表示
+            itertools.zip_longest(la, lb) #python3.x
+
+        itertools.dropwhile(func, iterable) #从头开始舍弃满足条件的元素直至某元素不再满足
+        itertools.takewhile(func, iterable) #从头开始保留满足条件的元素直至某元素不再满足
+
+    |组合生成器(Combinatoric generators)
+        |笛卡尔积 -> 又称直积, 假设集合A={a, b}，集合B={0, 1, 2}，则两个集合的笛卡尔积为{(a, 0), (a, 1), (a, 2), (b, 0), (b, 1), (b, 2)}
+        itertools.product(*iterables[, repeat]) #repeat意为前方序列与自身进行直积运算
+
+        itertools.permutations(itrable[, n=len(iterable)]) #返回itrable序列元素的排列组合 A(len(iterable), n)结果集(不同元组元素可相同)
+            -> (1, 2, 3), (2, 1, 3), (3, 2, 1),...
+        itertools.combinations(itrable[, n=len(iterable)]) #返回itrable序列元素的排列组合 C(len(iterable), n)结果集(不同元组元素不相同, 同一元组元素不重复)
+            -> (1, 2, 3), (1, 3, 4), (2, 3, 4),...
+        itertools.combinations_with_replacement(itrable[, n=len(iterable)]) #返回itrable序列元素的排列组合 C(len(iterable), n)结果集(不同元组元素不相同, 同一元组元素可重复)
+            -> (1, 1, 1), (1, 1, 2), (1, 2, 2),...
+        itertools.groupby(iterable, func) #根据func条件将序列元素分组
+            > la = ['Jessica', 'Ross', 'Beth', 'Clare']
+            > for condition, group in itertools.groupby(la, lambda s: 'e' in s):
+            >     print('%s %s' % (condition, list(group)))
+            -> True ['Jessica']
+            -> False ['Ross']
+            -> True ['Beth', 'Clare']
+
+    itertools.accumulate(iterable) #返回序列元素累加结果集(当前元素值 + 前面所有元素和)
+    itertools.tee(iterable[, n=2]) #生成指定数目的序列结果集
+        -> ['a', 'b', 'c', 'd'], ['a', 'b', 'c', 'd'], ['a', 'b', 'c', 'd'],...
+
+|SimpleHTTPServer -> HTTP Server(python -m SimpleHTTPServer PORT, 就可以运行静态服务)
 
 \collections
     -> 复杂类型。其中的OrderedDict(有序字典)、Counter(字典计数器)、defaultdict(带有默认值的字典)、namedtuple(通过创建带有字段属性的元组子类)和deque(高效实现插入和删除操作的双向列表)非常常用
@@ -143,6 +277,47 @@ itertools -> 高效迭代器
     > c.update(a_str) #字符存在则{ch: val+1};字符不存在则新增{ch: 1}
     > c.subtract(obj) #减少记录
 
+\Test
+    |pytest -> 测试框架
+    $ python -m pytest -v #启动'test_'开头的function,module,'Test'开头的class
+
+    |DocTest -> 在docstring中建立测试用例及期望结果
+    -> doctest在docstring中寻找测试用例的时候，认为>>>是一个测试用例的开始，直到遇到空行或者下一个>>>，在两个测试用例之间有其他内容的话，会被doctest忽略.可以利用这个特性为测试用例编写一些注释
+    > def my_function(a, b):
+    >     """
+    >     >>> my_function(2, 3)
+    >     6
+    >     >>> my_function('a', 3)
+    >     'aaa'
+    >     """
+    >     return a * b
+        |执行
+        1. $ python -m doctest test.py -v
+        2. > if __name__ == "__main__":
+           >    import doctest
+           >    doctest.testmod()
+           $ python test.py -v
+
+    |UnitTest
+    > import unittest
+    > class XXXTest(unittest.TestCase):
+    >     def setUp(self):
+    >         pass
+    >     def test_ok(self):
+    >         self.assertEqual(a, b) #if a == b
+    >     def test_ok1(self):
+    >         self.assertTrue(if_true) #if if_true
+    > if __name__ == '__main__':
+    >     unittest.main()
+
+\Arch
+    Django -> 大而全,模板引擎运算慢
+    Flask -> 小而少,模板引擎运算快
+    Celery -> 分布式异步任务队列管理
+    Tornado -> 适合大型项目,丰富的异步API
+    Gevent, Asyncio -> 异步协程框架
+    Mako -> 前端模板
+
 \Third party
     1.requests #人性化的HTTP请求库
     2.pip #Python包和依赖关系管理工具
@@ -154,7 +329,6 @@ itertools -> 高效迭代器
     8.Flake8 #静态检查工具,包含PyFlakes(静态检查Python代码逻辑错误)、pycodestyle和McCabe(分析Python代码复杂度)三个工具
     9.gevent #为Python提供了比较完善的协程支持
     10.PyPy #用Python实现的Python编译器,速度超快,是对CPython的替代
-    -> PyPy集成了一种即时(JIT)编译器。和许多编译器，解释器不同，它不关心Python代码的词法分析和语法树.因为它是用Python语言写的，所以它直接利用Python语言的Code Object.Code Object是Python字节码的表示，也就是说，PyPy直接分析Python代码所对应的字节码,这些字节码即不是以字符形式也不是以某种二进制格式保存在文件中，而是在Python运行环境中
     11.objgraph #对于查找内存泄露非常有用
     12.Pandas #大数据处理
     13.pyspark #大数据处理

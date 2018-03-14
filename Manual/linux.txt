@@ -85,6 +85,18 @@ perror err_code #查看错误代码信息
     ulimit -t unlimited #CPU时间无限制
     ulimit -v unlimited #虚拟内存无限制
 
+    |定时任务
+        |Cron -> 定时任务服务
+            /user/sbin/cron start | stop | restart | reload | status
+
+        |Crontab -> 定时任务管理器
+            -> echo '*/1 * * * * /bin/date >> date.txt' > date.cron #crontab脚本
+                -> min hour day-of-month month-of-year day-of-week cmds #命令格式
+                -> *代表所有的取值范围内的数字，"/"代表每的意思,"/5"表示每5个单位，"-"代表从某个数字到某个数字,","分开几个离散的数字
+            crontab xxx.cron #启动任务脚本
+            crontab -l #查看定时任务是否成功
+            crontab -r #删除当前任务
+
 \网络 - (以太网和WIFI无线)
     ssh user@host #远程登录
     ssh IP 'uname -a' #登录远程机并执行指令
@@ -129,6 +141,7 @@ perror err_code #查看错误代码信息
     uname -r #显示正在使用的内核版本
     dmidecode -q #显示硬件系统部件 - (SMBIOS / DMI)
     sysctl -a #系统limit信息
+    who | users | w | id [-un] | whoami #当前登录用户信息
     cat /proc/sys/fs/file-max #系统文件句柄limit
     cat /proc/sys/fs/file-nr #系统目前使用的文件句柄数量
     hdparm -i /dev/hda #罗列一个磁盘的架构特性
@@ -159,6 +172,7 @@ perror err_code #查看错误代码信息
         |用户态 -> 只能访问受限内存,不能访问外围设备.占用CPU能力被剥夺,CPU资源可被其他程序获取
         |系统调用-> 操作系统的最小功能单位(memory, IO(file&network), process, devices)
         -> 用户空间的应用程序,通过'{系统调用}',进入内核空间.这个时候'{用户空间的进程要传递很多变量、参数的值给内核}',内核态运行的时候也要保存用户进程的一些寄存器值、变量等
+        -> 对linux操作系统而言，将最高的1G字节（从虚拟地址0xC0000000到0xFFFFFFFF），供内核使用，称为内核空间，而将较低的3G字节（从虚拟地址0x00000000到0xBFFFFFFF），供各个进程使用，称为用户空间
 
         |进程上下文 -> 用户进程传递给内核的参数、内核要保存的一整套变量、寄存器值和当时的环境等
 

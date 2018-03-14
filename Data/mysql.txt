@@ -23,6 +23,7 @@
     mysql> show create table table_name; #显示建表命令语句
     mysql> show variables like '%max_connections%'; #查看最大连接数(最大并发数)
     mysql> set global max_connections=1000 #重新设置最大连接数
+    mysql> show processlist; #显示当前正在执行的MySQL连接
     mysql> show status like 'Threads%'; #查看连接状态
         | Variable_name     | Value
         ---------------------------
@@ -30,7 +31,13 @@
         | Threads_connected | 57     #打开的连接数
         | Threads_created   | 3676
         | Threads_running   | 4      #激活的连接数，一般远低于connected数值
-    mysql> show processlist; #显示当前正在执行的MySQL连接
+
+    |TransactionIsolation
+    mysql> select @@tx_isolation; #查看当前会话隔离级别
+    mysql> select @@global.tx_isolation; #查看系统当前隔离级别
+    mysql> set session transaction isolatin level repeatable read; #设置当前会话隔离级别
+    mysql> set global transaction isolation level repeatable read; #设置系统当前隔离级别
+    mysql> set autocommit=off 或者 start transaction #命令行，开始事务时
 
     |查看mysql服务器支持的字符集
     mysql> show character set;
@@ -167,7 +174,7 @@
     -> 这是最高的隔离级别,它通过'{强制事务排序}',使之不可能相互冲突,从而'{解决幻读问题}'.简言之,它是在每个读的数据行上加上共享锁.在这个级别,可能导致大量的超时现象和锁竞争
 
     |事务的并发问题
-    1.'脏读' -> 事务A读取了事务B更新的数据,然后B回滚操作,那么A读取到的数据是脏数据
+    1.'脏读' -> 事务A读取了事务B更新的数据,若B回滚,那么A读取的数据就是脏数据('{绝对拒绝}')
     2.'不可重复读' -> 事务A多次读取同一{据,事务B在事务A多次读取的过程中,对数据作了更新并提交,导致事务A多次读取同一数据时,结果不一致
     3.'幻读' -> 系统管理员A将数据库中所有学生的成绩从具体分数改为ABCDE等级,但是系统管理员B就在这个时候插入了一条具体分数的记录,当系统管理员A改结束后发现还有一条记录没有改过来,就好像发生了幻觉一样,这就叫幻读
     -> 不可重复读的和幻读很容易混淆,不可重复读侧重于修改,幻读侧重于新增或删除.解决不可重复读的问题只需锁住满足条件的行,解决幻读需要锁表
