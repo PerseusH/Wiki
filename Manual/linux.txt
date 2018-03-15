@@ -141,6 +141,7 @@ perror err_code #查看错误代码信息
     uname -r #显示正在使用的内核版本
     dmidecode -q #显示硬件系统部件 - (SMBIOS / DMI)
     sysctl -a #系统limit信息
+    sysctl machdep.cpu #mac cpu info
     who | users | w | id [-un] | whoami #当前登录用户信息
     cat /proc/sys/fs/file-max #系统文件句柄limit
     cat /proc/sys/fs/file-nr #系统目前使用的文件句柄数量
