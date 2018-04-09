@@ -1,40 +1,61 @@
 -> http是Web三大组成部分之一 #uri(资源),http(管道),html(容器)
--> GET和POST只有一点根本区别, GET用于获取数据, POST用于修改数据
-PV(page view) -> 浏览量,用户每打开一个页面就被记录1次.用户多次打开同一页面,浏览量值累计
-UV(user view) -> 访客量,一天之内的独立访客数(以Cookie为依据).一天内同一访客多次访问只计算1个
-日活 -> 每日活跃用户数
+|PV(page view) -> 浏览量,用户每打开一个页面就被记录1次.用户多次打开同一页面,浏览量值累计
+|UV(user view) -> 访客量,一天之内的独立访客数(以Cookie为依据).一天内同一访客多次访问只算1次
+|日活 -> 每日活跃用户数
 Socket=Ip address+ TCP/UDP + port
 
-刷新页面出现from disk/memory cache -> ctrl+shift+r(Chrome) | ctrl+F5
+\Network Layer
+    应用层 -> HTTP/SMTP/FTP/DNS/RPC -> 会话/应用/表现
+    传输层 -> TCP/UDP -> TCP/UDP数据报
+    网络层 -> IP -> IP数据报
+    数据链路层 + 物理层
 
--> 服务器端返回Etag或Last-Modified后,浏览器再次访问会发送if-none-match或if-modified-since,若前后相等则返回304,否则返回最新资源:
-    > response.headers["Etag"] = datahash
-    > response.headers["Last-Modified"] = modified_time
+\Method
+    |GET和POST区别
+        |根本区别 -> GET用于获取数据, POST用于修改数据
+        1.GET的语义是幂等的, 只读的; POST的语义是非幂等的, 有副作用的(GET可以放心后退, 刷新)
+            -> 因为'{幂等性}', GET请求结果大部分都直接被CDN缓存了, 可以大大减少web服务器压力; POST请求因为是非幂等的有副作用的, 所以需要由web服务器来处理. 把所有GET换成POST, 意味着主干网络上所有的CDN都被废掉了
+        2.GET结果能被'{缓存}', POST不能被缓存
+        3.GET结果能被'{收藏为书签}', 利于传播; POST不行
+        '''''''''''''''''''''优势分割线''''''''''''''''''''''
+        4.GET只能传ASCII'{字符集}'; POST可以传Unicode字符集和二进制数据
+        5.GET参数会保存到'{浏览器历史和服务器日志}'中; POST没有这个问题, 更安全
+        6.一般浏览器对GET'{数据长度}'有限制; POST数据长度无限制
+        7.GET有'{CSRF}'风险
 
-    > request.headers["If-None-Match"]
-    > request.headers["If-Modified-Since"]
+\Cache
+    刷新页面出现from disk/memory cache -> ctrl+shift+r(Chrome) | ctrl+F5
+    -> 服务器端返回Etag或Last-Modified后,浏览器再次访问会发送if-none-match或if-modified-since,若前后相等则返回304,否则返回最新资源:
+        > response.headers["Etag"] = datahash
+        > response.headers["Last-Modified"] = modified_time
 
--> ETag用于标识/保证文件的唯一性、完整性，每次文件有更新该值就会变化
--> Etag 主要为了解决 Last-Modified 无法解决的一些问题:
-    1.一些文件也许会周期性的更改，但是他的内容并不改变(仅仅改变的修改时间)，这个时候我们并不希望客户端认为这个文件被修改了，而重新GET;
-    2.某些文件修改非常频繁，比如在秒以下的时间内进行修改，(比方说1s内修改了N次)，If-Modified-Since能检查到的粒度是s级的，这种修改无法判断(或者说UNIX记录MTIME只能精确到秒)
-    3.某些服务器不能精确的得到文件的最后修改时间
+        > request.headers["If-None-Match"]
+        > request.headers["If-Modified-Since"]
+
+    -> ETag用于标识/保证文件的唯一性、完整性，每次文件有更新该值就会变化(比Last-modified更敏感)
+    -> Etag 主要为了解决 Last-Modified 无法解决的一些问题
+        1.一些文件也许会周期性的更改，但是他的内容并不改变(仅仅改变的修改时间)，这个时候我们并不希望客户端认为这个文件被修改了，而重新GET;
+        2.某些文件修改非常频繁，比如在秒以下的时间内进行修改，(比方说1s内修改了N次)，If-Modified-Since能检查到的粒度是s级的，这种修改无法判断(或者说UNIX记录MTIME只能精确到秒)
+        3.某些服务器不能精确的得到文件的最后修改时间
 
 \HTTP Code
     |300 Multiple Choices
-    -> 客户请求的文档可以在多个位置找到,这些位置已经在返回的文档内列出.如果服务器要提出优先选择,则应该在Location应答头指明.
+        -> 客户请求的文档可以在多个位置找到,这些位置已经在返回的文档内列出.如果服务器要提出优先选择,则应该在Location应答头指明.
     |301 Moved Permanently
-    -> 客户请求的文档在其他地方,新的URL在Location头中给出,浏览器应该自动地访问新的URL.
-    |302 Found
-    -> 类似于301,但新的URL应该被视为临时性的替代,而不是永久性的.
+        -> 客户请求的文档在其他地方,新的URL在Location头中给出,浏览器应该自动地访问新的URL.
+    |302 Found -> 类似于301,但新的URL应该被视为临时性的替代,而不是永久性的.
     |303 See Other
-    -> 类似于301/302,不同之处在于,如果原来的请求是POST,Location头指定的重定向目标文档应该通过GET提取
+        -> 类似于301/302,不同之处在于,如果原来的请求是POST,Location头指定的重定向目标文档应该通过GET提取
     |304 Not Modified
-    -> 客户端有缓冲的文档并发出了一个条件性的请求(一般是提供If-Modified-Since头表示客户只想比指定日期更新的文档).服务器告诉客户,原来缓冲的文档还可以继续使用.
-    |305 Use Proxy
-    -> 客户请求的文档应该通过Location头所指明的代理服务器提取
+        -> 客户端有缓冲的文档并发出了一个条件性的请求(一般是提供If-Modified-Since头表示客户只想比指定日期更新的文档).服务器告诉客户,原来缓冲的文档还可以继续使用.
+    |305 Use Proxy -> 客户请求的文档应该通过Location头所指明的代理服务器提取
     |307 Temporary Redirect
-    -> 和302(Found)相同.许多浏览器会错误地响应302应答进行重定向,即使原来的请求是 POST,即使它实际上只能在POST请求的应答是303时才能重定向.由于这个原因,HTTP 1.1新增了307,以便更加清除地区分几个状态代码 ->  当出现303应答时,浏览器可以跟随重定向的GET和POST请求；如果是307应答,则浏览器只能跟随对GET请求的重定向.
+        -> 和302(Found)相同.许多浏览器会错误地响应302应答进行重定向,即使原来的请求是 POST,即使它实际上只能在POST请求的应答是303时才能重定向.由于这个原因,HTTP 1.1新增了307,以便更加清除地区分几个状态代码 ->  当出现303应答时,浏览器可以跟随重定向的GET和POST请求；如果是307应答,则浏览器只能跟随对GET请求的重定向.
+    |403 -> 服务器拒绝执行客户端请求
+    |404 -> 请求的资源（网页等）不存在
+    |500 -> 内部服务器错误
+    |503 -> Service Unavailable	服务器由于系统维护或者负载过重未能应答。例如，Servlet可能在数据库连接池已满的情况下返回503。服务器返回503时可以提供一个 Retry-After头
+    |504 -> Gateway Timeout	由作为代理或网关的服务器使用，表示不能及时地从远程服务器获得应答。（HTTP 1.1新）。某些代理服务器在DNS查询超时时会返回400或者500错误
 
 \HTTP1.1
     -> HTTP 1.0规定浏览器与服务器只保持短暂的连接,浏览器的每次请求都需要与服务器建立一个TCP连接,服务器完成请求处理后立即断开TCP连接,服务器不跟踪每个客户也不记录过去的请求
@@ -146,23 +167,45 @@ Socket=Ip address+ TCP/UDP + port
         |保护消息边界 -> 把每条数据当作'{独立的消息}'传输,接收端一次只能接收一个数据包
         |流传输 -> '{无保护消息边界}',如果发送端连续发送数据,接收端可能一次收到多个数据包
 
-        |TCP
-        -> 基于连接(需三次握手建立),对系统资源要求较多,包头结构复杂,保证数据正确性和顺序
-        -> TCP为了保证可靠传输,'{减少额外开销}'(每次发包都要验证),采用了'{流传输}',相对于面向消息的传输,可以减少包的发送量,减少开销
+        |TCP -> 基于连接(需三次握手建立),对系统资源要求较多,包头结构复杂,保证数据正确性和顺序
+            -> TCP为了保证可靠传输,'{减少额外开销}'(每次发包都要验证),采用了'{流传输}',相对于面向消息的传输,可以减少包的发送量,减少开销
 
-        |三次握手???
+            |TCP报文字段
+                |询问序号(seq) -> 随机数
+                |确认序号(ack_seq) -> 接收到的seq + 1
+                |标志位 -> SYN(0: 无询问, 1: 询问), ACK(0: 无应答, 1: 确认), FIN(0: 未关闭, 1: 关闭)
 
-        |TCP粘包 -> 只在'{流传输}'中出现
-        -> 客户端与服务器会维持一个连接(Channel),数据在连接不断开的情况下,可以持续不断地将多个数据包发往服务器.如果发送的数据包太小,那么会启用Nagle算法(可配置是否启用)'{对较小的数据包进行合并}'(因此'{TCP的网络延迟比UDP的高}')然后再发送(缓冲区满、超时或者包大小足够).这样服务器在接收到数据流的时候就无法区分哪些数据包是客户端自己分开发送的,就产生了粘包;如果服务器消息没有被及时从缓存区取走,下次在取数据的时候可能就会出现'{一次取出多个数据包}'的情况,导致粘包(确切来讲,对于基于TCP协议的应用,不应用包来描述,而应用流来描述)
-            |解决办法
-            1.对于发送方引起的粘包,用户可通过编程设置来避免,TCP提供了'{强制数据立即传送}'的指令push,服务器收到push指令后,将本段数据'{即时发送}'出去,而不必等待发送缓冲区满
-            2.对于接收方引起的粘包,可通过优化程序设计、精简接收进程工作量、提高接收进程优先级等措施,使其'{及时接收}'数据,从而尽量避免出现粘包现象
-            3.封装待传输数据包时,用固定'{分隔符}'作为结尾符(数据中不能含结尾符),这样我们接收到数据后,如果出现结尾符,即人为将粘包分开;如果包中没有出现结尾符,则认为是分包,等待下个包中出现结尾符时合并成一个完整的包(常用于文本传输数据,如采用/r/n之类的分隔符)
-            4.在数据包的固定位置封装'{数据包的长度信息}'(或可计算数据包总长度的信息),服务器接收到数据后,先是解析包长度,然后根据包长度截取数据包(常用于自定义协议中)
+            |三次握手 -> 建立TCP连接
+                |目标 -> 分配资源、初始化序列号(通知对方我的初始序列号是多少)
+                client(SYN) -> server(ACK+SYN) -> client(ACK)
+                Client                                     Server
+          SYN_SENT|              --SYN=1,seq=m->              |
+                  |     <-ACK=1,ack_seq=m+1,SYN=1,seq=n--     |SYN_RCVD
+       ESTABLISHED|           --ACK=1,ack_seq=n+1->           |
+                  |                                           |ESTABLISHED
+                  |------------------DataSend-----------------|
+                  |    --ACK=1,ack_seq=n+1,SYN=1,seq=m+1->    |
+                  |           <-ACK=1,ack_seq=m+2--           |
+
+            |四次挥手 -> 终止TCP连接
+                client(FIN) -> server(ACK), server(FIN) -> client(ACK)
+                Client                                     Server
+          FIN_WAIT|              --SYN=1,seq=m->              |
+                  |     <-SYN=1,ACK=1,ack_seq=m+1,seq=n--     |CLOSE_WAIT
+       ESTABLISHED|           --ACK=1,ack_seq=n+1->           |
+                  |                                           |CLOSED
+
+            |TCP粘包 -> 只在'{流传输}'中出现
+            -> 客户端与服务器会维持一个连接(Channel),数据在连接不断开的情况下,可以持续不断地将多个数据包发往服务器.如果发送的数据包太小,那么会启用Nagle算法(可配置是否启用)'{对较小的数据包进行合并}'(因此'{TCP的网络延迟比UDP的高}')然后再发送(缓冲区满、超时或者包大小足够).这样服务器在接收到数据流的时候就无法区分哪些数据包是客户端自己分开发送的,就产生了粘包;如果服务器消息没有被及时从缓存区取走,下次在取数据的时候可能就会出现'{一次取出多个数据包}'的情况,导致粘包(确切来讲,对于基于TCP协议的应用,不应用包来描述,而应用流来描述)
+                |解决办法
+                1.对于发送方引起的粘包,用户可通过编程设置来避免,TCP提供了'{强制数据立即传送}'的指令push,服务器收到push指令后,将本段数据'{即时发送}'出去,而不必等待发送缓冲区满
+                2.对于接收方引起的粘包,可通过优化程序设计、精简接收进程工作量、提高接收进程优先级等措施,使其'{及时接收}'数据,从而尽量避免出现粘包现象
+                3.封装待传输数据包时,用固定'{分隔符}'作为结尾符(数据中不能含结尾符),这样我们接收到数据后,如果出现结尾符,即人为将粘包分开;如果包中没有出现结尾符,则认为是分包,等待下个包中出现结尾符时合并成一个完整的包(常用于文本传输数据,如采用/r/n之类的分隔符)
+                4.在数据包的固定位置封装'{数据包的长度信息}'(或可计算数据包总长度的信息),服务器接收到数据后,先是解析包长度,然后根据包长度截取数据包(常用于自定义协议中)
 
         |UDP
-        -> 无连接,对系统资源要求较少,包头结构简单,不保证数据正确性和顺序,面向'{数据报}'传输
-        -> 作为无连接不可靠的传输协议(适合频繁发送较小包),有'{保护消息边界}','{不会对数据包进行合并}',数据直接发出去,因此'{不会出现粘包}',每一个数据包也都是完整的(数据+UDP头+IP头等等发一次数据封装一次)
+            -> 无连接,对系统资源要求较少,包头结构简单,不保证数据正确性和顺序,面向'{数据报}'传输
+            -> 作为无连接不可靠的传输协议(适合频繁发送较小包),有'{保护消息边界}','{不会对数据包进行合并}',数据直接发出去,因此'{不会出现粘包}',每一个数据包也都是完整的(数据+UDP头+IP头等等发一次数据封装一次)
 
     2.time_wait是什么情况？出现过多的close_wait可能是什么原因？
         |MSL(MaximumSegmentLifetime,最大分节生命期) -> 一个数据包在网上的'{最长生存时间}',超过这个时间数据包将消失.RFC1122上建议是2分钟,berkeley的TCP实现传统上是30秒
@@ -170,67 +213,67 @@ Socket=Ip address+ TCP/UDP + port
         -> TIME_WAIT状态维持时间是'{两个MSL}'时间长度,即1-4分钟.Windows系统是4分钟
         -> 主动关闭连接的一端会发送最后一个ack,然后进入TIME_WAIT状态,停留2个MSL时间后进入CLOSED状态
             |原因
-            1.可靠地实现TCP全双工连接的终止
-            -> TCP协议在关闭连接的四次握手过程中,最终的ACK是由主动关闭连接的一端(后面统称A端)发出的,如果这个ACK丢失,对方(后面统称B端)将重发出最终的FIN,因此A端必须维护状态信息(TIME_WAIT)允许它重发最终的ACK.如果A端不维持TIME_WAIT状态,而是处于CLOSED 状态,那么A端将响应RST分节,B端收到后将此分节解释成一个错误(在java中会抛出connection reset的SocketException)
-            因此要实现TCP全双工连接的正常终止,必须处理终止过程中四个分节任何一个分节的丢失情况,主动关闭连接的A端必须维持TIME_WAIT状态
-            2.允许老的重复分节在网络中消失
-            -> TCP分节可能由于路由器异常而"迷途",在迷途期间,TCP发送端可能因确认超时而重发这个分节,迷途的分节在路由器修复后也会被送到最终目的地,这个迟到的迷途分节到达时可能会引起问题.在关闭前一个连接之后,马上又重新建立起一个相同的IP和端口之间的新连接,前一个连接的迷途重复分组在前一个连接终止后到达,而被新连接收到了.为了避免这个情况,TCP协议不允许处于TIME_WAIT状态的连接启动一个新的可用连接,因为TIME_WAIT状态持续2MSL,就可以保证当成功建立一个新TCP连接的时候,来自旧连接重复分组已经在网络中消失
+                1.可靠地实现TCP全双工连接的终止
+                -> TCP协议在关闭连接的四次握手过程中,最终的ACK是由主动关闭连接的一端(后面统称A端)发出的,如果这个ACK丢失,对方(后面统称B端)将重发出最终的FIN,因此A端必须维护状态信息(TIME_WAIT)允许它重发最终的ACK.如果A端不维持TIME_WAIT状态,而是处于CLOSED 状态,那么A端将响应RST分节,B端收到后将此分节解释成一个错误(在java中会抛出connection reset的SocketException)
+                因此要实现TCP全双工连接的正常终止,必须处理终止过程中四个分节任何一个分节的丢失情况,主动关闭连接的A端必须维持TIME_WAIT状态
+                2.允许老的重复分节在网络中消失
+                -> TCP分节可能由于路由器异常而"迷途",在迷途期间,TCP发送端可能因确认超时而重发这个分节,迷途的分节在路由器修复后也会被送到最终目的地,这个迟到的迷途分节到达时可能会引起问题.在关闭前一个连接之后,马上又重新建立起一个相同的IP和端口之间的新连接,前一个连接的迷途重复分组在前一个连接终止后到达,而被新连接收到了.为了避免这个情况,TCP协议不允许处于TIME_WAIT状态的连接启动一个新的可用连接,因为TIME_WAIT状态持续2MSL,就可以保证当成功建立一个新TCP连接的时候,来自旧连接重复分组已经在网络中消失
 
             |后端server出现大量TIME_WAIT的情况
                 -> nginx没有打开和后端的长连接，即：没有设置proxy_http_version 1.1;和proxy_set_header Connection “”;从而导致后端server每次关闭连接，高并发下就会出现server端出现大量TIME_WAIT
 
         |过多close_wait -> 被动关闭方未关闭socket造成
             |原因
-            -> 在服务器与客户端通信过程中,因服务器未关闭socket导致closed_wait发生,致使监听port打开的句柄数到了1024个(每个用户默认分配的句柄上限),且均处于close_wait的状态,最终造成配置的port被占满出现“Too many open files”,无法再进行通信
-            -> linux在文件句柄的数目上有两个级别的限制('{系统级限制和针对用户的限制}').一般情况下1024也够用了,但是在频繁使用网络IO和文件IO的大容量系统上,句柄很快就被耗光了
-            -> 有两种限制(soft&hard),数目超过soft时warning警告,达到hard时系统将拒绝或异常
+                -> 在服务器与客户端通信过程中,因服务器未关闭socket导致closed_wait发生,致使监听port打开的句柄数到了1024个(每个用户默认分配的句柄上限),且均处于close_wait的状态,最终造成配置的port被占满出现“Too many open files”,无法再进行通信
+                -> linux在文件句柄的数目上有两个级别的限制('{系统级限制和针对用户的限制}').一般情况1024够用了,但是在频繁使用网络和文件IO的大容量系统上,句柄很快就会耗光
+                -> 有两种限制soft&hard,数目超过soft时会warning,达到hard时系统将拒绝或异常
 
             |解决办法
-            1.设置超时
-            -> 原因是调用ServerSocket类的accept()方法和Socket输入流的read()方法时会引起线程阻塞,所以应该用setSoTimeout()方法设置超时(缺省的设置是0,即超时永远不会发生);超时的判断是累计式的,一次设置后,每次调用引起的阻塞时间都从该值中扣除,直至另一次超时设置或有超时异常抛出
-            比如,某种服务需要三次调用read(),超时设置为1分钟,那么如果某次服务三次read()调用的总时间超过1分钟就会有异常抛出,如果要在同一个Socket上反复进行这种服务,就要在每次服务之前设置一次超时
+                1.设置超时
+                -> 原因是调用ServerSocket类的accept()方法和Socket输入流的read()方法时会引起线程阻塞,所以应该用setSoTimeout()方法设置超时(缺省的设置是0,即超时永远不会发生);超时的判断是累计式的,一次设置后,每次调用引起的阻塞时间都从该值中扣除,直至另一次超时设置或有超时异常抛出
+                比如,某种服务需要三次调用read(),超时设置为1分钟,那么如果某次服务三次read()调用的总时间超过1分钟就会有异常抛出,如果要在同一个Socket上反复进行这种服务,就要在每次服务之前设置一次超时
 
-            2.修改配置
-            |增加 -> /etc/security/limits.conf #保存后reboot
-                username(* -> 所有用户) soft nofile 65535 #软限制
-                username hard nofile 65535 #硬限制
+                2.修改配置
+                |增加 -> /etc/security/limits.conf #保存后reboot
+                    username(* -> 所有用户) soft nofile 65535 #软限制
+                    username hard nofile 65535 #硬限制
 
-            |系统级句柄数限制修改
-                sysctl -w fs.file-max 65536
-             or echo "65536" > /proc/sys/fs/file-max
-             or echo "fs.file-max=65536" >> /etc/sysctl.conf #修改内核参数
+                |系统级句柄数限制修改
+                    sysctl -w fs.file-max 65536
+                 or echo "65536" > /proc/sys/fs/file-max
+                 or echo "fs.file-max=65536" >> /etc/sysctl.conf #修改内核参数
 
-            |优先级(Open File Descriptors)
-                soft<hard<kernel<最大file descriptor数采用的数据结构所导致的限制
+                |优先级(Open File Descriptors)
+                    soft<hard<kernel<最大file descriptor数采用的数据结构所导致的限制
 
-            3.使用'{连接池}'来控制连接数
+                3.使用'{连接池}'来控制连接数
 
     3.epoll,select的区别？边缘触发,水平触发区别？
+        |fd -> socket文件描述符
         |epoll
-        fd -> socket文件描述符
-        -> Socket起源于unix，Unix中把所有的资源都看作是文件，包括设备，比如网卡、打印机等等，所以，针对Socket通信，我们在使用网卡，网卡又处理N多链接，每个链接都需要一个对应的描述，也就是惟一的ID，即对应的文件描述符。函数socket()返回的就是这个描述符。在传输中我们都要使用这个惟一的ID来确定要往哪个链接上传输数据
-        > int fd = socket(AF_INET,SOCK_STREAM, 0);
-        多路复用IO模型 -> 监视多个fd,一旦某个fd就绪(读就绪或写就绪),通知程序进行相应的读写操作
-        -> 只轮询EventQueue,一个进程能打开的FD数目没有的限制=n*10W(系统内存nGB)
-        -> 程序判断每次客户端请求,若有数据则设置该socket为readable,无数据则设为writeable
-        -> epoll_wait返回时，实际上是把内核中的就绪链表拷贝给用户态，用户态处理事件的同时，内核更新并继续维护当前的就绪链表，如此反复
-        -> epoll_wait调用ep_poll，当EventQueue为空（无就绪fd）时挂起当前进程，直到EventQueue不空时进程才被唤醒
+            -> Socket起源于unix，Unix中把所有的资源都看作是文件，包括设备，比如网卡、打印机等等，所以，针对Socket通信，我们在使用网卡，网卡又处理N多链接，每个链接都需要一个对应的描述，也就是惟一的ID，即对应的文件描述符。函数socket()返回的就是这个描述符。在传输中我们都要使用这个惟一的ID来确定要往哪个链接上传输数据
+            > int fd = socket(AF_INET,SOCK_STREAM, 0);
+            多路复用IO模型 -> 监视多个fd,一旦某个fd就绪(读就绪或写就绪),通知程序进行相应的读写操作
+            -> 只轮询EventQueue,一个进程能打开的FD数目没有的限制=n*10W(系统内存nGB)
+            -> 程序判断每次客户端请求,若有数据则设置该socket为readable,无数据则设为writeable
+            -> epoll_wait返回时，实际上是把内核中的就绪链表拷贝给用户态，用户态处理事件的同时，内核更新并继续维护当前的就绪链表，如此反复
+            -> epoll_wait调用ep_poll，当EventQueue为空（无就绪fd）时挂起当前进程，直到EventQueue不空时进程才被唤醒
 
-        |红黑树(RB-Tree) -> epoll在实现上采用红黑树去存储所有套接字，当添加或者删除一个套接字时（epoll_ctl），都在红黑树上去处理，红黑树插入和删除性能比较好，时间复杂度O(logN)
-        |'{内存映射}'(mmap) -> 内核与用户空间映射同一块内存
-        -> epoll_wait获取就绪fd时,返回的并不是实际的描述符,而是一个代表就绪描述符的值,拿到这些值去epoll中依次取得相应的文件描述符即可,避免了复制大量文件描述符带来的开销
-        -> mmap将用户空间的一块地址和内核空间的一块地址映射到同一块物理内存地址（不管是用户空间还是内核空间都是虚拟地址，最终要通过地址映射映射到物理地址），使得这块物理内存对内核和对用户均可见，减少用户态和内核态之间的数据拷贝。内核可以直接看到epoll监听的句柄，效率高
+            |红黑树(RB-Tree) -> epoll在实现上采用红黑树去存储所有套接字，当添加或者删除一个套接字时（epoll_ctl），都在红黑树上去处理，红黑树插入和删除性能比较好，时间复杂度O(logN)
+            |'{内存映射}'(mmap) -> 内核与用户空间映射同一块内存
+            -> epoll_wait获取就绪fd时,返回的并不是实际的描述符,而是一个代表就绪描述符的值,拿到这些值去epoll中依次取得相应的文件描述符即可,避免了复制大量文件描述符带来的开销
+            -> mmap将用户空间的一块地址和内核空间的一块地址映射到同一块物理内存地址（不管是用户空间还是内核空间都是虚拟地址，最终要通过地址映射映射到物理地址），使得这块物理内存对内核和对用户均可见，减少用户态和内核态之间的数据拷贝。内核可以直接看到epoll监听的句柄，效率高
 
-        running -> epoll_create(create epoll instance in KernelState) -> epoll_ctl(create RB-Tree & EventQueue for fds on epoll instance) -> epoll_ctl(insert a new fd into RB-Tree then register a callback) -> a request happens on a socket -> KernelState(activate corresponding fd to readable/writeable/etc., execute callback) -> callback(put a fd-stamp corresponding to the previously mentioned socket into EventQueue then awake epoll_wait) -> epoll_wait(get fd-stamps from EventQueue, find corresponding fds, send fds to UserState then read/write/etc. data on sockets)
+            running -> epoll_create(create epoll instance in KernelState) -> epoll_ctl(create RB-Tree & EventQueue for fds on epoll instance) -> epoll_ctl(insert a new fd into RB-Tree then register a callback) -> a request happens on a socket -> KernelState(activate corresponding fd to readable/writeable/etc., execute callback) -> callback(put a fd-stamp corresponding to the previously mentioned socket into EventQueue then awake epoll_wait) -> epoll_wait(get fd-stamps from EventQueue, find corresponding fds, send fds to UserState then read/write/etc. data on sockets)
 
         |select
-        -> 获取就绪fd时轮询,遍历全部fd,一个进程能打开的'{FD数目有限制}'(默认1024)
-        -> 轮询时会将所有fd从用户态'{复制}'到内核态.随着fd量的增长,此复制开销也会线性增长
-        -> 参数__FD_SETSIZE定义了每个FD_SET的句柄个数
+            -> 获取就绪fd时轮询,遍历全部fd,一个进程能打开的'{FD数目有限制}'(默认1024)
+            -> 轮询时会将所有fd从用户态'{复制}'到内核态.随着fd量的增长,此复制开销也会线性增长
+            -> 参数__FD_SETSIZE定义了每个FD_SET的句柄个数
 
-        |poll -> 相比于select，poll只是取消了最大fd数限制，并没有从根本上解决select的问题
+        |poll -> 相比select，poll只是'{取消了最大fd数限制}'，并未从根本上解决select的问题
 
         |边缘触发(Edge Triggered) -> Nginx-epoll默认工作方式,更高效的通知模式
-        -> 只有在监视的文件句柄上'{发生事件}'的时候ET模式才会通知进程fd准备就绪,之后不再通知
+            -> 只有在监视的文件句柄上'{发生事件}'的时候ET模式才会通知进程fd准备就绪,之后不再通知
         |水平触发(level triggered) -> epoll'{默认}'工作方式
-        -> 没有任何操作,内核还是会一直通知你一个fd是否就绪,这种模式编程'{出错误可能性小}'一点.传统的select/poll都是这种模型的代表
+            -> 没有任何操作,内核还是会一直通知你一个fd是否就绪,这种模式编程'{出错误可能性小}'一点.传统的select/poll都是这种模型的代表
