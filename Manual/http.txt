@@ -3,6 +3,7 @@
 PV(page view) -> 浏览量,用户每打开一个页面就被记录1次.用户多次打开同一页面,浏览量值累计
 UV(user view) -> 访客量,一天之内的独立访客数(以Cookie为依据).一天内同一访客多次访问只计算1个
 日活 -> 每日活跃用户数
+Socket=Ip address+ TCP/UDP + port
 
 刷新页面出现from disk/memory cache -> ctrl+shift+r(Chrome) | ctrl+F5
 
@@ -12,6 +13,8 @@ UV(user view) -> 访客量,一天之内的独立访客数(以Cookie为依据).�
 
     > request.headers["If-None-Match"]
     > request.headers["If-Modified-Since"]
+
+-> ETag用于标识/保证文件的唯一性、完整性，每次文件有更新该值就会变化
 -> Etag 主要为了解决 Last-Modified 无法解决的一些问题:
     1.一些文件也许会周期性的更改，但是他的内容并不改变(仅仅改变的修改时间)，这个时候我们并不希望客户端认为这个文件被修改了，而重新GET;
     2.某些文件修改非常频繁，比如在秒以下的时间内进行修改，(比方说1s内修改了N次)，If-Modified-Since能检查到的粒度是s级的，这种修改无法判断(或者说UNIX记录MTIME只能精确到秒)
@@ -35,10 +38,33 @@ UV(user view) -> 访客量,一天之内的独立访客数(以Cookie为依据).�
 
 \HTTP1.1
     -> HTTP 1.0规定浏览器与服务器只保持短暂的连接,浏览器的每次请求都需要与服务器建立一个TCP连接,服务器完成请求处理后立即断开TCP连接,服务器不跟踪每个客户也不记录过去的请求
-    -> HTTP 1.1支持长连接,在一个TCP连接上可以传送多个HTTP请求和响应,减少了建立和关闭连接的消耗和延迟
+    -> HTTP 1.1支持'{长连接(默认)}',在一个TCP连接上可以传送多个HTTP请求和响应,减少了建立和关闭连接的消耗和延迟
     -> HTTP 1.1还允许客户端不用等待上一次请求结果返回,就可以发出下一次请求,但服务器端必须按照接收到客户端请求的先后顺序依次回送响应结果,以保证客户端能够区分出每次请求的响应内容,这样也显著地减少了整个下载过程所需要的时间
-    -> HTTP 1.1中增加Host请求头字段,WEB浏览器可以使用主机头名来明确表示要访问服务器上的哪个WEB站点,这才实现了在一台WEB服务器上可以在同一个IP地址和端口号上使用不同的主机名来创建多个虚拟WEB站点
-    -> HTTP 1.1还提供了与身份认证、状态管理和Cache缓存等机制相关的请求头和响应头
+    -> HTTP 1.1中增加'{Host请求头}'字段,WEB浏览器可以使用主机头名来明确表示要访问服务器上的哪个WEB站点,这才实现了在一台WEB服务器上可以在同一个IP地址和端口号上使用不同的主机名来创建多个虚拟WEB站点
+    -> HTTP 1.1还提供了与'{身份认证、状态管理和Cache缓存}'等机制相关的请求头和响应头
+    -> HTTP 1.1默认支持文件'{断点续传}'
+        |请求头 -> Range: bytes=(FirstBytePos)-[LastBytePos]
+            Range: bytes=4000- 下载从第4000字节开始到文件结束部分
+            Range: bytes=0~N 下载第0-N字节范围的内容
+            Range: bytes=M-N 下载第M－N字节范围的内容
+            Range: bytes=-N 下载最后N字节内容
+
+        |响应头 -> Content-Range: bytes [FirstBytePos]-[LastBytePos]/[EntityLength]
+
+        -> 请求下载整个文件:
+            GET /test.rar HTTP/1.1
+            Connection: close
+            Host: 116.1.219.219
+            Range: bytes=0-801 #一般请求下载整个文件是bytes=0- 或不用这个头
+
+        -> 正常回应:
+            HTTP/1.1 200 OK
+            Content-Length: 801
+            Content-Type: application/octet-stream
+            Content-Range: bytes 0-800/801 #801:文件总大小
+
+        -> 断点续传，如果返回文件的一部分，则使用206状态码；如果返回整个文件，则使用200响应码
+        HTTP/1.1 200 OK（不使用断点续传）| HTTP/1.1 206 Partial Content（使用断点续传）
 
 \RESTful
     1.一切网络对象都被抽象成一种资源(URI唯一资源标识符, 都是名词)
@@ -55,6 +81,7 @@ UV(user view) -> 访客量,一天之内的独立访客数(以Cookie为依据).�
            -> http是超文本传输协议,信息是明文传输,https则是具有安全性的ssl加密传输协议
            -> http和https使用的端口不一样,前者是80,后者是443
            -> http的连接很简单,是无状态的;HTTPS协议是由SSL+HTTP协议构建的可进行加密传输,身份认证的网络协议,比http协议安全
+           -> 通过https访问Nginx一般会比http访问慢30%（https方式访问主要是耗Nginx服务器的cpu）
 
        -> 如何生成共享秘钥?
            |共享秘钥 -> 服务器端和用户共同拥有一个或一组密码
@@ -79,35 +106,32 @@ UV(user view) -> 访客量,一天之内的独立访客数(以Cookie为依据).�
         |DOM型 -> 不经过服务器端,直接在客户端完成
         |存储型 -> 将脚本存入数据库
 
-    -> htmlescape后能否避免xss?
-        -> 替换尖括号、引号等特殊符号,只解决了'{html}'的问题,'{不能完全防御XSS}'.因为<script>是javascript输出点,xss的'{目标是破坏js构造}'而不是html构造.html构造中的关键字符是尖括号、双引号、“&”符号等.而js构造就复杂了,比如换行、注释（//和/*）、引号（包括单引号）等都会改变构造.需要'{在htmlescape外加一层js_encode}'
+        -> htmlescape后能否避免xss?
+            -> 替换尖括号、引号等特殊符号,只解决了'{html}'的问题,'{不能完全防御XSS}'.因为<script>是javascript输出点,xss的'{目标是破坏js构造}'而不是html构造.html构造中的关键字符是尖括号、双引号、“&”符号等.而js构造就复杂了,比如换行、注释（//和/*）、引号（包括单引号）等都会改变构造.需要'{在htmlescape外加一层js_encode}'
 
         |解决
-        1.输入验证(客户端,服务器端)
-        2.view过滤
-        3.html转义+js_encode(import cgi;cgi.escape('<script>') -> &lt;script&gt;)
-        4.渲染时用Mako一类的模板库可以避免大部分情况下的XSS,图片URL需要显式防范
-        5.jinjia2里safe标签,无法绕过,防范xss的最常见手段
+            1.输入验证(客户端,服务器端)
+            2.view过滤
+            3.html转义+js_encode(import cgi;cgi.escape('<script>') -> &lt;script&gt;)
+            4.渲染时用Mako一类的模板库可以避免大部分情况下的XSS,图片URL需要显式防范
+            5.jinjia2里safe标签,无法绕过,防范xss的最常见手段
 
     |csrf(跨站伪造请求) -> 在请求中(url&cookie)插入恶意参数, 破坏服务器
        |解决 -> 提高攻击的门槛
-       1.RESTful API
-       -> 对发帖等创建资源的操作,应该只接受POST请求,而GET请求应该只浏览而不改变服务器端资源,这样攻击者就不能通过发布链接来伪造请求(屏蔽PUT,DELETE)
-       2.请求令牌(服务器端验证过一定记得销毁)
-       -> 服务器生成随机令牌(random string-token in Session),在发出请求的页面,把该令牌以隐藏域与其他信息一并发出.在接收请求的页面,把接收到的令牌与Session中的令牌比较,只有一致的时候才处理请求,否则返回403拒绝请求或者要求用户重新登陆验证身份
-       3.验证码(服务器端验证过一定记得销毁): 需要手动输入, 用户体验差
-       4.django通过'{中间件}'django.middleware.csrf.CsrfViewMiddleware实现防止csrf
-       |全局 -> settings->MIDDLEWARE=['django.middleware.csrf.CsrfViewMiddleware']
-       |局部 -> from django.views.decorators.csrf import csrf_exempt,csrf_protect
-       -> @csrf_protect,为当前函数'{强制设置}'防csrf功能,即便settings中没有设置全局中间件
-       -> @csrf_exempt,'{禁用}'当前函数防跨站请求伪造功能,即便settings中设置了全局中间件
+           1.RESTful API
+           -> 对发帖等创建资源的操作,应该只接受POST请求,而GET请求应该只浏览而不改变服务器端资源,这样攻击者就不能通过发布链接来伪造请求(屏蔽PUT,DELETE)
+           2.请求令牌(服务器端验证过一定记得销毁)
+           -> 服务器生成随机令牌(random string-token in Session),在发出请求的页面,把该令牌以隐藏域与其他信息一并发出.在接收请求的页面,把接收到的令牌与Session中的令牌比较,只有一致的时候才处理请求,否则返回403拒绝请求或者要求用户重新登陆验证身份
+           3.验证码(服务器端验证过一定记得销毁): 需要手动输入, 用户体验差
+           4.django通过'{中间件}'django.middleware.csrf.CsrfViewMiddleware实现防止csrf
+           |全局 -> settings->MIDDLEWARE=['django.middleware.csrf.CsrfViewMiddleware']
+           |局部 -> from django.views.decorators.csrf import csrf_exempt,csrf_protect
+           -> @csrf_protect,为当前函数'{强制设置}'防csrf功能,即便settings中没有设置全局中间件
+           -> @csrf_exempt,'{禁用}'当前函数防跨站请求伪造功能,即便settings中设置了全局中间件
 
-    |DDos
-        |解决 -> 查询netstat的连接数,同IP超过一定连接的用iptables封禁一段时间,脚本加入cron每分钟执行
+    |DDos解决 -> 查询netstat的连接数,同IP超过一定连接的用iptables封禁一段时间,脚本加入cron每分钟执行
 
-    |SQL Inject
-        |解决
-        -> 使用参数查询,不要拼接SQL字符串('%s' % args).用现成的SQL封装库
+    |SQL注入解决 -> 使用参数查询,不要拼接SQL字符串('%s' % args).用现成的SQL封装库
         -> 使用cur.execute+参数预编译,python会自动过滤args中的特殊字符,防止SQL注入的产生
         cur.execute('select id, name from tb where id=%s and name=%s', (id, name))
         cur.execute("insert into people values (?, ?)", (name, age))
@@ -151,6 +175,9 @@ UV(user view) -> 访客量,一天之内的独立访客数(以Cookie为依据).�
             因此要实现TCP全双工连接的正常终止,必须处理终止过程中四个分节任何一个分节的丢失情况,主动关闭连接的A端必须维持TIME_WAIT状态
             2.允许老的重复分节在网络中消失
             -> TCP分节可能由于路由器异常而"迷途",在迷途期间,TCP发送端可能因确认超时而重发这个分节,迷途的分节在路由器修复后也会被送到最终目的地,这个迟到的迷途分节到达时可能会引起问题.在关闭前一个连接之后,马上又重新建立起一个相同的IP和端口之间的新连接,前一个连接的迷途重复分组在前一个连接终止后到达,而被新连接收到了.为了避免这个情况,TCP协议不允许处于TIME_WAIT状态的连接启动一个新的可用连接,因为TIME_WAIT状态持续2MSL,就可以保证当成功建立一个新TCP连接的时候,来自旧连接重复分组已经在网络中消失
+
+            |后端server出现大量TIME_WAIT的情况
+                -> nginx没有打开和后端的长连接，即：没有设置proxy_http_version 1.1;和proxy_set_header Connection “”;从而导致后端server每次关闭连接，高并发下就会出现server端出现大量TIME_WAIT
 
         |过多close_wait -> 被动关闭方未关闭socket造成
             |原因

@@ -17,3 +17,4 @@ def env(s_env='HOME')
 - \		::	directory
 - n.	::	ordered list
 - '{}'	::	emphasize
+- <=>   ::  equivalent to

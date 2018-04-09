@@ -20,6 +20,9 @@
         events {
             worker_connections 2048;
             multi_accept on;
+            # max clients = worker_processes * worker_connections
+            # 在一个反向代理环境中，最大并发数变成了
+            # max clients = worker_processes * worker_connections/2
 
             #默认use select/poll;
             use epoll; #默认ET模式,仅用于linux2.6以上内核,可大大提高nginx性能,mac用不了
@@ -48,9 +51,7 @@
             server {
                 listen       80 default_server; #default port
                 server_name  www.perseus.org; #set domain name
-
                 charset utf-8;
-
                 access_log  /usr/local/var/log/nginx/hw_access.log;
                 error_log   /usr/local/var/log/nginx/hw_error.log;
 
@@ -80,6 +81,24 @@
         			proxy_cache_valid any 1m;
         			expires 30d;
         		}
+            }
+
+            server { #使用 https
+            listen          80  default_server;
+            listen          443 ssl;
+            server_name     toutiao.iqiyi.com  m.toutiao.iqiyi.com;
+            root            /data/none;
+            index           index.php index.html index.htm;
+
+            ###ssl settings start
+            ssl_protocols                   TLSv1 TLSv1.1 TLSv1.2;
+            ssl_certificate                 /usr/local/nginx/conf/server.pem;
+            ssl_certificate_key             /usr/local/nginx/conf/server.key;
+            ssl_session_cache               shared:SSL:10m;
+            ssl_session_timeout             10m;
+            ssl_ciphers ALL:!kEDH!ADH:RC4+RSA:+HIGH:+EXP;
+            ssl_prefer_server_ciphers       on;
+            ###ssl settings end
             }
         }
 

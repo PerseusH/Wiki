@@ -1,0 +1,196 @@
+\Build-In
+    |sequence
+    str(x)                   将对象 x 转换为字符串
+    repr(x)                  将对象 x 转换为表达式字符串
+    ascii(obj)               取ascii字符串(python3.x)
+    bytes(obj)               生成字符串
+    bytearray(obj)           将数值, 字符串转换为字节数组
+    eval(str)                计算在字符串中的表达式并返回结果值. 如eval(bin(7)) -> 7
+    tuple(Iterable)          将序列转换为一个元组
+    sum((Number,...))        计算tuple中数值的和
+    list(Iterable)           将序列转换为一个列表
+    set(Iterable)            转换为可变集合
+    dict(d)                  创建一个字典。d 必须是一个序列 (key,value)元组。
+    frozenset(Iterable)      转换为不可变集合
+    zip(Iterable,...)        将n个序列压缩为元组列表
+    max(Iterable)            取最大值 Iterable: 1,2,3|list|tuple|set|str(取最大字符)
+    min(Iterable)            取最小值 Iterable: 1,2,3|list|tuple|set|str(取最大字符)
+    any(i>3 for i in l)      判断l是否包含大于3的数, 返回True/False
+    all(Iterable)            判断序列元素是否都相当于True
+    enumerate(Iterable)      枚举序列的索引和元素值 for i, n in enumerate(Iterable):
+    open()                   操作文件
+
+    |variable
+    help(module)             查看模块源代码及详细信息, q退出
+    id(obj)                  内存id
+    type(obj)                类型名, 不会认为子类是一种父类类型
+    isinstance(obj, cls)     是否某类型, 会认为子类是一种父类类型, 对整个继承链的类都有效
+    issubclass(subcls, cls)  判断subcls是否为cls子类, 对整个继承链有效
+    object()                 生成一个没有任何特殊属性的object对象
+    hasattr(obj, 'xxx')      是否含某属性(类和实例都有效)
+    getattr(obj, attr)       获取属性值(类和实例都有效)
+    setattr(obj, 'xxx', val) 设置属性值(类和实例都有效)
+    callable(a)              检测对象是否可以被调用(函数), 返回bool
+    vars([obj])              <=> obj.__dict__ 默认获取当前作用域变量字典
+    dir([obj])               <=> sorted(vars([obj]).keys()) 获取obj的变量名有序列表, 默认获取当前作用域变量列表
+    locals()                 当前局部作用域所有变量的'{字典}'
+    globals()                全局作用域所有变量的'{字典}'
+
+    |system
+    exec('var = 1')          执行命令字符串
+    m=__import__(module_str) 引入模块并赋值给变量
+    input()                  控制台输入
+
+    |function
+    map(func, Iterable)      迭代执行func
+    filter(cond, Iterable)   过滤序列
+
+    |math
+    math.pi -> 3.1415926...  圆周率
+    int(x [,base])           转换为整数,默认10进制 int() = 0
+    long(x [,base])          转换为长整数,默认10进制 int() = 0
+    float(x)                 转换到一个浮点数
+    bool(x)                  转换为boolean bool() == bool(0|''|[]|{}|()) == False
+    complex(real [,imag])    创建一个复数
+    chr(x)                   将一个整数转换为一个字符
+    ord(x)                   将一个字符转换为整数
+    hex(x)                   将整数转换为16进制字符串 int('0xFFFF', 16) 16进制->10进制
+    oct(x)                   将整数转换为8进制字符串 int('0o5', 8) 8进制->10进制
+    bin(x)                   将整数转换为2进制字符串 int('0b111', 2) 2进制->10进制
+    hash(obj)                将数值, 字符, 字符串做哈希运算
+    pow(x, n)                <=> x ** n x的n次方
+    abs(n)                   求绝对值
+    cmp(x, y)                比较2个对象，x < y 返回 -1, x == y 返回 0, x > y 返回 1
+    round(Number)            将数值四舍五入为float
+    divmod(a, b)             返回(a / b, a % b)
+
+    |位运算 -> 数据默认为'{补码}'表示(正数补码为真值, 负数补码为真值'{取反加一}')
+    a & b                    与运算, 有零得零
+    a & 1                    若a末位为1则返回1, 为0则返回零
+    a | b                    或运算, 有一得一
+    a ^ b                    异或运算, 相异得一, 相同得零
+    ~ a                      非运算 , 取反, 结果为 -a-1
+    a<<n                     左移n位, 结果为 a * (2 ** n)
+    a>>n                     右移n位, 结果为 a / (2 ** n)
+
+\特殊方法
+    |__iter__ & __next__
+        python3.x:__next__() for next(obj_cls),python2.x:next() for obj_cls.next()
+        > def __next__(self): #makes an iterable class an iterator
+        >     data = self.data[self.i]
+        >     self.i += 1
+        >     return data
+
+        > def __iter__(self): #makes a class iterable
+        >     return Iterator #must returns an iterator
+
+    |__getattribute__  <=> obj.a #每次访问属性时都无条件被调用(object默认方法)
+    |__getattr__ -> 一般位置找不到attribute时会调用getattr,返回值或属性异常
+        > class Dict(dict): #access attr by d.x
+        >     def __init__(self, **kw):
+        >         super(Dict, self).__init__(**kw)
+
+        >     def __setattr__(self, key, value):
+        >         self[key] = value
+
+        >     def __getattribute__(self, key):
+        >     #def __getattr__(self, key):
+        >         return self[key]
+        >>> d = Dict({...}); d.x; d.x = 'xxx'
+    |__setattr__, __delattr__ <=> obj.a = xxx; del obj.key
+        > def __delattr__(self, key):
+        >     del self[key]
+
+    |__getitem__ & __setitem__ <=> a = obj[key]; obj[key] = value
+        -> __getitem__可实现取值(obj[key]), 切片(obj[0:3], obj[::2]), for&in循环等功能
+            -> for&in循环的本质就是按索引依次从序列中取出对应值
+            -> 实现了__getitem__的类不是Iterable, 但是能实现序列功能
+
+    |__get__，__set__，__delete__ -> 对类属性的读写控制
+        > class RevealAccess(object): #Descriptor
+        >     def __init__(self, initval=None, name='var'):
+        >         self.val = initval
+        >         self.name = name
+        >     def __get__(self, obj, objtype):
+        >         print "Retrieving val"
+        >         return self.val
+        >     def __set__(self, obj, value):
+        >         print "Updating val"
+        >         self.val = value
+        >     def __delete__(self):
+        >         print "Deleting val"
+        >         del self.val
+        > class MyClass(object):
+        >     x = RevealAccess(10, 'var "x"')
+        > c = MyClass(); c.x; c.x = 20
+
+    |__enter__ & __exit__ <=> with Cls() as c: pass #context manager
+
+    |__str__ <=> str(obj) #logging.info(obj) <=> logging.info(str(obj))
+    |__repr__ <=> repr(obj)
+    |__len__ <=> len(obj)
+    |__abs__ <=> abs(Number)
+    |__hash__ <=> hash(obj)
+    |__int__ <=> int(obj)
+    |__long__ <=> long(obj)
+    |__float__ <=> float(obj)
+
+    |__gt__ <=> obj1 > obj2
+    |__ge__ <=> obj1 >= obj2
+    |__lt__ <=> obj1 < obj2
+    |__le__ <=> obj1 <= obj2
+    |__eq__ <=> obj1 == obj2
+    |__ne__ <=> obj1 != obj2
+    |__add__ <=> obj1 + obj2
+    |__mul__ <=> obj1 * obj2
+    |__div__ <=> obj1 / obj2
+    |__mod__ <=> obj1 % obj2
+    |__index__ <=> obj[i: j]
+
+\Error
+    BaseException	         所有异常的基类
+    SystemExit	             解释器请求退出
+    KeyboardInterrupt	     用户中断执行(通常是输入^C)
+    Exception	             常规错误的基类
+    StopIteration	         迭代器没有更多的值
+    GeneratorExit	         生成器(generator)发生异常来通知退出
+    StandardError	         所有的内建标准异常的基类
+    ArithmeticError	         所有数值计算错误的基类
+    FloatingPointError	     浮点计算错误
+    OverflowError	         数值运算超出最大限制
+    ZeroDivisionError	     除(或取模)零 (所有数据类型)
+    AssertionError	         断言语句失败
+    AttributeError	         对象没有这个属性
+    EOFError	             没有内建输入,到达EOF 标记
+    EnvironmentError	     操作系统错误的基类
+    IOError	                 输入/输出操作失败
+    OSError	                 操作系统错误
+    WindowsError	         系统调用失败
+    ImportError	             导入模块/对象失败
+    LookupError	             无效数据查询的基类
+    IndexError	             序列中没有此索引(index)
+    KeyError	             映射中没有这个键
+    MemoryError	             内存溢出错误(对于Python 解释器不是致命的)
+    NameError	             未声明/初始化对象 (没有属性)
+    UnboundLocalError	     访问未初始化的本地变量
+    ReferenceError	         弱引用(Weak reference)试图访问已经垃圾回收了的对象
+    RuntimeError	         一般的运行时错误
+    NotImplementedError	     尚未实现的方法
+    SyntaxError	             Python 语法错误
+    IndentationError	     缩进错误
+    TabError	             Tab 和空格混用
+    SystemError	             一般的解释器系统错误
+    TypeError	             对类型无效的操作
+    ValueError	             传入无效的参数
+    UnicodeError	         Unicode 相关的错误
+    UnicodeDecodeError	     Unicode 解码时的错误
+    UnicodeEncodeError	     Unicode 编码时错误
+    UnicodeTranslateError	 Unicode 转换时错误
+    Warning	                 警告的基类
+    DeprecationWarning	     关于被弃用的特征的警告
+    FutureWarning	         关于构造将来语义会有改变的警告
+    OverflowWarning	         旧的关于自动提升为长整型(long)的警告
+    PendingDeprecationWarning关于特性将会被废弃的警告
+    RuntimeWarning	         可疑的运行时行为(runtime behavior)的警告
+    SyntaxWarning	         可疑的语法的警告
+    UserWarning	             用户代码生成的警告

@@ -50,6 +50,14 @@
 
     |函数 -> COUNT SUM AVG MAX MIN
 
+    |DDL -> 全面数据定义语言（Data Define Language）
+        -> 主要DDL动词: CREATE, DROP, ALTER, TRUNCATE, RENAME
+        1.使用DDL时，必须在动词后跟上数据库对象名词(TABLE、VIEW、INDEX、SCHEMA、TRIGGER等)
+        2.MySQL的DDL语言创建数据库，如CREATE DATABASE、DROP DATABASE（在Oracle中没有）
+
+    -> 反引号(``)是为了区分MYSQL的'{保留字与普通字符}'而引入的符号.
+        mysql> SELECT `limit` FROM `test` WHERE select='字段值'
+
 \配置文件/etc/my.cnf
     [mysqld]
     max_connections = 2000              //最大连接数

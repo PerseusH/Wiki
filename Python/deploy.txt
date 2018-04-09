@@ -5,12 +5,19 @@
 \Term
     python manage.py runserver 0.0.0.0:8000 #启动一个web项目|manage.py:项目启动文件
 
-    |包
-    -> 任意一个python文件都是一个module,Package是module的集合,当解释器发现目录下有'{__init__.py}',就会认为此目录是一个Package
+    |模块(module) -> 任意一个'{python文件}'都是一个module
+        |模块导入 -> import mod_name -> 找到mod_name.py -> 获取mod_name.py的路径 -> 在sys.path(第一个空的是当前目录)中一次寻找
+            -> 如果模块导入失败且sys.path中没有要找的路径, 意思是要导入的模块文件不在当前目录, 需要通过os模块把要导入的模块所在目录路径加入到sys.path(sys.path.append(...))
 
-    |pyenv
-        source .pyenvrc && pyenv local 3.6.3 #python版本切换
-        ~/.pyenv/versions/3.6.3/lib/python3.6/site-packages
+            import mod_name [as 别名] -> 相当于把模块代码解释一遍同一赋值给一个变量
+            from mod_name import func_name [as 别名] -> 相当于把代码复制一份到新文件里
+
+    |包(package) -> 包是module的集合, 解释器会认为有'{__init__.py}'文件的'{目录}'是一个包
+        |包导入 -> import pkg_name, 实际上是执行包里的__init__.py文件
+
+\pyenv
+    source .pyenvrc && pyenv local 3.6.3 #python版本切换
+    ~/.pyenv/versions/3.6.3/lib/python3.6/site-packages
 
 \Build
     |travis-ci
@@ -24,21 +31,21 @@
     8.git push,travis开始build,结果联动到github
 
 \Test -> UnitTest, DocTest, PyTest
-    白盒测试 -> 通过程序的'{源代码进行测试}'而不使用用户界面.这种类型的测试需要从代码句法发现内部代码在算法,溢出,路径,条件等等中的缺点或者错误,进而加以修正
-    黑盒测试 -> 又被称为功能测试、数据驱动测试或基于规格说明的测试,是通过使用'{整个软件或某种软件功能}'来严格地测试, 而并没有通过检查程序的源代码或者很清楚地了解该软件的源代码程序具体是怎样设计的.测试人员通过输入他们的数据然后看输出的结果从而了解软件怎样工作
+    |白盒测试 -> 通过程序的'{源代码进行测试}'而不使用用户界面.这种类型的测试需要从代码句法发现内部代码在算法,溢出,路径,条件等等中的缺点或者错误,进而加以修正
+    |黑盒测试 -> 又被称为功能测试、数据驱动测试或基于规格说明的测试,是通过使用'{整个软件或某种软件功能}'来严格地测试, 而并没有通过检查程序的源代码或者很清楚地了解该软件的源代码程序具体是怎样设计的.测试人员通过输入他们的数据然后看输出的结果从而了解软件怎样工作
 
 \Pack
     |wheel
-    1.python setup.py bdist_wheel #打包成Wheel
-	2.pip install xxx.whl | pip wheel xxx #安装wheel到/usr/local/bin/xxx
+        1.python setup.py bdist_wheel #打包成Wheel
+    	2.pip install xxx.whl | pip wheel xxx #安装wheel到/usr/local/bin/xxx
 
     |egg
-    1.python setup.py bdist_egg #打包成egg文件,类似Java的jar
-    2.python setup.py install #在服务器或VirtualEnv上安装, 完成部署
+        1.python setup.py bdist_egg #打包成egg文件,类似Java的jar
+        2.python setup.py install #在服务器或VirtualEnv上安装, 完成部署
 
     |pip
-    1.pip freeze > requirements.txt #生成requirements.txt(含本地所有依赖及版本号)
-    2.pip install -r requirements.txt #在服务器或venv上从requirements.txt安装依赖
+        1.pip freeze > requirements.txt #生成requirements.txt(含本地所有依赖及版本号)
+        2.pip install -r requirements.txt #在服务器或venv上从requirements.txt安装依赖
 
     -> 假如项目需要保存为'{系统模块}'(打包)或者可安装为系统命令,那么'{setup.py}'就必不可少
     -> 假如项目需要可以'{直接运行}',那么'{requirements.txt}'就必不可少
@@ -46,7 +53,7 @@
 
     -> python的很多库,内部其实是C语言的,使用easy_install/pip安装的时候,往往是下载源码然后本机编译的.如果打包了,可能会出现一些莫名奇妙的问题,比如 32.64位的兼容问题,不同的操作系统的路径查找问题等等.正确的方式就是在setup.py文件中写明依赖的库和版本,然后到目标机器上安装,反正就一句python setup.py install,不算复杂
 
-    -> vitualenv新建环境里根目录在bin/activate文件中配置
+    |vitualenv -> 新建环境里根目录在bin/activate文件中配置
         virtualenv [--no-site-packages] venv #创建虚拟环境
         source venv/bin/activate #激活
         cd venv && deactivate #取消激活
@@ -60,11 +67,10 @@
 \Release
     SSH登录远程机 -> 下载程序包 -> 解压 -> 安装
 
-    |fabric
-    -> 远程部署工具,将程序包同时分发安装到多个hosts
+    |fabric -> 远程部署工具,将程序包同时分发安装到多个hosts
     > from fabric.api import *
 
-        |常用的配置
+        |常用配置
             env.host #主机ip,当然也可以-H参数指定
             env.user #用户名
             env.password #密码,打好通道的请无视

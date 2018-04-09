@@ -1,5 +1,58 @@
 \性能(针对高并发)
-    1.python -> twisted+tornado+gevent, socket消息队列轮询, 多进程+多线程/协程
-    2.nginx -> epoll+static_cache+load_balance+reverse_proxy
-    3.redis -> memory_cache+epoll+cluster+connection_pool
-    4.mysql -> index+no_join+no_table_scan+cluster+lock
+    1.python
+        requests
+        flask
+        gevent
+        MQ中间件
+        多进程
+        多线程
+        协程
+        设计模式 -> 单例, 消息队列, 装饰器
+    2.nginx
+        epoll&select
+        static_cache
+        load_balance
+        reverse_proxy
+    3.redis
+        data-type
+        memory_cache
+        epoll
+        cluster
+        connection_pool
+        pub-sub
+    4.mysql
+        index
+            聚集索引数据结构
+        no_join
+        no_table_scan
+        cluster
+        lock
+            悲观锁
+            乐观锁
+            自旋锁
+        B-Tree/B+Tree
+            插入
+            查找
+            删除
+    5.http
+        RestFull-API
+        |幂等性 -> 操作一次和操作多次的副作用一样(防止某长时间操作等待过程中, 用户多次刷新页面提交重试). 数据库中用唯一键阻挡重试是比较安全的方式
+        网络攻击
+        网络安全
+        tcp
+            三次握手
+            四次握手
+            timewait
+            socket
+                |返回值 -> -n->出错; 0->到达文件结尾,连接关闭; n->发送|接收到的数据大小
+
+                |数据操作
+                    write -> 发送口
+                    read -> 接收口
+                    send -> 发送口
+                    recv -> 接收口
+        udp
+        http
+        https
+
+面试知识点mix -> 算法题 -> 实战项目

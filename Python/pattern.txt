@@ -1,0 +1,106 @@
+|解耦 -> 通过接口, 消息, 框架, 减少模块之间的依赖, 增强每个模块的功能聚合, 使得每个模块变化时不会过多地相互影响. 设计模式的'{最终目的}'就是解耦代码
+|依赖 -> 在一个类中'{声明并实例化}'另一个类实例
+
+\生产者消费者模式
+    -> 有两个进程：一组生产者进程和一组消费者进程共享一个初始为空、固定大小为n的缓冲区(消息队列)。生产者制造数据，只有缓冲区没满时，生产者才能把消息放入到缓冲区，否则必须等待; 同时，只有缓冲区不空时，消费者才能从中取出消息（即将其从缓存中移出），否则必须等待
+    -> 缓冲区是临界资源，生产者和消费者对缓冲区的访问是互斥关系.它只允许一个生产者放入消息，或者一个消费者从中取出消息
+
+    |核心问题
+        1.要保证不让生产者向满的缓存内写数据
+        2.要保证不让消费者试图从空的缓存中取数据
+
+    |消息队列(Message Queue)
+        |应用场景
+            1.异步IO -> EventLoop
+            2.流量削峰 -> 高并发场景下将并发请求写入MQ, 然后依次处理
+            3.消息通讯 -> P2P通讯, 聊天室, 跨区域机房通讯
+            4.应用解耦 -> 模块间解耦,防止一个模块发生异常导致系统瘫痪(如下单和库存模块解耦)
+            5.日志记录 -> 日志采集客户端将日志数据写入MQ, 日志处理应用订阅并消费MQ信息
+
+        |RabbitMQ -> 生产者消费者模式 + 发布订阅模式(消费者订阅MQ, 收到消息就去消费)
+
+\IOC(Inversion of Control) 控制反转
+    -> 面向对象编程中的一种设计原则, 用来解耦
+    |方式
+        |依赖注入(Dependency Injection,简称DI) -> 通过控制反转,对象在被创建的时候,由一个调控系统内所有对象的外界实体(第三方容器)将其所依赖的对象的引用传递给它.也可以说,依赖被注入到对象中(一般通过构造函数实现DI)
+        |依赖查找(Dependency Lookup) ->
+
+\AOP(Aspect Oriented Programming) 面向切面编程
+    -> 在运行时动态地将代码切入到类的指定方法或指定位置上的编程思想. 属于代理模式
+    -> 在指定程序上下文中动态添加特定功能代码, 而不必事先在需要的位置上写这些功能代码
+    |应用场景 -> 装饰器, 日志, 性能统计, 安全验证, 事务处理, 异常处理
+
+\观察者模式
+    -> 紧耦合, 观察者列表, 单一事件类型, 每次通知都遍历整个观察者列表, 侧重响应, 关心观察者是谁
+    |应用场景 -> MVC(多个view关联到同一个model), 游戏开发(如一队士兵中有一个发现了敌人, 接着所有士兵都会收到通知攻击敌人), 天气预报通知, 注册后发短信和邮件或发送积分, 金币信息, 下单后记录文本日志, 数据库日志, 发送活动或返利信息
+
+\发布订阅模式
+    -> 松耦合, 调度中心, 复杂事件类型, 每次仅通知相关注册程序, 侧重广播, 不关心订阅者是谁
+    |应用场景 -> 聊天室, MVC(Model变化时publish通知对应subcriber(Controler)处理程序更新View), 读写分离架构写数据后分发数据, 事件驱动模型(事件监听器监听事件源), 邮件订阅, 订阅公众号, 微博关注, Django/Flask信号机制
+
+\单例模式
+    -> 由类自身的静态方法返回一个唯一的类实例
+    -> 实例的唯一性并不重要,应该关注的是实例的状态,只要所有的实例共享状态,行为一致,就达到了目的
+    -> Python中,模块只初始化一次,所有变量归属某个模块,import是线程安全的.'{模块是天然的单例}'
+    -> 多线程下需要'{加锁}', 否则不会实现单例
+
+    |缺点
+        1.共享连接池对象的程序过多, 导致连接池溢出
+        2.单例对象长时间不被使用, 导致对象被系统回收, 状态丢失
+        3.没有抽象层, 很难扩展单例类
+
+    |应用场景 -> 需要被共享的对象
+        1.需要频繁实例化然后销毁的对象 (线程池)
+        2.创建时耗费时间和资源过多但又经常用到的对象 (外部设备资源(如打印机))
+        3.有状态的工具类对象 (网站计数器)
+        4.频繁访问数据库或文件的对象 (数据库连接池, 日志文件)
+        5.长时间存在的共享对象 (应用配置, windows(任务管理器, 回收站, 文件资源管理器))
+
+    import threading
+    1.类方法
+    class Singleton(object):
+        _lock = threading.Lock()
+
+        @classmethod
+        def instance(cls):
+            if not hasattr(cls, '_instance'): #防止每次都加锁
+                with _lock: #加锁一定要是同一把锁, with threading.Lock()没有意义
+                    if not hasattr(cls, '_instance'): #防止生成不同实例
+                        cls._instance = Singleton()
+            return cls._instance
+
+    2.__new__(没有多线程下不同实例问题)
+    class Singleton(object):
+        def __new__(cls, *args, **kw):
+            if not hasattr(cls, '_instance'):
+                cls._instance = super(Singleton, cls).__new__(cls, *args, **kw)
+            return cls._instance
+
+    3.metaclass
+    class SingletonMetaClass(type):
+        def __call__(cls, *args, **kw):
+            if not hasattr(cls, '_instance'):
+                with cls._lock:
+                    if not haszttr(cls, '_instance'):
+                        cls._instance = super(SingletonMetaClass, cls).__call__(*args, **kw)
+
+            return cls._instance
+
+    class Singleton(metaclass=SingletonMetaClass):
+        _lock = threading.Lock()
+
+    4.decorator
+    def decr_singleton(cls):
+        def _wrapper(*args, **kw):
+            if not hasattr(cls, '_instance'):
+                with cls._lock:
+                    if not hasattr(cls, '_instance'):
+                        cls._instance = cls(*args, **kw)
+            return cls._instance
+        return _wrapper
+
+    @decr_singleton
+    class Singleton(object):
+        _lock = threading.Lock()
+
+    5.module

@@ -1,0 +1,262 @@
+> hasattr(0|''|[]|{}|()|set(), '__dict__') -> False
+> hasattr(int|str|list|dict|tuple|set, '__dict__') -> True
+
+\Str
+    # -*- coding:utf-8 -*- | # encoding=utf-8 #兼容特殊字符集, '{python2.x}'
+    (u'\uxxxxxxx').encode('utf-8') -> utf-8字符 #python2.x
+
+    |统计字符串中子串或字符的个数
+        s.count(sub_str) #不重复统计  s.count('') -> len(s) + 1
+        import re; len(re.findall(r'(?=word)', s)) #重复统计
+
+    |format
+        '%s' % _str | '%(name)s' % {'name': _str} #所有版本
+        '{[0,1,2...]}'.format(_str) | '{name}.format(name=_str)' #python >= 2.7
+
+    'a' < 'c' #字符直接比较
+    'x' * n -> 'xxx...{n}'
+    list(('sdgfdfgn')) #将字符串转换为单个字符数组, 不能用str.split('')
+    -> 反斜杠可以用来转义，使用'{r}'可以让反斜杠不发生转义
+    -> '{repr和反引号}'用来获取对象的可打印的表示形式
+        > t = [345, 'gert']; `t` -> "[345, 'gert']"; `t[1]` = 'gert'
+        > repr(3.0/7.0) | `3.0/7.0` -> '0.42857142857142855'
+        > str(3.0/7.0) -> '0.428571428571'
+        > s = 'sss\n'; str(s) = 'sss\n'; repr(s) | `s` = "'sss\n'"
+        > print(repr(s)) -> 'sss'; print(str(s)) -> 'sss' [换行]
+        -> 可以通过定义__repr__方法来控制对象在被repr函数调用时返回的内容
+        -> str用于将值转化为适于人阅读的形式，而repr转化为供解释器读取的形式
+
+    -> Python字符串是一种特殊的元组,'{不能被改变}'。向索引位置赋值，如word[0]='m'会报错
+    -> Python中的字符串有两种索引方式，从左往右以0开始，从右往左以-1开始
+    -> n > len(s)时, s[n]会报错, s[n:] -> ''
+    -> 正则表达式中+?, *?表示尽可能少地匹配('{非贪婪匹配}')
+    'xxx'.center(n) #生成一个长度为 n 的字符串, 'xxx'在其中间
+
+    -> 数值, 字符串, 元组本身不能被修改; 字典, 列表, Set可以被修改
+    0 is 0; '' is ''; () is () -> True #值类型相同值只分配一块内存, 修改变量值会分配新内存
+    [] is []; {} is {}; ([]) is ([]) -> False #引用类型相同值分配多个独立内存
+    -> 数值、字符串，元组采用的是复制的方式(深拷贝)，也就是说当将另
+一个变量B赋值给变量A时，虽然A和B的内存空间仍然相同，但当A的值发生变化时(+=, ...=...+*, extend)，会重新给A分配空间，A和B的地址变得不再相同
+    -> 对于字典，列表等，改变一个就会引起另一个的改变(浅拷贝)
+
+\comprehension
+    -> 推导式直接调用c语言函数字节码, 速度比for循环快一倍
+    nums = [i for i in l if i%3 == 0] #列表推导式(list comprehension)
+    dict = {i: i**n for i in l if i>0} #字典推导式(dict comprehension)
+    [d for d in dict] #return keys of dict
+    [dict[key] for key in dict] #return values of dict
+    {a:b for a in range(0, 5) for b in range(100, 105)} ->
+        {0:104, 1:104, 2:104, 3:104, 4:104}
+    [(a, b) for a in range(0, 5) for b in range(100, 105)] ->
+        [
+        (0, 100), (0, 101), (0, 102), (0, 103), (0, 104),
+        (1, 100), (1, 101), (1, 102), (1, 103), (1, 104),
+        ......
+        ]
+
+\dict
+    -> dict和set都是使用hash表来实现的
+    dict.iteritems() #迭代器python2.x
+    dict.items() #乱序列表python3.x
+    dict.keys() #keys list
+    dict.values() #values list
+    dict.clear() #dict -> {}
+    dict.update(dict1) #把dict1中的内容更新到dict中
+    dict.pop(key, [default_value]) #删除key并返回其value,若key不存在则返回默认值,未设置默认值则报错
+    del dict[key] #删除 k, v
+    dict(user='root', password='root') -> {'user': 'root', 'password': 'root'}
+
+    zip((1, 2, 3), ('a', 'b', 'c', 'd')) -> [(1, 'a'), (2, 'b'), (3, 'c')]
+
+    list(zip((1, 2, 3), ('a', 'b', 'c'))) -> [(1, 'a'), (2, 'b'), (3, 'c')]
+    dict([(1, 'a'), (2, 'b'), (3, 'c')]) -> {1: 'a', 2: 'b', 3: 'c'}
+    dict([('a', 1), ('b', 2), ('c', 3), ('d', 4), ('e', 5), ('f', 6)]) ->
+          {'a': 1, 'c': 3, 'b': 2, 'e': 5, 'd': 4, 'f': 6} #无序
+    dc = {'a': 1, 'b': 2, 'c': 3} #'a' in dc (True) | 1 in dc (False)
+    sorted(zip(d.keys(), d.values()), reverse=True) #dict排序
+
+    |设置字典默认值
+    > d = {'k': 'value'}
+    > x = d.get('k', 'v')
+    > y = d.get('k1', 'v1')
+    >>> x -> 'value', y -> 'v1'
+
+    > equities = {}
+    > for key, value in enumerate(data):
+    >     equities.setdefault(key, []).append(value) #equities[key]=[value,]
+    >  or equities.setdefault(key, value) #equities[key]=value
+
+\list
+    -> list是一个数组而不是一个链表，内容可以被修改
+    -> n > len(l)时, len[n]会报错, l[n:] -> []
+    l[-n] #倒序取值
+    l.pop(n) #删除并返回l[n], l.pop() <=> l.pop(-1)
+    del l[n] #删除元素
+    ['a'] + ['b'] -> ['a', 'b']
+
+    |原地操作
+        l[:] = [...]
+        l += [...] # += 所在作用域和 l 被定义所在作用域相同, 则为原地操作; 不同则报错
+        l.append(obj)
+        l.extend(Iterable)
+
+    > l = []
+    > l.extend(['a']) -> l -> ['a']
+    > l.extend('bc') -> l -> ['a', 'b', 'c']
+    > l.extend((1, 2, 3)) -> l -> ['a', 'b', 'c', 1, 2, 3]
+    > l.extend({'x': 1, 'y': 2}) -> l -> ['a', 'b', 'c', 1, 2, 3, 'x', 'y']
+
+    > l = []
+    > print('Original list: id = %s', id(l))
+    > l = l + ['AL'] #改变列表对象内存位置
+    > print('After l=l+*: id = %s', id(l))
+    > l += [2, 'tae'] #原地操作
+    > print('After +=: id = %s', id(l))
+    > l.append(98) #原地操作
+    > print('After append: id = %s', id(l))
+    > l.extend(['END']) #原地操作
+    > print('After extend: id = %s', id(l))
+    >>> Original list: id = 1614182678024
+    >>> After l=l+*: id = 1614182767240
+    >>> After +=: id = 1614182767240
+    >>> After append: id = 1614182767240
+    >>> After extend: id = 1614182767240
+
+    > l = ['abc', '123']
+    > print(id(l))
+    > l = ['', '123'] #重新分配内存, 覆盖前面的内容
+    > print(id(l))
+    > l[:] = ['', ''] #原地操作
+    > print(id(l))
+    >>> 2085386976776
+    >>> 2085387205896
+    >>> 2085387205896
+
+    > l = [
+    > 'foo' #没有逗号
+    > 'bar'
+    > ]
+    >>> l -> ['foobar']
+
+    |slice
+        data_list[::n] #每隔n-1个数对data_list进行切片
+        data_list[1: -1] #去掉头尾
+
+    |*效应
+        ['a'] * 5 = ['a', 'a', 'a', 'a', 'a']
+
+        > l = [[]] * 5
+        > l.append(10) -> l = [[], [], [], [], [], 10]
+        > l[0|1|2|3|4].append(10) -> l = [[10], [10], [10], [10], [10]]
+        > l[0|1|2|3|4].append(10); l[0|1|2|3|4].append(20) -> l = [[10,20], [10,20], [10,20], [10,20], [10,20]]
+
+        > l = [[]] * 3
+        > print([id(i) for i in l])
+        > print(l[1] is l[2])
+        >>> [2433368021640, 2433368021640, 2433368021640] #一个元素
+        >>> True
+
+        > l1 = [[] for i in range(3)]
+        > print([id(i) for i in l1])
+        > print(l1[1] is l1[2])
+        >>> [2433394829576, 2433368141000, 2433368141128] #三个元素
+        >>> False
+
+    |sort
+        |'{不改变}'列表本身,返回排序后列表
+        data_list[::-1] #按原序倒序排列
+        sorted(data_list, key=str|int|len|lambda x: x.id, reverse=True) #按key排序
+        reversed([1, 2, 3]) #生成list_reverseiterator, 倒序迭代器
+
+        |'{改变}'列表本身,返回None
+        from operator import itemgetter, attrgetter
+        data_list.sort(key=itemgetter(0)|attrgetter(key)) #正序排序
+        data_list.sort(key=itemgetter(0, 1)|attrgetter(key0, key1)) #多级正序排序
+        data_list.reverse(key=itemgetter(0)|attrgetter(key)) #倒序排序
+        data_list.reverse(key=itemgetter(0, 1)|attrgetter(key0, key1)) #多级倒序排序
+
+\tuple
+    -> 元组的元素不能修改, 其他操作和List一样。元组可以被哈希(如作为字典的关键字)
+    t = ('x',) #一个元素的元组声明时要在元素后加逗号
+    type(('x',)) -> <type 'tuple'>, type(('x')) -> <type 'str'>
+
+\set
+    -> 集合是一个无序不重复元素的序列. 基本功能是进行成员'{关系测试和删除重复}'元素
+    -> 可以用大括号{}或者set(list)函数创建集合({...}或set(val)). 创建一个空集合必须用set(list)而不是{}，因为{}是用来创建一个空字典. set([...]) == {...}
+
+    > student = {'Tom', 'Jim', 'Mary', 'Tom', 'Jack', 'Rose'}
+    > print(student)   #输出集合，重复的元素被自动去掉
+
+    > #成员关系测试
+    > if 'Rose' in student:
+    >     print('Rose 在集合中')
+
+    > #集合运算
+    > a = set('abracadabra')
+    > b = set('alacazam')
+    > print(a - b)     # a和b的差集
+    > print(a | b)     # a和b的并集
+    > print(a & b)     # a和b的交集
+    > print(a ^ b)     # a和b中不同时存在的元素
+
+\Iterator
+    |Iterable -> 实现了__iter__方法, 可以直接用于for循环的对象统称为可迭代对象
+        1.集合数据类型, 如list, tuple, dict, set, str, range, xrange等
+        2.generator,包括生成器和带yield的generator function
+
+    |generator
+        |next -> 启动生成器|生成下一个值
+            > next(gen) #python3.x
+            > gen.next() #python2.x
+        |send -> val指定的是上一次被挂起的yield语句的返回值.send返回生成器生成的下一个yield值或者StopIteration异常（如果生成器没有生成下一个yield值就退出了）
+            > gen.send(val)
+        |throw -> 通过向生成器对象在上次被挂起处，抛出一个异常。之后会继续执行生成器对象中后面的语句，直至遇到下一个yield语句返回。如果在生成器对象方法执行完毕后，依然没有遇到yield语句，抛出StopIteration异常
+            > gen.throw(Exception, msg)
+        |close -> 在生成器对象方法的挂起处(yield)抛出一个GeneratorExit异常。GeneratorExit异常产生后，系统会继续把生成器对象方法后续的代码执行完毕
+            > def myGenerator():
+            >     try:
+            >         yield 1
+            >         print "Statement after yield"
+            >     except GeneratorExit:
+            >         print "Generator error caught" #生成器对象结束
+            >
+            >     print "End of myGenerator"
+            > #当调用gen.close()时，恢复生成器方法的执行过程。系统在yield语句处抛出GeneratorExit异常，执行过程跳到except语句块。当except语句块处理完毕后，系统会继续往下执行，直至生成器方法执行结束
+            > #GeneratorExit异常的产生意味着生成器对象的生命周期已经结束。因此，一旦产生了GeneratorExit异常，生成器方法后续执行的语句中，不能再有yield语句，否则会产生RuntimeError
+            > #GeneratorExit异常继承自BaseException类。BaseException类与Exception类不同。一般情况下，BaseException类是所有内建异常类的基类，而Exception类是所有用户定义的异常类的基类
+            > except Exception: pass #只能捕获用户定义的异常,不能捕获BaseException
+
+        |yield -> 含yield的函数是generator.next执行到yield时方法的执行过程被'{挂起}',next方法返回值为yield语句的值.gen.next()|gen.send(n)唤醒被挂起的方法继续执行
+
+        [x for x in range(n)] -> list | (x for x in range(n)) -> generator
+
+    |Iterator
+        -> 实现了__iter__和(__next__(python3.x)|next(python2.x))方法，可以被next()函数调用并不断返回下一个值的对象是迭代器
+        -> __iter__返回迭代器自身,__next__返回容器中的下一个值
+        -> Iterator对象表示的是一个数据流,可以被next()函数调用并不断返回下一个数据,直到没有数据时抛出'{StopIteration}'错误.这个数据流是一个有序序列,我们'{不能提前知道序列长度}',只能不断通过next()函数实现按需计算下一个数据,所以Iterator的计算是'{惰性}'的,只有在需要'{返回下一个数据}'时它才会计算
+        -> 生成器是一种特殊的'{Iterator}',不需要实现__iter__和__next__,只需yiled关键字
+        -> list、dict、str不是'{Iterator}'
+        -> iter()可以把Iterable对象变成'{Iterator}' -> iter([]),iter('abc')
+        -> Python的for循环就是通过不断调用next()函数实现的(for = loop(next(iterator)))
+            > for x in [1, 2, 3, 4, 5]:
+            >     pass
+            <=>
+            > it = iter([1, 2, 3, 4, 5]) #首先获得Iterator对象
+            > while True: #循环
+            >     try:
+            >         x = next(it) #获得下一个值
+            >     except StopIteration:
+            >         break #遇到StopIteration就退出循环
+
+        -> 迭代器每次迭代只生成一个数, 只占用一份内存空间, 随后中断进行下次迭代
+        -> 迭代过的值不再保存于迭代器中
+            > g = (i for i in range(5)) | iter([i for i in range(5)])
+            > print(2 in g) -> True
+            > print(3 in g) -> True
+            > print(1 in g) -> False #已迭代值
+            > print(2 in g) -> False #已迭代值
+
+    |range(start, stop[, step=1])
+        -> 返回从start, start+step,...到'{stop之前}'的所有结果, 最大结果为(stop-1)
+        '{python2.x}' -> range生成list对象; xrange(start, stop[, step])生成generator
+        '{python3.x}' -> range生成'{迭代器}', list(range_iter) -> list; xrange去除

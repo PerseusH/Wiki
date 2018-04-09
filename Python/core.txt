@@ -1,7 +1,52 @@
+|StarMap
+    |variable
+        内存分配
+        原地操作
+        深浅拷贝
+        垃圾回收
+    |except
+        异常列表
+        自定义异常
+        触发异常
+    |function
+        参数
+        作用域
+        装饰器
+        <lambda>
+        闭包
+        for循环延迟计算
+        functional
+    |class
+        类变量
+        内置函数
+        新式类
+        多继承MRO
+        元类
+    |type
+        可变类型
+        不可变类型
+        类型转换
+        数值计算
+        位运算
+        推导式
+    |module
+        单例模式
+        常用模块
+        monkey-patch
+    |package -> __init__.py
+    |test
+        |Pylint
+        |PyChecker
+        |pytest
+        |doctest
+        |unittest
+
 |Memory
     -> 所有对象和数据结构都在一个私有heap中,程序员没有访问该heap的权限,只有解释器才能进行操作
     -> 内存管理模块为Python的heap空间分配内存.其核心API提供一些访问该模块的方法供程序员使用
-    垃圾回收 -> 1.引用计数 2.标记清除 3.分代回收
+    |垃圾回收 -> 1.引用计数 2.标记清除 3.分代回收
+        |孤立引用环(循环引用) -> A和B互相引用. 解决方法: 标记清除
+            > a, b = [], []; a.append(b); b.append(a) #循环引用
 
     -> 包含内置名称的命名空间是在python解释器启动的时候创建的,并且不会被删除.一个模块的全局命名空间是在模块定义代码被读入的时候创建的,一般情况下,模块命名空间会持续到解释器结束
     -> 传递参数的时候,python不允许程序员选择采用传值还是传引用.Python传参用的是传对象引用
@@ -13,7 +58,7 @@
     -> 在程序运行的过程中,所有的变量都是在内存中,一旦程序结束,变量所占用的内存就被操作系统全部回收.我们把变量'{从内存中变成可存储或传输}'的过程称之为序列化,在Python中叫pickling,在其他语言中也被称之为serialization,marshalling,flattening等.可以把序列化后的内容写入磁盘,或远程传输到别的机器上
     -> 可将一个对象从一个进程传递给另一个;方便保存及读取
 
--> Flask&Celery&RabbitMQ&MongoDB&Asyncio&RESTful API
+-> Flask&Celery&RabbitMQ&MongoDB&Gevent&RESTful API
 -> 网络爬虫(requests+beautifulsoup->简单, scrapy+xpath->复杂)
 -> 搜索引擎Solr搭建
 
@@ -33,5 +78,25 @@
     -> 遇到'{计算密集型}'任务使用'{多进程multiprocessing}',利用多核
 
 4.python高并发解决方案？
-    '{python2.x}' -> twisted+tornado+gevent, socket消息队列轮询
+    '{python2.x}' -> 多进程 + gevent + 消息队列
     '{python3.x}' -> asyncio
+
+\Blog
+    |modules
+        |architecture -> flask+mako
+
+        |db -> mysql
+
+        |orm -> metaclass+mysql.connector
+
+        |login
+
+        |paging
+
+        |cache -> redis
+
+        |seckill
+
+        |test -> doctest
+
+        |deploy -> fabric
