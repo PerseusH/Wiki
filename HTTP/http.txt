@@ -5,19 +5,22 @@
 Socket = Ip address + TCP/UDP + port
 
 \Network Layer
-应用层 -> HTTP/SMTP/FTP/DNS/RPC -> 会话/应用/表现
-传输层 -> TCP/UDP -> TCP/UDP数据报
-网络层 -> IP -> IP数据报
-数据链路层 + 物理层
+    应用层 -> HTTP/SMTP/FTP/DNS/RPC -> 会话/应用/表现
+    传输层 -> TCP/UDP -> TCP/UDP数据报
+    网络层 -> IP -> IP数据报
+    数据链路层 + 物理层
 
 \HTTP
     -> Web三大组成部分之一 #uri(资源),http(管道),html(容器)
-    -> 无状态，基于TCP协议，应用层的超文本传输协议
+    -> 无状态，基于TCP协议的短连接，1.1版本默认为长连接，应用层的超文本传输协议
     -> 通过cookie, session解决http无状态的问题
+    |HTTP2.0 -> 下一代HTTP协议。是由互联网工程任务组（IETF）的Hypertext Transfer Protocol Bis (httpbis)工作小组进行开发。是自1999年http1.1发布后的首个更新。HTTP 2.0在2013年8月进行首次合作共事性测试。在开放互联网上HTTP2.0将只用于https网址，而 http网址将继续使用HTTP1.x，目的是在互联网上增加使用加密技术(默认)，以提供强有力的保护去遏制主动攻击
+
     |请求报文包括三部分
         1.请求行 -> 包含请求方法,URI,HTTP版本协议
         2.请求首部字段
         3.请求内容实体
+
     |响应报文包含三部分
         1.状态行 -> 包含HTTP版本,状态码,状态码原因短语
         2.响应首部字段
@@ -32,6 +35,36 @@ Socket = Ip address + TCP/UDP + port
         4.服务器程序按照请求生成响应结果返回给客户端(浏览器)
         5.浏览器解析html代码，并请求其中的资源
         6.浏览器渲染并显示页面
+
+\HTTP1.1
+    -> HTTP 1.0规定浏览器与服务器只保持短暂的连接,浏览器的每次请求都需要与服务器建立一个TCP连接,服务器完成请求处理后立即断开TCP连接,服务器不跟踪每个客户也不记录过去的请求
+    -> HTTP 1.1支持'{长连接(默认)}',在一个TCP连接上可以传送多个HTTP请求和响应,减少了建立和关闭连接的消耗和延迟
+    -> HTTP 1.1还允许客户端不用等待上一次请求结果返回,就可以发出下一次请求('{管线化, 流水线请求}'),但服务器端必须按照接收到客户端请求的先后顺序依次回送响应结果,以保证客户端能够区分出每次请求的响应内容,这样也显著地减少了整个下载过程所需要的时间
+    -> HTTP 1.1中增加'{Host请求头}'字段,WEB浏览器可以使用主机头名来明确表示要访问服务器上的哪个WEB站点,这才实现了在一台WEB服务器上可以在同一个IP地址和端口号上使用不同的主机名来创建多个虚拟WEB站点
+    -> HTTP 1.1还提供了与'{身份认证、状态管理和Cache缓存}'等机制相关的请求头和响应头
+    -> HTTP 1.1默认支持文件'{断点续传}'
+        |请求头 -> Range: bytes=(FirstBytePos)-[LastBytePos]
+        Range: bytes=4000- 下载从第4000字节开始到文件结束部分
+        Range: bytes=0~N 下载第0-N字节范围的内容
+        Range: bytes=M-N 下载第M－N字节范围的内容
+        Range: bytes=-N 下载最后N字节内容
+
+        |响应头 -> Content-Range: bytes [FirstBytePos]-[LastBytePos]/[EntityLength]
+
+        -> 请求下载整个文件:
+        GET /test.rar HTTP/1.1
+        Connection: close
+        Host: 116.1.219.219
+        Range: bytes=0-801 #一般请求下载整个文件是bytes=0- 或不用这个头
+
+        -> 正常回应:
+        HTTP/1.1 200 OK
+        Content-Length: 801
+        Content-Type: application/octet-stream
+        Content-Range: bytes 0-800/801 #801:文件总大小
+
+        -> 断点续传，如果返回文件的一部分，则使用206状态码；如果返回整个文件，则使用200响应码
+        HTTP/1.1 200 OK（不使用断点续传）| HTTP/1.1 206 Partial Content（使用断点续传）
 
 \Method
     |GET和POST区别
@@ -98,36 +131,6 @@ Socket = Ip address + TCP/UDP + port
     |500 -> 内部服务器错误
     |503 -> Service Unavailable	服务器由于系统维护或者负载过重未能应答。例如，Servlet可能在数据库连接池已满的情况下返回503。服务器返回503时可以提供一个 Retry-After头
     |504 -> Gateway Timeout	由作为代理或网关的服务器使用，表示不能及时地从远程服务器获得应答。（HTTP 1.1新）。某些代理服务器在DNS查询超时时会返回400或者500错误
-
-\HTTP1.1
-    -> HTTP 1.0规定浏览器与服务器只保持短暂的连接,浏览器的每次请求都需要与服务器建立一个TCP连接,服务器完成请求处理后立即断开TCP连接,服务器不跟踪每个客户也不记录过去的请求
-    -> HTTP 1.1支持'{长连接(默认)}',在一个TCP连接上可以传送多个HTTP请求和响应,减少了建立和关闭连接的消耗和延迟
-    -> HTTP 1.1还允许客户端不用等待上一次请求结果返回,就可以发出下一次请求('{管道化}'),但服务器端必须按照接收到客户端请求的先后顺序依次回送响应结果,以保证客户端能够区分出每次请求的响应内容,这样也显著地减少了整个下载过程所需要的时间
-    -> HTTP 1.1中增加'{Host请求头}'字段,WEB浏览器可以使用主机头名来明确表示要访问服务器上的哪个WEB站点,这才实现了在一台WEB服务器上可以在同一个IP地址和端口号上使用不同的主机名来创建多个虚拟WEB站点
-    -> HTTP 1.1还提供了与'{身份认证、状态管理和Cache缓存}'等机制相关的请求头和响应头
-    -> HTTP 1.1默认支持文件'{断点续传}'
-        |请求头 -> Range: bytes=(FirstBytePos)-[LastBytePos]
-            Range: bytes=4000- 下载从第4000字节开始到文件结束部分
-            Range: bytes=0~N 下载第0-N字节范围的内容
-            Range: bytes=M-N 下载第M－N字节范围的内容
-            Range: bytes=-N 下载最后N字节内容
-
-        |响应头 -> Content-Range: bytes [FirstBytePos]-[LastBytePos]/[EntityLength]
-
-        -> 请求下载整个文件:
-            GET /test.rar HTTP/1.1
-            Connection: close
-            Host: 116.1.219.219
-            Range: bytes=0-801 #一般请求下载整个文件是bytes=0- 或不用这个头
-
-        -> 正常回应:
-            HTTP/1.1 200 OK
-            Content-Length: 801
-            Content-Type: application/octet-stream
-            Content-Range: bytes 0-800/801 #801:文件总大小
-
-        -> 断点续传，如果返回文件的一部分，则使用206状态码；如果返回整个文件，则使用200响应码
-        HTTP/1.1 200 OK（不使用断点续传）| HTTP/1.1 206 Partial Content（使用断点续传）
 
 \RESTful
     1.一切网络对象都被抽象成一种资源(URI唯一资源标识符, 都是名词)

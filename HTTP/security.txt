@@ -63,6 +63,13 @@
         cur.execute("insert into people values (?, ?)", (name, age))
         cur.execute("insert into people values (:name, :age)", {'name': name, 'age': age})
 
+    |SYN洪水攻击
+    -> SYN洪水攻击属于DOS攻击的一种，它利用TCP协议缺陷，通过发送大量的半连接请求，耗费CPU和内存资源
+    -> 客户端在短时间内伪造大量不存在的IP地址，向服务器不断地发送SYN报文，服务器回复ACK确认报文，并等待客户的确认，由于源地址是不存在的，服务器需要不断的重发直至超时，这些伪造的SYN报文被丢弃，目标系统运行缓慢，严重者引起网络堵塞甚至系统瘫痪
+
+    |死亡值ping
+    -> 许多操作系统的TCP/IP协议栈规定ICMP包大小为64KB，且在对包的标题头进行读取之后，要根据该标题头里包含的信息来为有效载荷生成缓冲区。”死亡值ping”就是故意产生畸形的测试ping包，声称自己的尺寸超过ICMP上限，也就是加载的尺寸超过64KB上限，使未采取保护措施的网络系统出现内存分配错误，导致TCP/IP协议栈崩溃，最终接收方宕机
+
 \Encryption
    1.md5(key)
    2.md5(md5(key) + salt) #salt = substr(uniqid(rand()), -6)

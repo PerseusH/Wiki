@@ -4,33 +4,6 @@
 
 -> 大数据处理的效率在于良好的分布计算逻辑(并行计算),而不是什么语言.'{瓶颈在IO}',使用SSD硬盘解决
 
-\IO
-    |同步IO
-    -> 在一个线程中,CPU执行代码的速度极快,一旦遇到IO操作,如读写文件,发送网络数据时,就需要等待IO操作完成,才能继续进行下一步操作:
-    > f = open('/path/to/file','r')
-    > r = f.read() #线程停在此处等待IO操作结果
-    > #IO操作完成后线程才能继续执行
-    > do_something(r)
-
-    |异步IO
-    -> 当代码需要执行一个耗时的IO操作时,它只发出IO指令,并不等待IO结果,然后就去执行其他代码了.一段时间后,当IO返回结果时,再'{回调}'通知CPU进行处理
-    -> 异步IO模型需要一个消息循环,在消息循环中,主线程不断重复"读取-处理消息"这一过程:(消息模型)
-    > loop = get_event_loop() #事件队列
-    > while True:
-        > event = loop.get_event()
-        > process_event(event) #发送消息
-
-    |协程/多线程并发
-        阻塞 -> 挂起当前过程 -> 切换至其他过程运行 -> 阻塞完毕,过程就绪 -> 执行过程剩余代码
-
-        |阻塞原因
-            1.disk IO
-            2.network IO
-            3.time.sleep(n)
-            4.gevent.sleep(n)
-            5.threading.Condition().wait()
-            6.threading.lock().aquire()
-
 \Coroutine
     -> '{用户态}'的轻量级线程, 切换时不需要陷入系统调用(system call)(不会进入内核态)
     -> 事件驱动'{单线程}'的'{异步}'编程模型,'{没有切换开销}','{无需锁}',但无法利用多核资源
@@ -47,9 +20,20 @@
     -> '{多进程+协程}',既充分'{利用多核}',又充分发挥'{协程的高效率}',可获得极高的性能
     -> 调度协程有CPU开销,保存协程上下文有内存开销,性能'{不如事件驱动异步回调}'的编程模型
 
+    |协程/多线程并发 -> 阻塞->挂起当前过程->切换至其他过程运行->阻塞完毕,过程就绪->执行过程剩余代码
+
+    |阻塞原因
+        1.disk IO
+        2.network IO
+        3.time.sleep(n)
+        4.gevent.sleep(n)
+        5.threading.Condition().wait()
+        6.threading.lock().aquire()
+
     |gevent
-        -> 基于libev的并发库。它为各种并发和网络相关的任务提供了整洁的API.主要模式是greenlet
+        -> 基于libevent的并发库。为各种并发和网络相关任务提供了整洁的API.主要模式是greenlet
         |greenlet -> 以C扩展模块形式接入Python的轻量级协程。greenlet全部运行在主程序操作系统进程的内部，但它们被协作式地调度
+        -> libevent也是对linux'{同步io}'做了封装，使它看起来像异步
         -> gevent实现了python标准库里面大部分的阻塞式系统调用，包括socket、ssl、threading和select等模块，而将这些阻塞式调用变为'{协作式运行}'（monkey.patch_xxx()）
         -> monkey-patch充分利用了动态语言的灵活性，'{不改变源代码}'而对功能进行追加和变更,可以对现有的语言Api进行'{追加，替换，修改Bug}'，甚至性能优化等等
         -> 通过monkey-patch的monkey.patch_xxx()将python标准库中模块或函数改成gevent中的响应的具有协程的协作式对象。这样在不改变原有代码的情况下，将应用的阻塞式方法变成协程式的
@@ -127,7 +111,7 @@
     -> 主线程应该是一个好的管理者，它要了解每个子线程都要做些什么事，都需要什么数据和什么参数，以及在线程结束时，它们都提供了什么结果。这样就可以把各个子线程的结果组成一个有意义的最终结果
     -> 不建议使用thread模块。主要原因是当主线程退出的时候，其他所有子线程没有结束就退出了。而threading模块就能确保所有“重要的”子线程都退出后，进程才会结束
 
-    |自旋锁
+    |自旋锁 -> 使用一个无意义的循环等待执行完毕
 
     |多进程
         > #多进程利用多核(4核CPU环境)
@@ -220,27 +204,8 @@
         >        time.sleep(5)
         >        condition.release()
 
-\异步IO(Eventloop + 消息队列)
-    |Node
-        |事件驱动 -> EventLoop是一个while(1)，用于等待和发送消息和事件。简单说，就是在程序中设置两个线程：一个负责程序本身的运行同时监听事件，称为"主线程"；另一个负责事件处理和回调操作，被称为"Eventloop线程"
-            ReqWrap -> 主线程监听到事件发生, 封装回调函数和事件参数到请求对象, 随后将之推入'{线程池}'中等待多线程执行IO
-                -> sys-cmd, webpage-opr, disk-IO, network-IO etc.
 
-            IO-Threads -> 通知IOCP对象操作已经完成，并将线程归还给线程池.在这一过程中'{事件循环}'会调用GetQueuedCompletionStatus方法'{检查IOCP对象}'中是否有执行完的请求，有则将'{请求对象}'加入到IO'{观察者队列}'(消息队列)中，将其作为'{事件}'处理
-                |IOCP(IO Completion Port) -> 一个线程同步对象，有点像信号量（semaphore）。一个IOCP对象和很多支持异步I/O调用的I/O对象相联系。线程有权阻塞IOCP对象，直到异步I/O调用完成
-                    -> 高性能的I/O模型，是一种应用程序使用'{线程池}'处理异步I/O请求的机制
-
-            |Eventloop -> 判断'{观察者队列}'中是否有事件需要处理, 有则取出事件; 事件有回调则执行回调函数
-                -> 生产者/消费者模型
-                > while(1){
-                >   1.Get event from watchers
-                >   2.Execute callback of event if exists
-                >   3.Check IOCP and insert completed objs into watchers as events
-                > }
-
-                |Watcher -> 用来判断是否有事件需要处理(注册)。事件循环中有一到多个观察者，判断过程会向观察者询问是否有需要处理的事件
-                    -> 类似于饭店的后厨与前台的关系。后厨每做完一轮菜，就会向前台经理询问是否还有要做的菜，如果有就继续做。服务员们相当于线程池, 前台经理就相当于观察者，他收到的顾客点单就是回调函数
-
+\消息队列
     -> 使用Beanstalkd
     -> 解释AMQP，深入理解RabbitMQ，介绍RabbitMQ插件系统，RabbitMQ集群的故障转移方法等
 
