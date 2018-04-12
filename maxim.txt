@@ -26,7 +26,7 @@
 		|成为更好的人 -> 意识中的曲线总是连续的, 但现实中的路径总是离散的, 曲折的
 
 		'{春困}'
-		|GymCount:00 | LastTime: 10:30 | SexPermission: N
+		|GymCount:200 | LastTime: 03:30 | SexPermission: N
 		|LastMeal(0):	  04:00
 		|LastMedicine(1): 19:30
 

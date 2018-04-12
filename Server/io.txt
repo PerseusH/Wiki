@@ -1,0 +1,94 @@
+|IO操作 -> 获取IO结果数据, 然后从内核态IO线程拷贝数据到用户态进程
+
+|同步IO
+    -> 在一个线程中,CPU执行代码的速度极快,一旦遇到IO操作,如读写文件,发送网络数据时,就需要等待IO操作完成,才能继续进行下一步操作
+        > f = open('/path/to/file','r')
+        > r = f.read() #线程停在此处等待IO操作结果
+        > #IO操作完成后线程才能继续执行
+        > do_something(r)
+
+    |同步阻塞IO -> 当进程调用某些设计IO操作的系统调用或库函数时,比如accept()、send()、recv()等,就会阻塞自身,等待IO完成
+
+    |同步非阻塞IO -> 不会因等待数据就绪而阻塞进程,使用轮询(while True)来尝试数据是否就绪
+        |轮询 -> 非阻塞的优势是自己不去轮询，使用poll函数去轮询，poll函数实际是阻塞的，内核buffer有数据就叫醒他，一旦发现有数据就发起io调用，这就是通知机制
+        -> 同步非阻塞IO好处是在一个进程中可以同时处理多个IO操作,而不是阻塞在一个IO操作上
+
+-> 与同步阻塞IO相比, 多路复用和异步IO最大的优势是执行多任务时大大减少了线程数(内存开销)和频繁的线程上下文切换(CPU开销)
+
+|异步IO -> Node, 协程, AIO
+    -> 主线程执行IO操作时,只发出IO指令,通知内核执行IO操作,主线程不等待结果,然后执行其他IO.IO执行完毕时,内核将数据复制到用户态,再通过'{通知, 状态, 回调}'进行后续处理
+    -> 一般用主线程 + IO多线程线程池 + 消息队列(传递事件和回调)实现异步IO
+    -> 在回调函数中，使用阻塞方法，会阻塞整个事件轮询
+    -> 异步IO模型需要一个消息循环(Eventloop),在消息循环中,主线程重复"读取-处理消息"这一过程
+        > loop = get_event_loop() #事件队列
+        > while True:
+        > event = loop.get_event()
+        > process_event(event) #发送消息
+
+    -> Linux: AIO(用用户态线程模拟, 不是真正的异步), Windows: IOCP(真正异步)
+        |IOCP(IO Completion Port) -> 一个线程同步对象，有点像信号量(semaphore).一个IOCP对象和很多支持异步IO调用的IO对象相联系.线程有权阻塞IOCP对象，直到异步IO调用完成.高性能的异步IO模型，是一种应用程序使用'{线程池}'处理异步请求的机制
+    -> epoll与iocp性能差异很小. 实际应用中，epoll对比iocp是有优势的
+        1.IOCP读取数据操作，需要预先分配缓冲区，如果分配的缓冲区较小，会导致更多的系统调用，影响效率；如果分配的缓冲区大一些，会占用过多的内存
+        2.epoll对应的reactor模型可以按需分配，及时释放，'{合理利用内存}'
+        3.epoll的api比iocp'{简洁}'很多,一个完整的的epoll示例代码约100行,iocp的约200行
+        4.从目前的服务器来看，linux比windows'{稳定}'许多
+
+    |Node(IOCP + Evengloop)
+        |事件驱动 -> EventLoop是一个while(1)，用于等待和发送消息和事件。简单说，就是在程序中设置两个线程：一个负责程序本身的运行同时监听事件，称为"主线程"；另一个负责事件处理和回调操作，被称为"Eventloop线程"
+            ReqWrap -> 主线程监听到事件发生, 封装回调函数和事件参数到请求对象, 随后将之推入'{线程池}'中等待多线程执行IO
+                -> sys-cmd, webpage-opr, disk-IO, network-IO etc.
+
+            IO-Threads -> 通知IOCP对象操作已经完成，并将线程归还给线程池.在这一过程中'{事件循环}'会调用GetQueuedCompletionStatus方法'{检查IOCP对象}'中是否有执行完的请求，有则将'{请求对象}'加入到IO'{观察者队列}'(消息队列)中，将其作为'{事件}'处理
+
+            |Eventloop -> 判断'{观察者队列}'中是否有事件需要处理, 有则取出事件; 事件有回调则执行回调函数
+                -> 生产者/消费者模型
+                > while(1){
+                >   1.Get event from watchers
+                >   2.Execute callback of event if exists
+                >   3.Check IOCP and insert completed objs into watchers as events
+                > }
+
+                |Watcher -> 用来判断是否有事件需要处理(注册)。事件循环中有一到多个观察者，判断过程会向观察者询问是否有需要处理的事件
+                    -> 类似于饭店的后厨与前台的关系。后厨每做完一轮菜，就会向前台经理询问是否还有要做的菜，如果有就继续做。服务员们相当于线程池, 前台经理就相当于观察者，他收到的顾客点单就是回调函数
+
+|多路复用 -> select/poll/epoll
+    -> 主线程监视多个fd,一旦某个fd就绪(读就绪或写就绪),通知程序进行相应的读写操作
+    -> Nginx默认use select/poll
+    -> 与同步非阻塞IO相比，IO复用模型的优势在于可以同时等待多个（而不是一个）fd就绪
+
+    |fd -> socket文件描述符. 是一个指向文件的引用
+        -> Socket起源于Unix. Unix中把所有的资源都看作是文件，比如网卡、打印机等，所以Socket通信使用网卡，网卡又处理许多'{连接}'，每个连接都需要一个对应的ID，即对应的文件描述符。函数socket()返回的就是这个描述符。在传输中要使用这个惟一ID来确定要往哪个连接上传输数据
+        > int fd = socket(AF_INET,SOCK_STREAM, 0);
+
+        |select -> 获取就绪fd时轮询,遍历全部fd,一个进程能打开的'{FD数目有限制}'(默认1024)
+            -> 轮询时会将所有fd从用户态'{复制}'到内核态.随着fd量的增长,此复制开销也会线性增长
+            -> 参数__FD_SETSIZE定义了每个FD_SET的句柄个数
+
+        |poll -> 相比select，poll只是'{取消了最大fd数限制}'，并未从根本上解决select的问题
+
+        |epoll -> 只轮询就绪队列,一个进程能打开的FD数目没有的限制=n*10W(系统内存nGB)
+            |IO操作 -> read和write,程序判断每个fd的事件类型,可读则读数据,可写则写数据
+            -> epoll仅用于linux2.6以上内核,可大大提高server性能,mac用不了
+
+            |应用场景 -> 高并发长连接
+
+            |'{内存映射}'(mmap) -> 内核与用户空间映射同一块内存
+                -> mmap将用户空间的一块地址和内核空间的一块地址映射到同一块物理内存地址（不管是用户空间还是内核空间都是虚拟地址，最终要通过地址映射映射到物理地址），使得这块物理内存对内核和对用户均可见，'{减少用户态和内核态之间的数据拷贝}'。内核可以直接看到epoll监听的句柄，效率高
+                -> epoll_wait获取就绪fd时,返回的并不是实际的描述符,而是一个代表就绪描述符的值,拿到这些值去epoll中依次取得相应的文件描述符即可,避免了复制大量文件描述符带来的开销
+
+            |红黑树(RB-Tree) -> epoll采用红黑树去监听所有套接字，当添加或者删除一个套接字时，都在红黑树上去处理，红黑树插入和删除性能比较好，时间复杂度O(logN)
+
+            |新建实例 -> epoll_create创建epoll实例
+            |监听连接 -> epoll_ctl将新连接fd加入可读集合,并将fd和回调函数注册进epoll监听树
+            |事件发生 -> 有报文发过来, 内核通知epoll(LT或ET)将对应fd标识放入就绪队列
+            |执行回调 -> epoll_wait轮询就绪队列标识取出fd, 读取发送过来的数据, 放到用户态消息队列, 然后将这个fd加入写消息集合, 用户进程消费消息队列, 执行fd的回调函数, 通知epoll将这个fd标识加入就绪队列, epoll_wait取出fd, 将消息队列中的对应数据发送到fd另一端
+            |连接关闭 -> 当socket被close掉后，会自动从epoll中删除
+
+            -> epoll_wait调用ep_poll，当EventQueue为空（无就绪fd）时挂起当前进程(阻塞)，直到EventQueue不空时进程才被唤醒. epoll_wait返回时，实际上是把内核中的就绪链表中的fd发送给用户态，用户态处理事件的同时，内核更新并继续维护就绪链表
+
+            running -> epoll_create(create epoll instance in KernelState) -> epoll_ctl(create RB-Tree & EventQueue for fds on epoll instance) -> epoll_ctl(insert a new fd into RB-Tree then register a callback) -> a request happens on a socket -> KernelState(activate corresponding fd to readable/writeable/etc., execute callback) -> callback(put a fd-stamp corresponding to the previously mentioned socket into EventQueue then awake epoll_wait) -> epoll_wait(get fd-stamps from EventQueue, find corresponding fds, send fds to UserState then read/write/etc. data on sockets)
+
+        |边缘触发(Edge Triggered) -> Nginx-Epoll默认工作方式,更高效的通知模式,推荐ET模式
+            -> 只有在监视的文件句柄上'{发生事件}'的时候内核才会通知进程fd准备就绪,之后不再通知
+        |水平触发(level triggered) -> epoll'{默认}'工作方式,redis的默认工作方式
+            -> 没有任何操作,内核还是会一直通知你一个fd是否就绪,这种模式编程'{出错误可能性小}'一点.传统的select/poll都是这种模型的代表

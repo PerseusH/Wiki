@@ -14,6 +14,7 @@ Socket = Ip address + TCP/UDP + port
     -> Web三大组成部分之一 #uri(资源),http(管道),html(容器)
     -> 无状态，基于TCP协议的短连接，1.1版本默认为长连接，应用层的超文本传输协议
     -> 通过cookie, session解决http无状态的问题
+
     |HTTP2.0 -> 下一代HTTP协议。是由互联网工程任务组（IETF）的Hypertext Transfer Protocol Bis (httpbis)工作小组进行开发。是自1999年http1.1发布后的首个更新。HTTP 2.0在2013年8月进行首次合作共事性测试。在开放互联网上HTTP2.0将只用于https网址，而 http网址将继续使用HTTP1.x，目的是在互联网上增加使用加密技术(默认)，以提供强有力的保护去遏制主动攻击
 
     |请求报文包括三部分
