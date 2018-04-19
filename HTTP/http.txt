@@ -1,8 +1,7 @@
 |PV(page view) -> 浏览量,用户每打开一个页面就被记录1次.用户多次打开同一页面,浏览量值累计
 |UV(user view) -> 访客量,一天之内的独立访客数(以Cookie为依据).一天内同一访客多次访问只算1次
 |日活 -> 每日活跃用户数
-
-Socket = Ip address + TCP/UDP + port
+|URL = Protocol + ://Host[:Port] + /Path + ?Args
 
 \Network Layer
     应用层 -> HTTP/SMTP/FTP/DNS/RPC -> 会话/应用/表现
@@ -10,36 +9,77 @@ Socket = Ip address + TCP/UDP + port
     网络层 -> IP -> IP数据报
     数据链路层 + 物理层
 
+    |DNS(Domain Name System) -> 根据域名获取IP地址的分布式数据库(域名和IP相互映射)
+        -> 浏览器DNS缓存 -> OS DNS缓存 -> hosts -> 路由器缓存 -> DNS请求(UDP) -> DNS服务器自身缓存 -> DNS服务器递归查询
+        |DNS服务器 -> 一般由ISP(网络服务提供商)或独立DNS服务提供
+        |NS记录 -> Name Server记录, 返回保存下一级域名信息的服务器地址, 即哪些服务器负责管理所查域名的DNS记录
+        |A记录 -> 所查域名的IP Address记录
+
+        |根域名 -> 每个域名实际上后面都有.root, 浏览器中使用的都是简写. 如www.xxx.com.root
+        |顶级域名 -> 根域名下的.com, .net, .org等
+        |次级域名 -> 用户注册的域名段. 如google, facebook, sina
+        |三级域名 -> 主机名host, 用户在自己的域里面为服务器分配的名称，用户可以任意分配 如www
+
+        -> DNS服务器根据域名的层级进行分级递归查询
+            1.从DNS服务器中获取根域名服务器的NS记录和A记录(.)
+            2.从根域名服务器查到顶级域名服务器的NS记录和A记录(.com.)
+            3.从顶级域名服务器查到次级域名服务器的NS记录和A记录(xxx.com.)
+            4.从次级域名服务器查到主机名的IP地址(www.xxx.com.)
+        -> 根域名服务器的NS记录和IP地址一般不会变化, 内置在DNS服务器里面(根域名服务器IP列表)
+        -> 一般很长时间才会查一次根域名服务器列表(1000小时)
+        -> 目前世界上共有十三组根域名服务器，从A.ROOT-SERVERS.NET 到 M.ROOT-SERVERS.NET
+
 \HTTP
     -> Web三大组成部分之一 #uri(资源),http(管道),html(容器)
-    -> 无状态，基于TCP协议的短连接，1.1版本默认为长连接，应用层的超文本传输协议
+    -> 无状态，基于TCP协议的短连接(1.1版本默认为长连接)，应用层的超文本传输协议
     -> 通过cookie, session解决http无状态的问题
 
     |HTTP2.0 -> 下一代HTTP协议。是由互联网工程任务组（IETF）的Hypertext Transfer Protocol Bis (httpbis)工作小组进行开发。是自1999年http1.1发布后的首个更新。HTTP 2.0在2013年8月进行首次合作共事性测试。在开放互联网上HTTP2.0将只用于https网址，而 http网址将继续使用HTTP1.x，目的是在互联网上增加使用加密技术(默认)，以提供强有力的保护去遏制主动攻击
 
     |请求报文包括三部分
         1.请求行 -> 包含请求方法,URI,HTTP版本协议
+            POST 　/index.php　HTTP/1.1
         2.请求首部字段
+            |Host -> 服务器地址, 可以是域名或IP:Port
+            |User-Agent -> 发送请求的客户端应用程序
+            |Connection -> 连接属性. 如Connection: Keep-Alive 长连接
+            |Referer -> 包含一个URL，用户从该URL代表的页面出发访问当前请求的页面
+            |Pragma -> 指定“no-cache”值表示服务器必须返回一个刷新后的文档，即使它是代理服务器而且已经有了页面的本地拷贝, 与 Cache-Control: no-cache 效果一致
+                -> 一个在 HTTP/1.0 中规定的通用首部，这个首部的效果依赖于不同的实现，所以在“请求-响应”链中可能会有不同的效果。它用来'{向后兼容}'只支持 HTTP/1.0 协议的缓存服务器，那时候 HTTP/1.1 协议中的 Cache-Control 还没有出来
+            |Cache-Control ->
+            |Cookie -> 这是最重要的请求头信息之一
+            |Content-Length -> 表示请求消息正文的长度
+            |Authorization -> 授权信息，通常出现在对服务器发送的WWW-Authenticate的应答中
+
+            |Accept -> 代表发送端（客户端）希望接受的数据类型，这种内容类型用MIME类型来表示。借助内容协商机制, 服务器可以从诸多备选项中选择一项进行应用，并使用Content-Type应答头通知客户端它的选择。浏览器会基于请求的上下文来为这个请求头设置合适的值，比如获取一个CSS层叠样式表时值与获取图片、视频或脚本文件时的值是不同的
+                |指令
+                <MIME_type>/<MIME_subtype> #单一精确的 MIME 类型, 例如text/html.
+                <MIME_type>/* #一类 MIME 类型, 但是没有指明子类。 image/* 可以用来指代 image/png, image/svg, image/gif 以及任何其他的图片类型。
+                */* #任意类型的 MIME 类型
+                ;q= (q因子权重) #值代表优先顺序，用相对质量价值表示，又称作权重
+
+                |示例
+                Accept: text/html
+                Accept: image/*
+                Accept: text/html, application/xhtml+xml, application/xml;q=0.9, */*;q=0.8
+            |Accept-Charset -> 通知服务器端可以发送的数据字符集
+            |Accept-Encoding -> 通知服务器端可以发送的数据压缩格式. 如gzip
+                -> 服务器向浏览器返回经gzip编码的HTML页面。可减少5到10倍的下载时间
+            |Accept-Language -> 通知服务器端可以发送的语言. 如zh-CN,zh;q=0.8
         3.请求内容实体
 
     |响应报文包含三部分
         1.状态行 -> 包含HTTP版本,状态码,状态码原因短语
+            HTTP/1.1 200 OK
         2.响应首部字段
+            |CONTENT_TYPE -> 属于实体头
         3.响应内容实体
 
     |优化 -> 负载均衡, Cache, 加速应用
 
-    |一次http请求全过程
-        1.域名解析(DNS) ->
-        2.tcp3次握手
-        3.发起http请求
-        4.服务器程序按照请求生成响应结果返回给客户端(浏览器)
-        5.浏览器解析html代码，并请求其中的资源
-        6.浏览器渲染并显示页面
-
 \HTTP1.1
     -> HTTP 1.0规定浏览器与服务器只保持短暂的连接,浏览器的每次请求都需要与服务器建立一个TCP连接,服务器完成请求处理后立即断开TCP连接,服务器不跟踪每个客户也不记录过去的请求
-    -> HTTP 1.1支持'{长连接(默认)}',在一个TCP连接上可以传送多个HTTP请求和响应,减少了建立和关闭连接的消耗和延迟
+    -> HTTP 1.1支持'{长连接(默认)}',在一个TCP连接上可以传送多个HTTP请求和响应,减少了建立和关闭连接的消耗和延迟.在请求首部字段中的Connection: keep-alive即为表明使用了持久连接
     -> HTTP 1.1还允许客户端不用等待上一次请求结果返回,就可以发出下一次请求('{管线化, 流水线请求}'),但服务器端必须按照接收到客户端请求的先后顺序依次回送响应结果,以保证客户端能够区分出每次请求的响应内容,这样也显著地减少了整个下载过程所需要的时间
     -> HTTP 1.1中增加'{Host请求头}'字段,WEB浏览器可以使用主机头名来明确表示要访问服务器上的哪个WEB站点,这才实现了在一台WEB服务器上可以在同一个IP地址和端口号上使用不同的主机名来创建多个虚拟WEB站点
     -> HTTP 1.1还提供了与'{身份认证、状态管理和Cache缓存}'等机制相关的请求头和响应头
@@ -68,8 +108,9 @@ Socket = Ip address + TCP/UDP + port
         HTTP/1.1 200 OK（不使用断点续传）| HTTP/1.1 206 Partial Content（使用断点续传）
 
 \Method
+    -> GET, PUT, DELETE都是幂等操作, POST不是
     |GET和POST区别
-        |根本区别 -> GET用于获取数据, POST用于修改数据
+        |根本区别 -> GET用于获取数据, POST用于创建或部分修改数据
         1.GET的语义是幂等的, 只读的; POST的语义是非幂等的, 有副作用的(GET可以放心后退, 刷新)
             -> 因为'{幂等性}', GET请求结果大部分都直接被CDN缓存了, 可以大大减少web服务器压力; POST请求因为是非幂等的有副作用的, 所以需要由web服务器来处理. 把所有GET换成POST, 意味着主干网络上所有的CDN都被废掉了
         2.GET结果能被'{缓存}', POST不能被缓存
@@ -81,12 +122,16 @@ Socket = Ip address + TCP/UDP + port
         7.GET有'{CSRF}'风险
 
     |POST和PUT区别
-        POST -> 创建或更新
-        PUT -> 创建
+        -> HTTP协议规定，POST修改资源时，URL指示的是该资源的父级资源，待修改资源的ID信息在请求体中携带。而PUT修改资源时，URL直接指示待修改资源
+        |POST -> 创建. 两次相同的POST请求会在服务器端创建两份资源，它们具有不同的URI. 非幂等
+            -> 用POST /tickets来实现create_ticket
+        |PUT -> 创建或更新. 对同一URI进行多次PUT的副作用和一次PUT是相同的. '{幂等}'
+            -> 用PUT /accounts/account_id/ticket_id&amount=xxx来实现idempotent_withdraw。值得注意的是严格来讲amount参数不应该作为URI的一部分，真正的URI应该是/accounts/account_id/ticket_id，而amount应该放在请求的body中。这种模式可以应用于很多场合，比如：论坛网站中防止意外的重复发帖
+        -> POST可用于修改实体的部分信息; PUT每次都是更新整个实体
 
 \Cache
     刷新页面出现from disk/memory cache -> ctrl+shift+r(Chrome) | ctrl+F5
-    -> 服务器端返回Etag或Last-Modified后,浏览器再次访问会发送if-none-match或if-modified-since,若前后相等则返回304,否则返回最新资源:
+    -> 服务器端返回Etag或Last-Modified后,浏览器再次访问会发送if-none-match或if-modified-since,若前后相等则返回304,否则返回最新资源
 
     |Last-Modified -> 获取某文件的最后修改日期作为缓存更新标识
         > response.headers["Last-Modified"] = last_modified_time
@@ -105,21 +150,27 @@ Socket = Ip address + TCP/UDP + port
     |Max-age -> 使用秒来计量缓存最大生存期
 
     Cache-control:public -> 缓存的版本可以被代理服务器或者其他中间服务器识别
+    Cache-Control:public, max-age=31536000 -> 缓存静态资源, 对于应用程序中不会改变的文件，你通常可以在发送响应头前添加积极缓存。这包括例如由应用程序提供的静态文件，例如图像，CSS文件和JavaScript文件
     Cache-control:private -> 这个文件对不同的用户是不同的。只有用户自己的浏览器能够进行缓存，公共的代理服务器不允许缓存
     Cache-control:no-cache -> 文件的内容不应当被缓存。这在'{搜索或者翻页}'结果中非常有用，因为同样的URL，对应的内容会发生变化
+    Cache-Control: no-cache, no-store, must-revalidate -> 禁止缓存
 
 \HTTP Code
+    |重定向 -> 客户请求的文档在其他地方,新的URL在Location头中给出,浏览器应该自动地访问新的URL
     |300 Multiple Choices
         -> 客户请求的文档可以在多个位置找到,这些位置已经在返回的文档内列出.如果服务器要提出优先选择,则应该在Location应答头指明.
     |301 Moved Permanently -> 永久重定向
-        |重定向
-            -> 客户请求的文档在其他地方,新的URL在Location头中给出,浏览器应该自动地访问新的URL.
-            -> 301重定向是搜索引擎认可的唯一的跳转方式，301跳转可以将原页面的权重转移给新的页面（做301重定向不会导致网站权重或流量的流失, 需要一定的周期）
-            1.如果你想为网站更换域名，请千万要记得利用301重定向将原本的域名重定向至现在的域名
-            2.如果你想删除网站中的不合理或无意义的目录，请千万要记得利用301重定向到网站首页
-            3.如果你想把其他的一些闲置域名共同指向某一个在用的网站，利用301重定向就能够轻松实现
-            4.如果你想实现网站URL的规范化，比如xxyfkj.cn和www.xxyfkj.cn的规范化，利用301重定向就可以完成
-    |302 Found -> 类似于301,新的URL应该被视为临时性的替代,而不是永久性的.
+        |SEO -> 301重定向是搜索引擎认可的唯一的跳转方式，301跳转可以将原页面的权重转移给新的页面（做301重定向不会导致网站权重或流量的流失, 需要一定的周期）
+        |可利用301重定向实现(传接页面权重)
+            1.为网站更换域名，可利用301重定向将原本的域名重定向至现在的域名
+            2.删除网站中的不合理或无意义的目录，可利用301重定向到网站首页
+            3.把一些闲置域名共同指向某一个在用的网站
+            4.网站URL(比如xxyfkj.cn和www.xxyfkj.cn)的规范化
+    |302 Found -> 类似于301,新的URL应该被视为临时性的替代,而不是永久性的. '{幂等}'接口设计
+        -> 服务器收到POST请求,在操作成功后必须302跳转到另外一个页面,这样用户刷新也不会重复提交
+            <form id = "form" method ="post"> #表单发送客户端token, 在服务器判断唯一性
+                <input type="hidden" name="token" value="xxx">
+            </form>
     |303 See Other
         -> 类似于301/302,不同之处在于,如果原来的请求是POST,Location头指定的重定向目标文档应该通过GET提取
     |304 Not Modified
@@ -132,10 +183,3 @@ Socket = Ip address + TCP/UDP + port
     |500 -> 内部服务器错误
     |503 -> Service Unavailable	服务器由于系统维护或者负载过重未能应答。例如，Servlet可能在数据库连接池已满的情况下返回503。服务器返回503时可以提供一个 Retry-After头
     |504 -> Gateway Timeout	由作为代理或网关的服务器使用，表示不能及时地从远程服务器获得应答。（HTTP 1.1新）。某些代理服务器在DNS查询超时时会返回400或者500错误
-
-\RESTful
-    1.一切网络对象都被抽象成一种资源(URI唯一资源标识符, 都是名词)
-    2.客户端和服务器之间, 传递这种资源的某种表现层
-    3.客户端通过四个HTTP动词, 对服务器端资源进行操作, 实现"表现层状态转化"
-    4.http操作无状态, 减少上下文依赖, 降低耦合
-    5.目的是简化http操作, 使网站软件化, 防止跨站攻击

@@ -1,0 +1,123 @@
+|CAP原理 -> 分布式系统架构不可能同时满足一致性, 可用性和分区容错性
+    |一致性 -> 所有数据更新都是同步的
+    |可用性 -> 好的响应性能. 每个请求都会收到一个（非错误）响应 - 不保证它包含最新的写入
+    |分区容错性 -> 尽管任意数量的消息被节点之间的网络丢弃（或延迟），系统仍继续运行
+
+    -> 架构师不要将精力浪费在如何设计能满足三者的完美分布式系统，而是应该进行取舍
+
+|幂等性(Idempotence) -> 操作一次和操作多次的副作用一样(接口支持重入: 防止某长时间操作等待过程中, 用户多次刷新页面提交重试, 每次重试都返回第一次操作的结果)
+    |http -> 获取用GET, 更新用PUT
+    |数据库阻挡重试 -> Insert:依赖唯一键,冲突回滚掉 Update:消息状态表(状态机)+消息队列
+
+    -> 通过引入支持分布式事务的中间件来保证更新的事务性。分布式事务的优点是对于调用者很简单，复杂性都交给了中间件来管理。缺点则是一方面架构太重量级，容易被绑在特定的中间件上，不利于异构系统的集成；另一方面分布式事务虽然能保证事务的ACID性质，但却无法提供性能和可用性的保证
+    -> 和分布式事务(中间件)相比，幂等设计的优势在于它的轻量级，容易适应异构环境，以及性能和可用性方面。在某些性能要求比较高的应用，幂等设计往往是唯一的选择
+    -> 实际情况下消息很难具有幂等性，解决方法是使用另一个表记录已经被成功应用的消息，即消息队列和消息应用状态表一起来解决问题
+
+|BASE
+    |Basically Available -> 基本可用 支持分区失败(e.g. sharding碎片划分数据库)
+    |Soft state -> 软状态 状态可以有一段时间不同步，异步
+    |Eventually consistent -> 最终一致性 最终数据是一致的就可以了，而不是时时高一致
+        -> 通过异步事件实现
+        -> 电商的很多业务，考虑更多的是'{BASE}'，而不是ACID(Atomicity、Consistency、Isolation和 Durability)。即为了满足高负载的用户访问，可以容忍短暂的数据不一致
+            1.不做分布式事务，代价太大
+            2.不一定需要实时一致性，只需要保证最终一致性即可
+            3.通过状态机和严格的有序操作，来最大限度地降低不一致性
+
+        -> 如果消息具有操作幂等性，也就是一个消息被应用多次与应用一次产生的效果是一样的话，那么把不需要同步执行的事务交给异步消息推送(MQ中间件)和订阅者集群(服务架构功能模块)来处理即可。假如消息处理失败，那么就消息重播，由于幂等性，应用多次也能产生正确的结果
+
+|RESTful -> C/S模式，建立在分布式体系上，通过互联网通信，具有高延时、高并发等特点
+    |URI(Uniform Resource Identifier) -> 统一资源定位符. 资源就是网络上的一个实体，或者说是网上的一个具体信息, 可以是一份文本、图片、歌曲、视频、服务。要获取资源，访问URI就可以，因此URI就成了每个资源的地址或独一无二的识别符。上网就是与网上一系列的资源互动，调用其URI
+
+    |特性
+        1.一切网络对象都被抽象成一种资源
+        2.客户端和服务器之间, 传递这种资源的某种表现层
+        3.客户端通过四个HTTP动词, 对服务器端资源进行操作, 实现"表现层状态转化"
+        4.http操作无状态, 减少上下文依赖, 降低耦合
+        5.目的是简化http操作, 网站即软件, 防止跨站攻击
+
+    |API设计
+        -> API与用户的通信协议，总是使用HTTPs协议
+        -> 应该尽量将API部署在专用域名之下, https://api.example.com; 如果确定API很简单，不会有进一步扩展，可以考虑放在主域名下, https://example.org/api/
+
+        |版本号 -> 可能会增加维护成本
+            -> 推荐的做法是两种一起用，对外的API地址一直保持不变，做一个转发器，然后内部api还是按照版本写成不同的地址和controller，方便维护和管理
+            1.将API版本号放入URL
+                https://api.xxx.com/v1.1/ | https://api.xxx.com/users?version=2.0
+                -> 好处就是可以写成多个controller 方便管理和维护，坏处就是第一前端麻烦，api升级之后还需要更改地址，第二代码存在冗余，在功能可能重叠的情况下会写出重复代码
+            2.将版本号放在HTTP头中(Header: Accept)
+                Request ==>
+                GET /app/123 HTTP/1.1
+                Accept: application/vnd.xxx[.version].param[+json] #template
+                Accept: application/vnd.demo.app-v2+json #demo
+                Accept: application/json; version=2.0 #simplified
+                <== Response
+                HTTP/1.1 200 OK
+                Content-Type: application/vnd.demo.app-v2+json
+                -> 对于客户端来说调用更方便，所有api接口的地址都不改动，只需要更改自身版本号即可访问新的接口，坏处就是做兼容性有一点麻烦
+
+        |路径(Endpoint) -> 表示API的具体网址
+            -> 在RESTful架构中，每个网址代表一种资源，所以网址中不能有动词，只能有'{名词}'，而且所用的名词往往与'{数据库的表名}'对应。一般来说，数据库中的表都是同种记录的'{集合}'，所以API中的名词也应该使用'{复数}'. 单个对象用ID表示
+                https://api.example.com/v1/zoos
+                https://api.example.com/v1/animals
+            -> 如果记录很多,服务器不可能都将它们返回给用户。API应该提供'{参数}',过滤返回结果
+                ?limit=10：指定返回记录的数量
+                ?offset=10：指定返回记录的开始位置
+                ?page=2&per_page=100：指定第几页，以及每页的记录数
+                ?sortby=name&order=asc：指定返回结果按照哪个属性排序，以及排序顺序
+                ?type_id=1：指定筛选条件
+            -> 服务器向用户返回状态码和提示信息
+                -> 如果状态码是4xx，就应该向用户返回出错信息 {error: "Error Msg!"}
+            -> 针对不同操作，服务器向用户返回的结果应该符合以下规范
+                GET /collection -> 返回资源对象的列表（数组）
+                GET /collection/resource -> 返回单个资源对象
+                POST /collection -> 返回新生成的资源对象
+                PUT /collection/resource -> 返回完整的资源对象
+                PATCH /collection/resource -> 返回完整的资源对象
+                DELETE /collection/resource -> 返回一个空文档
+            -> API的身份认证应该使用OAuth 2.0框架
+
+            |Data Parse
+                -> JSON在80%的情况下(轻量级)都够用了, 剩下的20%情况下(重量级)需要用XML
+                -> 服务器返回的数据格式,应该尽量使用JSON,避免使用XML. 某些场合不得不使用XML
+                -> XML适合展现(XML+XSL->HTML,Android Layout,Ajax),JSON适合数据传输解析
+                -> '{YAML对人类最友好}'
+                -> '{XML对数据的描述性好}', 解码难度高(需考虑子节点和父节点)
+                -> '{JSON数据结构简单}', 冗余字节少, 数据包比XML小
+                    '{编码难度低, 适合网络传输, 占用带宽小}'
+                -> '{JSON与多个编程语言的交互更方便, 无缝对接, 便于解析和读取}'
+                -> XML只有文字, 没有数字格式; JSON有明确的number格式, 在locale上也安全
+                -> JSON的true/false/null也能容易统一至一般编程语言的对应语义
+
+                |JSON底层原理 -> 遍历字符串中的字符，最终根据格式规定的特殊字符，比如{}、[]、：等进行区分，{}号表示字典，[]号表示数组，：号是字典的键和值的分水岭，最终仍是将JSON转化为'{字典}'，只不过字典中的值可能是“字典、数组或者字符串而已”
+
+                |XML底层原理 -> DOM解析和SAX解析
+                    |DOM解析 -> 将内容解析为DOM树.解析时需处理整个文档,对内存和性能的要求高
+                    |SAX解析 -> 解析时触发一系列事件.发现给定tag时,激活回调方法,告诉该方法指定标签已找到.对内存的要求较低，因为他让开发人员自己来决定所要处理的tag，特别是当开发人员只需要处理文档中所包含部分数据时
+
+                |YAML(音 /yeml/)的设计目标,就是方便人类读写, 是一种通用的数据串行化格式
+                    1.大小写敏感
+                    2.使用缩进表示层级关系
+                    3.缩进时不允许使用Tab键，只允许使用空格。
+                    4.缩进的空格数目不重要，只要相同层级的元素左侧对齐即可
+
+            |Hypermedia -> 返回结果中提供转向其他API方法的链接，使用户不查文档也知道下一步应该做什么
+                比如，当用户向api.example.com的根目录发出请求，会得到这样一个文档
+                {"link": {
+                  "rel":   "collection https://www.example.com/zoos",
+                  "href":  "https://api.example.com/zoos", #API的路径
+                  "title": "List of zoos", #API的标题
+                  "type":  "application/vnd.yourformat+json" #返回类型
+                }}
+                上面代码表示，文档中有一个link属性，用户读取这个属性知道下一步该调用什么API。rel表示这个API与当前网址的关系(collection关系,并给出该collection的网址)
+
+                Hypermedia API的设计被称为HATEOAS。Github的API就是这种设计，访问api.github.com会得到一个所有可用API的网址列表
+                {#如果想获取当前用户的信息，应该去访问api.github.com/user
+                  "current_user_url": "https://api.github.com/user",
+                  "authorizations_url": "https://api.github.com/authorizations",
+                  // ...
+                }
+                -> 然后就得到了下面结果
+                {#服务器给出了提示信息，以及文档的网址
+                  "message": "Requires authentication",
+                  "documentation_url": "https://developer.github.com/v3"
+                }

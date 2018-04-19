@@ -52,43 +52,44 @@
                     -> 类似于饭店的后厨与前台的关系。后厨每做完一轮菜，就会向前台经理询问是否还有要做的菜，如果有就继续做。服务员们相当于线程池, 前台经理就相当于观察者，他收到的顾客点单就是回调函数
 
 |多路复用 -> select/poll/epoll
-    -> 主线程监视多个fd,一旦某个fd就绪(读就绪或写就绪),通知程序进行相应的读写操作
-    -> Nginx默认use select/poll
+    -> 监听多个fd,一旦某个fd就绪(读就绪或写就绪),通知用户程序进行相应的读写操作
+    -> Nginx默认使用select/poll
     -> 与同步非阻塞IO相比，IO复用模型的优势在于可以同时等待多个（而不是一个）fd就绪
 
     |fd -> socket文件描述符. 是一个指向文件的引用
         -> Socket起源于Unix. Unix中把所有的资源都看作是文件，比如网卡、打印机等，所以Socket通信使用网卡，网卡又处理许多'{连接}'，每个连接都需要一个对应的ID，即对应的文件描述符。函数socket()返回的就是这个描述符。在传输中要使用这个惟一ID来确定要往哪个连接上传输数据
         > int fd = socket(AF_INET,SOCK_STREAM, 0);
 
-        |select -> 获取就绪fd时轮询,遍历全部fd,一个进程能打开的'{FD数目有限制}'(默认1024)
-            -> 轮询时会将所有fd从用户态'{复制}'到内核态.随着fd量的增长,此复制开销也会线性增长
-            -> 参数__FD_SETSIZE定义了每个FD_SET的句柄个数
+    |select -> 获取就绪fd时轮询,遍历全部fd,一个进程能打开的'{FD数目有限制}'(默认1024)
+        -> 轮询时会将所有fd从用户态'{复制}'到内核态.随着fd量的增长,此复制开销也会线性增长
+        -> 参数__FD_SETSIZE定义了每个FD_SET的句柄个数
 
-        |poll -> 相比select，poll只是'{取消了最大fd数限制}'，并未从根本上解决select的问题
+    |poll -> 相比select，poll只是'{取消了最大fd数限制}'，并未从根本上解决select的问题
 
-        |epoll -> 只轮询就绪队列,一个进程能打开的FD数目没有的限制=n*10W(系统内存nGB)
-            |IO操作 -> read和write,程序判断每个fd的事件类型,可读则读数据,可写则写数据
-            -> epoll仅用于linux2.6以上内核,可大大提高server性能,mac用不了
+    |epoll -> 只轮询就绪链表,适用于'{高并发长连接}'场景. 仅能用于linux2.6以上内核,mac用不了
+        -> 一个进程能打开的FD数限制=n*10W(系统内存nGB)
 
-            |应用场景 -> 高并发长连接
+        |内核缓冲区 -> 内核判断读/写缓冲区,判断fd可读还是可写.epoll只关心缓冲区非空/非满事件
+            |读缓冲区 -> sckt.recv() 为空则read返回-1, errno=EAGAIN; 否则生成可读事件
+            |写缓冲区 -> sckt.send(data)为满则write返回-1,errno=EAGAIN;否则生成可写事件
 
-            |'{内存映射}'(mmap) -> 内核与用户空间映射同一块内存
-                -> mmap将用户空间的一块地址和内核空间的一块地址映射到同一块物理内存地址（不管是用户空间还是内核空间都是虚拟地址，最终要通过地址映射映射到物理地址），使得这块物理内存对内核和对用户均可见，'{减少用户态和内核态之间的数据拷贝}'。内核可以直接看到epoll监听的句柄，效率高
-                -> epoll_wait获取就绪fd时,返回的并不是实际的描述符,而是一个代表就绪描述符的值,拿到这些值去epoll中依次取得相应的文件描述符即可,避免了复制大量文件描述符带来的开销
+            |IO操作 -> 可读(select.EPOLLIN)和可写(select.EPOLLOUT), 内核获取fd事件类型
 
-            |红黑树(RB-Tree) -> epoll采用红黑树去监听所有套接字，当添加或者删除一个套接字时，都在红黑树上去处理，红黑树插入和删除性能比较好，时间复杂度O(logN)
+        |红黑树(RB-Tree) -> epoll用红黑树监听套接字,插入和删除性能较好,时间复杂度O(logN)
 
-            |新建实例 -> epoll_create创建epoll实例
-            |监听连接 -> epoll_ctl将新连接fd加入可读集合,并将fd和回调函数注册进epoll监听树
-            |事件发生 -> 有报文发过来, 内核通知epoll(LT或ET)将对应fd标识放入就绪队列
-            |执行回调 -> epoll_wait轮询就绪队列标识取出fd, 读取发送过来的数据, 放到用户态消息队列, 然后将这个fd加入写消息集合, 用户进程消费消息队列, 执行fd的回调函数, 通知epoll将这个fd标识加入就绪队列, epoll_wait取出fd, 将消息队列中的对应数据发送到fd另一端
-            |连接关闭 -> 当socket被close掉后，会自动从epoll中删除
+        |新建实例 -> epoll_create在专属的内核缓冲区创建epoll实例
+        |监听连接 -> epoll_ctl将新连接fd, 内核缓冲区事件类型和回调函数注册进epoll监听树
+        |事件发生 -> 有报文发过来, 内核执行回调, 将对应fd放入就绪链表
+        |执行IO -> epoll_wait轮询就绪链表取出fds, 然后将对应的数据复制到用户态. 用户进程按照事件类型执行读操作或写操作
+        |连接关闭 -> 当socket被close掉后，epoll_ctl会自动从epoll中删除对应fd
 
-            -> epoll_wait调用ep_poll，当EventQueue为空（无就绪fd）时挂起当前进程(阻塞)，直到EventQueue不空时进程才被唤醒. epoll_wait返回时，实际上是把内核中的就绪链表中的fd发送给用户态，用户态处理事件的同时，内核更新并继续维护就绪链表
-
-            running -> epoll_create(create epoll instance in KernelState) -> epoll_ctl(create RB-Tree & EventQueue for fds on epoll instance) -> epoll_ctl(insert a new fd into RB-Tree then register a callback) -> a request happens on a socket -> KernelState(activate corresponding fd to readable/writeable/etc., execute callback) -> callback(put a fd-stamp corresponding to the previously mentioned socket into EventQueue then awake epoll_wait) -> epoll_wait(get fd-stamps from EventQueue, find corresponding fds, send fds to UserState then read/write/etc. data on sockets)
+        -> epoll_wait调用ep_poll，当EventLink为空（无就绪fd）时挂起当前进程(阻塞)，直到EventLink不空时才被唤醒. epoll_wait返回时，实际上是把内核中的就绪链表中的fd发送给用户态，用户态处理事件的同时，内核更新并继续维护就绪链表
 
         |边缘触发(Edge Triggered) -> Nginx-Epoll默认工作方式,更高效的通知模式,推荐ET模式
             -> 只有在监视的文件句柄上'{发生事件}'的时候内核才会通知进程fd准备就绪,之后不再通知
         |水平触发(level triggered) -> epoll'{默认}'工作方式,redis的默认工作方式
             -> 没有任何操作,内核还是会一直通知你一个fd是否就绪,这种模式编程'{出错误可能性小}'一点.传统的select/poll都是这种模型的代表
+
+        |XXX'{内存映射}'(mmap)??? -> 内核与用户空间映射同一块内存
+            -> mmap将用户空间的一块地址和内核空间的一块地址映射到同一块物理内存地址（不管是用户空间还是内核空间都是虚拟地址，最终要通过地址映射映射到物理地址），使得这块物理内存对内核和对用户均可见，'{减少用户态和内核态之间的数据拷贝}'。内核可以直接看到epoll监听的句柄，效率高
+            -> epoll_wait获取就绪fd时,返回的并不是实际的描述符,而是一个代表就绪描述符的值,拿到这些值去epoll中依次取得相应的文件描述符即可,避免了复制大量文件描述符带来的开销

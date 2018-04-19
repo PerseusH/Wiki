@@ -3,56 +3,102 @@
         requests
         flask
         gevent
-        MQ中间件
         多进程
         多线程
         协程
-        设计模式 -> 单例, 消息队列, 装饰器
+        |设计模式 -> 单例, 消息队列, 装饰器
     2.nginx
+        |幂等性(Idempotence) -> 操作一次和操作多次的副作用一样(防止某长时间操作等待过程中, 用户多次刷新页面提交重试). 数据库中用唯一键阻挡重试是比较安全的方式
         epoll&select
         static_cache
         load_balance
         reverse_proxy
-    3.redis
+        MQ中间件
+    3.http
+        RestFull-API
+        |网络攻击 -> DDos防护
+        DNS轮询
+        |TCP
+            |三次握手 -> 建立连接
+            |四次挥手 -> 关闭连接
+            |TIME_WAIT -> 主动关闭方发送完最终ACK后的状态
+            |CLOSE_WAIT -> 被动关闭方收到FIN并发送ACK后的状态
+            |Socket = Ip address + TCP/UDP + port
+            |返回值 -> -n->出错; 0->到达文件结尾,连接关闭; n->发送|接收到的数据大小
+
+            |数据操作
+                write -> 发送口
+                read -> 接收口
+                send -> 发送口
+                recv -> 接收口
+        UDP
+        http
+        https
+    4.redis
         data-type
         memory_cache
         epoll
         cluster
         connection_pool
         pub-sub
-    4.mysql
-        index
+    5.mysql
+        |index
             聚集索引数据结构
         no_join
         no_table_scan
+        分表&分库
         cluster
-        lock
+        |lock
             悲观锁
             乐观锁
-            自旋锁
-        B-Tree/B+Tree
+        |B-Tree/B+Tree
             插入
             查找
             删除
-    5.http
-        RestFull-API
-        |幂等性 -> 操作一次和操作多次的副作用一样(防止某长时间操作等待过程中, 用户多次刷新页面提交重试). 数据库中用唯一键阻挡重试是比较安全的方式
-        网络攻击
-        网络安全
-        tcp
-            三次握手
-            四次握手
-            timewait
-            socket
-                |返回值 -> -n->出错; 0->到达文件结尾,连接关闭; n->发送|接收到的数据大小
+    6.前端
+        |异步请求 -> Node
+        |CDN -> 幂等请求, 资源静态化
 
-                |数据操作
-                    write -> 发送口
-                    read -> 接收口
-                    send -> 发送口
-                    recv -> 接收口
-        udp
-        http
-        https
+\Stack
+	|**Deployment
+	-> Release(Fabric, Ansible)
+	-> Pack(Setup, Wheel, Pip, Makefile, VirtualEnv)
+	-> Test(UnitTest, DocTest, PyTest)
+	-> Build(Travis-CI, Jenkins, Docker)
+
+	|**Coding
+	-> Debug(iPython, PDB/iPDB)
+	-> Tools(Linux&Vim&SSH, Git, Atom)
+	-> DataStructure(String, Array, Queue, Stack, Tree, list, Hash)
+
+	FrontEnd(RESTful,DOM&H5,JS&ES6,CSS&LESS&SASS,React&Redux&Webpack&Node&Gulp)
+    Network(ProcessMsg,Socket,MultipleThread,Coroutine,Gevent,Asyncio,RabbitMQ)
+
+	|**Data
+	-> Storage(BigData, Mysql, Redis, MongoDB)
+		-> 使用pymongo，并用Mongoengine重构文件托管服务的模型
+		-> MongoDB索引、高可用和分片的经验
+
+	Python(Flask, Celery, Django, Tornado, Mako)
+	WebServer(Nginx, Gunicorn, UWsgi)
 
 面试知识点mix -> 算法题 -> 实战项目
+
+|Must do -> 用户注册登录模块 -> XSS攻防 -> 网络编程 -> MQ中间件 -> Celery
+
+|mysql
+    |查询计划
+    |查看语句IO和CPU使用情况
+    |show profile
+    |为什么语句没有使用索引
+    |实体类型（用户自定义字段）
+    |字段搜索
+|python
+    |ordereddict自定义
+    |用C实现pylist
+    |第三方C语言包内存泄漏
+    |进程卡死怎么定位
+    |flask g变量
+    |flask路由
+    |WSGI的组成部分
+工作中最有挑战性的部分

@@ -63,6 +63,9 @@
 	taskkill /F /IM python.exe #批量删除进程
 	Alt+F4 #关闭当前所有窗口
 
+\Chrome
+    chrome://net-internals/#dns #查看Chrome浏览器DNS缓存
+
 \Future
 	-> 遗传算法
 	-> 最大熵模型应用:词性标注、短语识别、指代消解、语法分析、机器翻译、文本分类、问题回答、语言模型

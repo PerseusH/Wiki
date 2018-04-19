@@ -58,6 +58,15 @@
     -> 反引号(``)是为了区分MYSQL的'{保留字与普通字符}'而引入的符号.
         mysql> SELECT `limit` FROM `test` WHERE select='字段值'
 
+    |查询分页
+        #取前5条数据
+        select * from table_name limit 0,5 | select * from table_name limit 5
+        #查询第11到第15条数据
+        select * from table_name limit 10,5
+
+        limit关键字的用法：LIMIT [offset,] rows
+        offset指定要返回的第一行的偏移量，rows指定返回行的最大数目。初始行的偏移量是0(不是1)
+
 \配置文件/etc/my.cnf
     [mysqld]
     max_connections = 2000              //最大连接数

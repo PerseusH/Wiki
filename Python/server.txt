@@ -219,7 +219,50 @@
         >        condition.release()
         |Socket
 
+\WSGI
+    -> 主要由三大部分组成WSGI SERVER、WSGI Middleware 、WSGI Application，他们之间的关系是：wsgi server 接收来自客户端的request请求，封装environ环境变量，给app提供回调函数；调用app,并将environ和回调函数一起传递给app；最后接收来自app的header/status/body响应信息，传给客户端。wsgi Middleware是服务器和应用程序之间的桥梁，中间件同时扮演两种角色，在服务端看来，中间是app能够被调用，在应用程序看来，它是服务端，能够进一步包装需要出来的信息，并将出来的信息传递调用app。应用程序是我们开发程序的主体，必须可调用，必须能够接受服务端传过来的两个参数environ和callback函数。将传入进来的参数，进一步出来生成responce响应信息，传回服务器端
 
+    |Server
+        def run(application):
+            environ={}                     #设定环境信息
+
+            def start_response(status,headers):  #define callback function
+                pass
+
+            result=application(environ,start_response) #call app pass two parameters
+
+            def write(data):                #访问result iterator object
+                pass
+
+            for data in result:
+                write(data)
+
+    |Middleware
+        def dispath(url_app_mapping):
+            def midware_app(envion,start_responce):      #callable function
+                url=environ['PATH_INFO']
+                app=url_app_mapping[url]                 #get the view function
+                result=app(environ, start_response)      #call app
+                return result
+            return midware_app
+
+        class dispath():
+
+            def __init__(self,application):              #调用合适的app
+                self.app=application
+
+            def __call__(self,environ,start_response):
+                #do sometiong
+                return self.app(environ,start_response)  #自身可调用
+
+    |Application
+        def app(environ,start_response):              #可调用接收两个参数
+            status='200 ok'
+            headers=[('Content-type','text/plain')]   #设置响应状态码和响应信息
+
+            start_response(status,headers)            #调用回调函数
+
+            return ["hello world"]                    #返回body 可迭代对象
 
 \消息队列
     -> 使用Beanstalkd
