@@ -1,0 +1,114 @@
+\环境变量
+    $HOME = ~/ #当前用户根目录
+    echo $PATH #使用echo命令查看单个环境变量
+    env #使用env查看所有环境变量
+
+perror err_code #查看错误代码信息
+
+\bash多命令执行
+    *; *   #命令会连续的执行下去
+    * && * #中间有错误则不再执行后面的命令,没错则执行到完为止
+    *|*    #前一命令生成结果作为后一命令的参数进行传递
+    echo x.txt|xargs cat > y.txt #echo xxx.txt->"x.txt"->xargs->cat @xargs > y.txt
+    echo y.txt|xargs rm #echo y.txt->"y.txt"->xargs->rm @xargs
+
+\gdb
+    gdb #调试C/C++程序
+    bt/backtrace #gdb指令,查看core文件中的堆栈信息
+
+\系统信息
+    arch #显示机器的处理器架构(1)
+    uname -m #显示机器的处理器架构(2)
+    uname -r #显示正在使用的内核版本
+    dmidecode -q #显示硬件系统部件 - (SMBIOS / DMI)
+    sysctl -a #系统limit信息
+    sysctl machdep.cpu #mac cpu info
+    who | users | w | id [-un] | whoami #当前登录用户信息
+    cat /proc/sys/fs/file-max #系统文件句柄limit
+    cat /proc/sys/fs/file-nr #系统目前使用的文件句柄数量
+    hdparm -i /dev/hda #罗列一个磁盘的架构特性
+    hdparm -tT /dev/sda #在磁盘上执行测试性读取操作
+    cat /proc/cpuinfo #显示CPU info的信息
+    #总核数 = 物理CPU个数 X 每颗物理CPU的核数
+    #总逻辑CPU数 = 物理CPU个数 X 每颗物理CPU的核数 X 超线程数
+    cat /proc/cpuinfo| grep "physical id"| sort| uniq| wc -l #查看物理CPU个数
+    cat /proc/cpuinfo| grep "cpu cores"| uniq #查看每个物理CPU中core的个数(即核数)
+    cat /proc/cpuinfo| grep "processor"| wc -l #查看逻辑CPU的个数
+    cat /proc/interrupts #显示中断
+    cat /proc/meminfo #校验内存使用
+    cat /proc/swaps #显示哪些swap被使用
+    cat /proc/version #显示内核的版本
+    cat /proc/net/dev #显示网络适配器及统计
+    cat /proc/mounts #显示已加载的文件系统
+    lspci -tv #罗列 PCI 设备
+    lsusb -tv #显示 USB 设备
+    date #显示系统日期
+    cal 2007 #显示2007年的日历表
+    date 041217002007.00 #设置日期和时间 - 月日时分年.秒
+    clock -w #将时间修改保存到 BIOS
+
+\Core
+    |用户态/内核态
+    -> 为了限制不同程序之间的访问能力,防止它们获取别的程序或外围设备的内存数据,并发送到网络,CPU划分出两个权限等级 -> 用户态和内核态(内存安全)
+        |内核态(CPU) -> 可访问内存所有数据,包括外围设备(硬盘,网卡).也可从一个程序切换到另一个
+        |用户态 -> 只能访问受限内存,不能访问外围设备.占用CPU能力被剥夺,CPU资源可被其他程序获取
+        |系统调用-> 操作系统的最小功能单位(memory, IO(file&network), process, devices)
+        -> 用户空间的应用程序,通过'{系统调用}',进入内核空间.这个时候'{用户空间的进程要传递很多变量、参数的值给内核}',内核态运行的时候也要保存用户进程的一些寄存器值、变量等
+        -> 对linux操作系统而言，将最高的1G字节（从虚拟地址0xC0000000到0xFFFFFFFF），供内核使用，称为内核空间，而将较低的3G字节（从虚拟地址0x00000000到0xBFFFFFFF），供各个进程使用，称为用户空间
+
+        |进程上下文 -> 用户进程传递给内核的参数、内核要保存的一整套变量、寄存器值和当时的环境等
+
+	-> Systemtap/DTrace #收集操作系统和JVM中的性能瓶颈
+	-> tcpdump #抓包工具,将网络中传送的数据包的头部完全截获下来提供分析
+    -> cron #周期执行任务的守护进程来处.cron读取一个或多个配置文件,这些配置文件中包含了命令行及其调用时间.cron的配置文件称为crontab,是cron table的简写
+
+	|nice #调整程序运行的优先级
+	nice (-n 10)/(--adjustment=10) proc/(-p pid)/(-u username) #将进程的VI值设为10
+	-> 'renice'用于改变'{正在运行}'的进程的niceness值
+	-> 'nice'是指'niceness',即友善度、谦让.在进程中表示进程的优先级,也即进程的友善度.niceness值为负时,表示'{高优先级}',能'{提前执行}'和'{获得更多的资源}',对应低友善度;反之,则表示低优先级,对应高友善度
+
+	|Load
+	-> uptime #查看linux系统负载
+		> 04:03:58 up 10 days, 13:19, 1 user, load average: 0.54, 0.40, 0.20
+		1.当前时间 -> 04:03:58
+		2.主机已运行时间,时间越大,说明你的机器越稳定 -> 10 days, 13:19
+		3.当前用户连接数,是总连接数而不是用户数 -> 1 user
+		4.'{平均负载}' -> 0.54, 0.40, 0.20,最近1分钟、5分钟、15分钟系统的负载
+			-> 在特定时间间隔内'{运行队列}'中的'{平均进程数}'
+	-> 如果一个进程满足以下条件则其就会位于运行队列中
+		1.它没有在等待I/O操作的结果
+		2.它没有主动进入等待状态(也就是没有调用'wait')
+		3.没有被停止(例如:等待终止)
+	-> 一般来说,每个CPU内核当前活动进程数(平均数)不大于3,则系统运行表现良好;每个CPU内核的任务数大于5,那么这台机器的性能有严重问题.如果你的主机是4核cpu的话,那么只要uptime最后输出的'{load average}'数值小于12即表示系统负载不是很严重;如果达到20,那就表示当前系统负载非常严重,估计打开执行web脚本非常缓慢
+
+    |服务端编程性能瓶颈
+    1.大量线程导致的线程切换开销
+    2.锁
+    3.非必要的内存拷贝(用户态<>内核态)
+    4.IO(磁盘和网络)
+
+\用户和群组
+    ulimit -a #查看当前用户的文件句柄limit
+    groupadd group_name #创建一个新用户组
+    groupdel group_name #删除一个用户组
+    groupmod -n new_group_name old_group_name #重命名一个用户组
+    useradd -c "Name Surname " -g admin -d /home/user1 -s /bin/bash user1 #创建一个属于 "admin" 用户组的用户
+    useradd user1 #创建一个新用户
+    userdel -r user1 #删除一个用户 ( '-r' 排除主目录)
+    usermod -c "User FTP" -g system -d /ftp/user1 -s /bin/nologin user1 #修改用户属性
+    passwd #修改口令
+    passwd user1 #修改一个用户的口令 (只允许root执行)
+    chage -E 2005-12-31 user1 #设置用户口令的失效期限
+    pwck 检查 '/etc/passwd' #的文件格式和语法修正以及存在的用户
+    grpck 检查 '/etc/passwd' #的文件格式和语法修正以及存在的群组
+    newgrp group_name #登陆进一个新的群组以改变新创建文件的预设群组
+
+\关机、重启以及登出
+    shutdown -h now #关闭系统(1)
+    init 0 #关闭系统(2)
+    telinit 0 #关闭系统(3)
+    shutdown -h hours:minutes & #按预定时间关闭系统
+    shutdown -c #取消按预定时间关闭系统
+    shutdown -r now #重启(1)
+    reboot #重启(2)
+    logout #注销

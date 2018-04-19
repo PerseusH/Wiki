@@ -137,6 +137,12 @@
     gunicorn mypy.wsgi:application -b 127.0.0.1[:8000] --reload #启动Django
     gunicorn -w 3 -b 127.0.0.1:5000 start-file-name:app -k gevent #启动Flask
 
+    1.gunicorn本身是个多进程管理器，需要指定相关的不同类型的worker去工作，使用gevent作为worker时单机大概是3000RPS Hello World，胜过torando自带的服务器大概是2000左右，uWSGI则会更高一点
+    2.相比于tornado对于现有代码需要大规模重构才能用上高级特性，Gevent只需要一个monkey，容易对代码进行快速加工
+    3.如果单纯追求性能，那uWSGI会更好一点，而gunicorn则会更易安装和结合gevent
+    4.在阻塞响应较多的情况下，gunicorn的gevent模式无疑性能会更加强大
+    5.功能实现方面，无疑uWSGI会更多一些，配置也会更加复杂一些
+
 \Supervisor
     -> supervisor是一个web可视化进程管理工具,可以很方便地启动、关闭和重启进程等
     /usr/local/etc/supervisord.ini #配置文件

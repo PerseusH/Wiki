@@ -1,33 +1,3 @@
-\Vim
-    |.vimrc #配置文件
-    -> 安装Vim,比vi好用
-    -> set incompatible
-    -> set nu #行号
-    -> set paste #无缩进粘贴
-
-	/ -> 查找
-	: -> 命令
-	:%s/old/new/g #全局替换
-    F2 -> i -> ctl+v #外部文本完美粘贴
-    shift+a #A,可直接到行尾添加内容
-    shift+d #D可删除光标后的本行内容
-
-    |多行注释
-        1.进入命令行模式, 按ctrl+v进入 visual block模式, 然后按j, 或者k选中多行, 把需要注释的行标记起来
-        2.按大写字母I, 再插入注释符, 例如#
-        3.按esc键就会全部注释了
-
-    |取消多行注释
-        1.进入命令行模式, 按ctrl+v进入 visual block模式, 按字母l横向选中列的个数, 例如#需要选中2列
-        2.按字母j, 或者k选中注释符号
-        3.按d键就可全部取消注释
-
-    -> :wq #保存并退出
-    -> ZZ #保存并退出
-    -> :q #如果是最后一个被关闭的窗口, 那么将退出vim
-    -> :q! #强制退出并忽略所有更改
-    -> :e! #放弃所有修改, 并打开原来文件
-
 \Mac CMD
     Finder -> Go -> /etc/hosts #hosts
     Atom -> opt+cmd+i #es6 console

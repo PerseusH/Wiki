@@ -28,9 +28,9 @@
 		|成为更好的人 -> 意识中的曲线总是连续的, 但现实中的路径总是离散的, 曲折的
 
 		'{春困}'
-		|GymCount:300 | LastTime: 10:35 | SexPermission: N
-		|LastMeal(1):	  08:00
-		|LastMedicine(0): 11:25
+		|GymCount:400 | LastTime: 15:35 | SexPermission: N
+		|LastMeal(0):	  08:00
+		|LastMedicine(1): 16:10
 
 		|本我 -> 天性(懒惰, 享乐, 习惯)
 		|自我 -> 天职(学习使用和制造工具, 利用工具获取利益)

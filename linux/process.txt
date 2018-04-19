@@ -1,0 +1,95 @@
+"working process | master" #主进程
+
+lsof -p pid|wc -l #查看某个进程开了哪些句柄
+lsof path/filename #查看目录/文件被什么进程占用,显示已打开该目录或文件的所有进程信息
+
+|top作为日常管理工作中最常用也是最重要的Linux系统监控工具之一可以动态观察系统进程状况方便系统管理员实时了解系统资源现状. 监控的最小单位是进程
+-> -i #显示空闲的进程
+-> -p #监控指定的进程,当监控多个进程时,进程ID以逗号分隔,这个选项只能在命令行下使用
+-> -u/U #监控指定用户相关进程
+-> -c #显示执行任务的命令行
+    $ top
+    #进程状态, 线程数. zombie(卡死的僵尸进程)
+    Processes: 275 total, 2 running, 273 sleeping, 1483 threads    06:24:28
+    #平均负载, CPU状态. user(用户态), sys(内核态), idle(空闲CPU)
+    Load Avg: 1.34, 1.55, 1.55  CPU usage: 0.71% user, 1.18% sys, 98.9% idle
+    SharedLibs: 89M resident, 44M data, 31M linkedit. MemRegions: 123086 total, 946M resident, 31M private, 269M shared.
+    #内存使用情况
+    PhysMem: 4033M used (1398M wired), 62M unused.
+    VM: 1252G vsize, 1100M framework vsize, 14564471(0) swapins, 15571181(0) swapouts.
+    #网络使用情况
+    Networks: packets: 41959091/48G in, 22745049/2603M out. Disks: 26247414/322G read, 28232872/318G written.
+
+    PID    COMMAND      %CPU TIME     #TH   #WQ  #PORT MEM    PURG   CMPRS  PGRP  PPID  STATE    BOOSTS            %CPU_ME
+    91947  top          4.0  00:00.61 1/1   0    23    2452K+ 0B     0B     91947 51072 running  *0[1]             0.00000
+    91930  quicklookd   0.0  00:00.13 4     1    76    3372K  28K    0B     91930 1     sleeping  0[0]             0.00000
+    91786  mdworker     0.0  00:00.11 3     1    48    1912K  0B     1356K  91786 1     sleeping *0[1]             0.00000
+
+|ps -l #查看进程的优先级
+-> niceness值(NI)
+-> PRI表示进程当前的总优先级,值越小表示优先级越高,由进程默认的PRI加上NI得到,即PRI(new) = PRI(old) + NI
+
+ps [aux|-ef]|grep xxx #查看进程是否存在xxx进程
+|aux 用BSD格式显示
+-> 显示项:USER, PID, %CPU, %MEM, VSZ, RSS, TTY, STAT, START, TIME, COMMAND
+|-ef 用标准格式显示
+-> 显示项:UID, PID, PPID, C, STIME, TTY, TIME, CMD
+
+|awk [-F 'seperator'] '/pattern/{action}' <file>
+ps -ef|grep xxx|grep -v grep|awk '{print "kill -9 " $2}' |sh #批量删除含xxx进程
+-> "ps -ef"是linux里查看所有进程的命令.这时检索出的进程将作为下一条命令"grep xxx"的输入
+-> "grep xxx"是获取所有含有关键字"xxx"的进程
+-> "grep -v grep"是在前句的结果中排除含有关键字"grep"的进程
+-> "awk '{print "kill -9 " $2}'"是根据搜索结果批量打印出"kill -9 nnn"指令
+-> "print"是打印指令,"kill -9"会强行杀掉指定进程,"$2"就是"ps -ef"结果的第二列显示的PID
+-> "|sh"是执行awk打印的"kill -9 nnn"命令
+
+file xxx.txt|awk -F ':' '{cmd="rm "$1;system(cmd)}' #执行"rm xxx.txt"命令
+
+cat /etc/passwd|awk -F ':' '{print $1}'
+-> 等于"awk -F ':' '{print $1}' /etc/passwd"
+-> "cat /etc/passwd"获取文件内容给awk
+-> "-F ':'"为以":"分割文件内容的每行文本为两部分,"-F ':'"为域分隔符,"$1"为取每行第一部分,"$0"为取整条记录
+-> 在不指明"-F"域分隔符的情况下，默认的域分隔符是"空格"
+-> 适用于
+1."ps -ef|grep xxx"
+2."ls -l"
+3."awk '{}' <file>"
+4."cat <file>"
+5."ifconfig"
+6."find dir -name xxx"
+
+awk [-F:] '/xxx/{action}' #正则获取包含"xxx"的结果,action为空则默认全部输出
+
+ulimit -a #显示当前的各种用户进程限制
+ulimit -u 20480 #设置系统可以运行的最大并发进程数
+    -c #设置core文件的最大值.单位:blocks
+    -d #设置一个进程的数据段的最大值.单位:kbytes
+    -f #Shell 创建文件的文件大小的最大值，单位：blocks
+    -h #指定设置某个给定资源的硬极限。如果用户拥有 root 用户权限，可以增大硬极限。任何用户均可减少硬极限
+    -l #可以锁住的物理内存的最大值
+    -m #可以使用的常驻内存的最大值,单位：kbytes
+    -n #每个进程可以同时打开的最大文件数，默认值是 1024
+    -p #设置管道的最大值，单位为block，1block=512bytes
+    -s #指定堆栈的最大值：单位：kbytes
+    -S #指定为给定的资源设置软极限。软极限可增大到硬极限的值。如果 -H 和 -S 标志均未指定，极限适用于以上二者
+    -t #指定每个进程所使用的秒数,单位：seconds
+    -u #可以运行的-*- 最大并发进程数 -*-
+    -v #Shell可使用的最大的虚拟内存，单位：kbytes
+ulimit -d unlimited #数据段长度无限制
+ulimit -m unlimited #最大内存大小无限制
+ulimit -s unlimited #堆栈大小无限制
+ulimit -t unlimited #CPU时间无限制
+ulimit -v unlimited #虚拟内存无限制
+
+|定时任务
+    |Cron -> 定时任务服务
+        /user/sbin/cron start | stop | restart | reload | status
+
+    |Crontab -> 定时任务管理器
+        -> echo '*/1 * * * * /bin/date >> date.txt' > date.cron #crontab脚本
+            -> min hour day-of-month month-of-year day-of-week cmds #命令格式
+            -> *代表所有的取值范围内的数字，"/"代表每的意思,"/5"表示每5个单位，"-"代表从某个数字到某个数字,","分开几个离散的数字
+        crontab xxx.cron #启动任务脚本
+        crontab -l #查看定时任务是否成功
+            crontab -r #删除当前任务

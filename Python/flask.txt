@@ -11,16 +11,35 @@ import flask; flask.__version__ #查看版本
         -> 全局对象，你可以往里面保存东西，a线程保存到local对象的，只有a线程能取到，b线程的只有b线程能取到，如果，a，b保存了名字相同的东西，比如x，a取到的值是自己保存的，不会和b保存的混淆，修改操作也一样。 request，session，g都是用相同的原理实现的，都是保存在local对象里的线程（包括greenlet协程）安全的变量。 flask自己实现了local对象而不是使用标准库的threading.Local对象
 
         |LocalStack -> 线程有个叫做ThreadLocal的类，也就是实现'{线程隔离}'的类。werkzeug自己实现了线程隔离类：werkzeug.local.Local。LocalStack就是用Local实现的
-            -> flask.globals模块中定义了两个LocalStack对象
+            -> flask.globals模块中定义了两个LocalStack用来存储各上下文对象
                 _request_ctx_stack = LocalStack() | _request_ctx_stack.top #栈顶
                 _app_ctx_stack = LocalStack() | _app_ctx_stack.top #栈顶
-            -> LocalStack是flask定义的线程隔离的栈存储对象，分别用来保存应用和请求上下文。这是根据pid的不同实现的，类似于门牌号
+            -> LocalStack是flask定义的线程隔离的栈存储对象，分别用来存储应用和请求上下文。这是根据pid的不同实现的，类似于门牌号
             -> Flask是一个基于WerkZeug实现的框架，因此Flask的App Context和Request Context是基于WerkZeug的Local Stack的实现。这两种上下文对象类定义在flask.ctx中，ctx.push会将当前的上下文对象压栈压入flask._request_ctx_stack中，这个_request_ctx_stack同样也是个Thread Local对象，也就是在每个线程中都不一样，上下文压入栈后，再次请求的时候都是通过_request_ctx_stack.top在栈的顶端取，所取到的永远是属于自己线程的对象，这样不同线程之间的上下文就做到了隔离。请求结束后，线程退出，ThreadLocal本地变量也随即销毁，然后调用ctx.pop()弹出上下文对象并回收内存
             -> 每个传给flask对象的请求，都是在不同的线程中处理，而且同一时刻每个线程只处理一个请求. 因此g、session、request、current_app能做到同一个对象在所有请求中使用并且不会冲突.这几个对象还是定义在flask.globals中
                 current_app = LocalProxy(_find_app)
                 request = LocalProxy(partial(_lookup_req_object, 'request'))
                 session = LocalProxy(partial(_lookup_req_object, 'session'))
                 g = LocalProxy(partial(_lookup_app_object, 'g'))
+
+                def _lookup_req_object(name):
+                    top = _request_ctx_stack.top
+                    if top is None:
+                        raise RuntimeError('working outside of request context')
+                    return getattr(top, name)
+
+                def _lookup_app_object(name):
+                    top = _app_ctx_stack.top
+                    if top is None:
+                        raise RuntimeError('working outside of application context')
+                    return getattr(top, name)
+
+                def _find_app():
+                    top = _app_ctx_stack.top
+                    if top is None:
+                        raise RuntimeError('working outside of application context')
+                    return top.app
+                -> 可以看出，Flask中使用的一些“全局变量”，包括current_app、request、session、g等都来自于上下文对象。其中current_app一直指向_app_ctx_stack栈顶的“应用上下文”对象，是对当前应用的引用。而request、session、g等一直指向_request_ctx_stack栈顶的“请求上下文”对象，分别引用请求上下文的request、session和g。不过，从 Flask 0.10 起，对象 g 存储在应用上下文中而不再是请求上下文中
             -> 对g的调用就是这样一个过程，可以线程隔离的访问自己的g
                 访问g-->从当前线程的应用上下文栈顶获取应用上下文-->取出其中的g对象-->进行操作
 
@@ -45,12 +64,13 @@ import flask; flask.__version__ #查看版本
     |current_app -> 代表当前的flask程序实例,使用时需要flask的程序上下文激活
         from test import app
         from flask import current_app
+        #current_app.name #应用上下文未激活，会报错
         ctx=app.app_context()
-        ctx.push() #激活程序上下文
+        ctx.push() #激活应用上下文
 
         @app.route('/')
         def index():
-            return 'Hello, %s!' % current_app.name
+            return 'Hello, %s!' % current_app.name #正常运行
 
     |g -> 作为flask程序全局的一个临时变量,充当者中间媒介的作用,可以通过它传递一些数据
         -> 在'{请求钩子函数和视图函数之间共享数据}'一般使用上下文全局变量g。如before_request程序从数据库中加载已登录用户并保存到g.user中。随后在视图函数中使用g.user获取

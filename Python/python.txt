@@ -3,29 +3,10 @@
     |monkey patch -> 在运行时动态地对已定义的函数或对象进行修改或添加
     > import sys; sys.path.append(lib_path) #添加库模块路径后可以从其他目录import lib
 
-\Debug
-    |PyChecker -> 静态分析工具,它报告源代码中的错误并且会报告错误类型和复杂度
-    |Pylint -> 检验模块代码是否达到标准的工具
-
-    |iPython, PDB/iPDB
-        > import [pdb/ipdb]; [pdb/ipdb].set_trace() #设置断点
-        $ ipython test.py --pdb #以调试模式运行程序,发现异常或断点则进入pdb控制台进行调试
-        $ python -m [pdb/ipdb] test.py #以调试模式运行程序,直接进入pdb控制台
-
-    > import objgraph; objgraph.show_most_common_types(n) #获取前n大内存对象,用于查找内存泄露和大内存对象
-
     |comment for docstring #在class或function内部
-    > """
-    > xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-    > """
-
-    |logging -> 级别从高到低: CRITICAL>ERROR>WARNING>INFO>DEBUG>NOTSET, level以下级别的logging不会执行
-    > import logging
-    > #name为系统当前用户名
-    > logging.basicConfig(level=logging.INFO, format='%(asctime)s %(filename)s: %(lineno)s %(name)s %(levelname)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-    > logging.debug('This message should appear on the console')
-    > logging.info('So should this')
-    > logging.warning('And this, too')
+        > """
+        > xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+        > """
 
 \Type
     |Python3标准数据类型
@@ -142,7 +123,7 @@
             > def closure(): #c = closure(), c中会有一个闭包属性元组: __closure__
             >     num = 0
             >     def sub_closure():
-            >         nonlocal num #python3.x 指示变量不在当前函数作用域, 没有会报错
+            >         nonlocal num #python2.7+ 指示变量不在当前函数作用域, 没有会报错
             >         num += 1
             >         print(num)
             >     return sub_closure
