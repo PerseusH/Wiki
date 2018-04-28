@@ -1,13 +1,46 @@
 "working process | master" #主进程
+-> linux系统调用fork()创建子进程，进程间的关系是一棵树，树的根就是PID为1的init进程
 
-lsof -p pid|wc -l #查看某个进程开了哪些句柄
-lsof path/filename #查看目录/文件被什么进程占用,显示已打开该目录或文件的所有进程信息
+|前后台调度
+    Ctrl+z #挂起当前进程
+    jobs #查看后台任务列表，
+    fg #将后台任务恢复到前台运行
+    bg #激活后台被挂起的任务
 
-|top作为日常管理工作中最常用也是最重要的Linux系统监控工具之一可以动态观察系统进程状况方便系统管理员实时了解系统资源现状. 监控的最小单位是进程
--> -i #显示空闲的进程
--> -p #监控指定的进程,当监控多个进程时,进程ID以逗号分隔,这个选项只能在命令行下使用
--> -u/U #监控指定用户相关进程
--> -c #显示执行任务的命令行
+|lsof
+    lsof -p pid|wc -l #查看某个进程开了哪些句柄文件
+    lsof path/filename #查看目录/文件被什么进程占用,显示已打开该目录或文件的所有进程信息
+    lsof -p <pid> #查看进程使用的文件
+
+|strace -> 追踪进程的系统调用
+    -> mac下用dtruss
+    strace -p 15427 #简单追踪进程正在做什么
+    Process 15427 attached - interrupt to quit
+    futex(0x402f4900, FUTEX_WAIT, 2, NULL #在调用futex()的时候挂起卡死了
+    Process 15427 detached
+
+    sudo strace -T -tt -e trace=all -p 11124 #查看该进程正在持续的状态
+    Process 11124 attached - interrupt to quit
+    15:33:07.259044 read(9,
+
+|pstack
+    pstack pid #查看进程函数堆栈
+
+|pstree -> 以树状图显示进程间的关系
+    pstree #以树状图显示进程，只显示进程的名字，且相同进程合并显示
+    pstree -p #以树状图显示进程，还显示进程PID
+    pstree -p <pid> #以树状图显示进程PID为<pid>的进程以及子孙进程，如果有-p参数则同时显示每个进程的PID
+    pstree -a #以树状图显示进程，相同名称的进程不合并显示，并且会显示命令行参数，如果有-p参数则同时显示每个进程的PID
+
+|top -> 日常管理工作中最重要的Linux系统监控工具之一, 可以动态观察系统进程状况方便系统管理员实时了解系统资源现状. 监控的最小单位是进程
+    -> -i #显示空闲的进程
+    -> -p #监控指定的进程,当监控多个进程时,进程ID以逗号分隔,这个选项只能在命令行下使用
+    -> -u/U #监控指定用户相关进程
+    -> -c #显示执行任务的命令行
+    -> top界面里输入b和x, 再输入shift+’>’或’<‘就可以按照某列排序
+
+    |status->S:Sleeping; R:Running; D:Disk Sleeping; T:Stop; s:有子进程; +:位于后台
+
     $ top
     #进程状态, 线程数. zombie(卡死的僵尸进程)
     Processes: 275 total, 2 running, 273 sleeping, 1483 threads    06:24:28
@@ -25,62 +58,70 @@ lsof path/filename #查看目录/文件被什么进程占用,显示已打开该�
     91930  quicklookd   0.0  00:00.13 4     1    76    3372K  28K    0B     91930 1     sleeping  0[0]             0.00000
     91786  mdworker     0.0  00:00.11 3     1    48    1912K  0B     1356K  91786 1     sleeping *0[1]             0.00000
 
-|ps -l #查看进程的优先级
--> niceness值(NI)
--> PRI表示进程当前的总优先级,值越小表示优先级越高,由进程默认的PRI加上NI得到,即PRI(new) = PRI(old) + NI
+|ps -> 查看当前正在运行的进程
+    |ps -l #查看进程的优先级
+        -> niceness值(NI)
+        -> PRI表示进程当前的总优先级,值越小表示优先级越高,由进程默认的PRI加上NI得到,即PRI(new) = PRI(old) + NI
 
-ps [aux|-ef]|grep xxx #查看进程是否存在xxx进程
-|aux 用BSD格式显示
--> 显示项:USER, PID, %CPU, %MEM, VSZ, RSS, TTY, STAT, START, TIME, COMMAND
-|-ef 用标准格式显示
--> 显示项:UID, PID, PPID, C, STIME, TTY, TIME, CMD
+    |ps [aux|-ef]|grep xxx #查看进程是否存在xxx进程
+        |aux 用BSD格式显示
+        -> 显示项:USER, PID, %CPU, %MEM, VSZ, RSS, TTY, STAT, START, TIME, COMMAND
+        |-ef 用标准格式显示
+        -> 显示项:UID, PID, PPID, C, STIME, TTY, TIME, CMD
 
-|awk [-F 'seperator'] '/pattern/{action}' <file>
-ps -ef|grep xxx|grep -v grep|awk '{print "kill -9 " $2}' |sh #批量删除含xxx进程
--> "ps -ef"是linux里查看所有进程的命令.这时检索出的进程将作为下一条命令"grep xxx"的输入
--> "grep xxx"是获取所有含有关键字"xxx"的进程
--> "grep -v grep"是在前句的结果中排除含有关键字"grep"的进程
--> "awk '{print "kill -9 " $2}'"是根据搜索结果批量打印出"kill -9 nnn"指令
--> "print"是打印指令,"kill -9"会强行杀掉指定进程,"$2"就是"ps -ef"结果的第二列显示的PID
--> "|sh"是执行awk打印的"kill -9 nnn"命令
+|thread
+    ps -eLf | grep java | wc -l #监控java线程数
+    ls /proc/PID/task | wc -l #监控PID对应的线程数
+    pmap PID #输出进程内存的状况，可以用来分析线程堆栈
 
-file xxx.txt|awk -F ':' '{cmd="rm "$1;system(cmd)}' #执行"rm xxx.txt"命令
+|awk
+    |awk [-F 'seperator'] '/pattern/{action}' <file>
+    ps -ef|grep xxx|grep -v grep|awk '{print "kill -9 " $2}' |sh #批量删除含xxx进程
+    -> "ps -ef"是linux里查看所有进程的命令.这时检索出的进程将作为下一条命令"grep xxx"的输入
+    -> "grep xxx"是获取所有含有关键字"xxx"的进程
+    -> "grep -v grep"是在前句的结果中排除含有关键字"grep"的进程
+    -> "awk '{print "kill -9 " $2}'"是根据搜索结果批量打印出"kill -9 nnn"指令
+    -> "print"是打印指令,"kill -9"会强行杀掉指定进程,"$2"就是"ps -ef"结果的第二列显示的PID
+    -> "|sh"是执行awk打印的"kill -9 nnn"命令
 
-cat /etc/passwd|awk -F ':' '{print $1}'
--> 等于"awk -F ':' '{print $1}' /etc/passwd"
--> "cat /etc/passwd"获取文件内容给awk
--> "-F ':'"为以":"分割文件内容的每行文本为两部分,"-F ':'"为域分隔符,"$1"为取每行第一部分,"$0"为取整条记录
--> 在不指明"-F"域分隔符的情况下，默认的域分隔符是"空格"
--> 适用于
-1."ps -ef|grep xxx"
-2."ls -l"
-3."awk '{}' <file>"
-4."cat <file>"
-5."ifconfig"
-6."find dir -name xxx"
+    file xxx.txt|awk -F ':' '{cmd="rm "$1;system(cmd)}' #执行"rm xxx.txt"命令
 
-awk [-F:] '/xxx/{action}' #正则获取包含"xxx"的结果,action为空则默认全部输出
+    cat /etc/passwd|awk -F ':' '{print $1}'
+    -> 等于"awk -F ':' '{print $1}' /etc/passwd"
+    -> "cat /etc/passwd"获取文件内容给awk
+    -> "-F ':'"为以":"分割文件内容的每行文本为两部分,"-F ':'"为域分隔符,"$1"为取每行第一部分,"$0"为取整条记录
+    -> 在不指明"-F"域分隔符的情况下，默认的域分隔符是"空格"
+    -> 适用于
+    1."ps -ef|grep xxx"
+    2."ls -l"
+    3."awk '{}' <file>"
+    4."cat <file>"
+    5."ifconfig"
+    6."find dir -name xxx"
 
-ulimit -a #显示当前的各种用户进程限制
-ulimit -u 20480 #设置系统可以运行的最大并发进程数
-    -c #设置core文件的最大值.单位:blocks
-    -d #设置一个进程的数据段的最大值.单位:kbytes
-    -f #Shell 创建文件的文件大小的最大值，单位：blocks
-    -h #指定设置某个给定资源的硬极限。如果用户拥有 root 用户权限，可以增大硬极限。任何用户均可减少硬极限
-    -l #可以锁住的物理内存的最大值
-    -m #可以使用的常驻内存的最大值,单位：kbytes
-    -n #每个进程可以同时打开的最大文件数，默认值是 1024
-    -p #设置管道的最大值，单位为block，1block=512bytes
-    -s #指定堆栈的最大值：单位：kbytes
-    -S #指定为给定的资源设置软极限。软极限可增大到硬极限的值。如果 -H 和 -S 标志均未指定，极限适用于以上二者
-    -t #指定每个进程所使用的秒数,单位：seconds
-    -u #可以运行的-*- 最大并发进程数 -*-
-    -v #Shell可使用的最大的虚拟内存，单位：kbytes
-ulimit -d unlimited #数据段长度无限制
-ulimit -m unlimited #最大内存大小无限制
-ulimit -s unlimited #堆栈大小无限制
-ulimit -t unlimited #CPU时间无限制
-ulimit -v unlimited #虚拟内存无限制
+    awk [-F:] '/xxx/{action}' #正则获取包含"xxx"的结果,action为空则默认全部输出
+
+|ulimit
+    ulimit -a #显示当前的各种用户进程限制
+    ulimit -u 20480 #设置系统可以运行的最大并发进程数
+        -c #设置core文件的最大值.单位:blocks
+        -d #设置一个进程的数据段的最大值.单位:kbytes
+        -f #Shell 创建文件的文件大小的最大值，单位：blocks
+        -h #指定设置某个给定资源的硬极限。如果用户拥有 root 用户权限，可以增大硬极限。任何用户均可减少硬极限
+        -l #可以锁住的物理内存的最大值
+        -m #可以使用的常驻内存的最大值,单位：kbytes
+        -n #每个进程可以同时打开的最大文件数，默认值是 1024
+        -p #设置管道的最大值，单位为block，1block=512bytes
+        -s #指定堆栈的最大值：单位：kbytes
+        -S #指定为给定的资源设置软极限。软极限可增大到硬极限的值。如果 -H 和 -S 标志均未指定，极限适用于以上二者
+        -t #指定每个进程所使用的秒数,单位：seconds
+        -u #可以运行的-*- 最大并发进程数 -*-
+        -v #Shell可使用的最大的虚拟内存，单位：kbytes
+    ulimit -d unlimited #数据段长度无限制
+    ulimit -m unlimited #最大内存大小无限制
+    ulimit -s unlimited #堆栈大小无限制
+    ulimit -t unlimited #CPU时间无限制
+    ulimit -v unlimited #虚拟内存无限制
 
 |定时任务
     |Cron -> 定时任务服务

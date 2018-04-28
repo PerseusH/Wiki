@@ -82,8 +82,6 @@
 	Python(Flask, Celery, Django, Tornado, Mako)
 	WebServer(Nginx, Gunicorn, UWsgi)
 
-面试知识点mix -> 算法题 -> 实战项目
-
 |Must do -> 用户注册登录模块 -> XSS攻防 -> 网络编程 -> MQ中间件 -> Celery
 
 |mysql
@@ -93,6 +91,7 @@
     |为什么语句没有使用索引
     |实体类型（用户自定义字段）
     |字段搜索
+
 |python
     |ordereddict自定义
     |用C实现pylist
@@ -101,4 +100,9 @@
     |flask g变量
     |flask路由
     |WSGI的组成部分
-工作中最有挑战性的部分
+
+|工作中最有挑战性的部分
+    |幂等接口
+    |加密
+    |web安全
+    |中间件+设计模式

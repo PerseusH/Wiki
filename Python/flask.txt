@@ -92,10 +92,70 @@ import flask; flask.__version__ #查看版本
 \Route
 
 
+
+\WSGI
+    -> Web Server Gateway Interface是服务器和web框架或web应用之间建立的一种通用接口规范
+    -> WSGI不是服务器，不是API，不是模块，更不是框架，而是一种服务器和客户端交互的'{接口规范}'
+    -> WSGI接口规范的目的就是规范Web服务器与Web应用之间的交互，在协议之间进行转换
+    -> 主要由三大部分组成WSGI SERVER、WSGI Middleware 、WSGI Application
+        |server -> 接收来自客户端的request请求，封装environ环境变量，给app提供回调函数；调用app,并将environ和回调函数一起传递给app；最后接收来自app的header/status/body响应信息，传给客户端
+        |Middleware -> 是Server和app之间的桥梁，中间件同时扮演两种角色，在服务端看来，中间是app能够被调用，在应用程序看来，它是服务端，能够进一步包装需要出来的信息，并将出来的信息传递调用app
+            -> 例如，服务器拿到了客户端请求的URL, 不同的URL需要交由不同的函数处理，这个功能叫做 URL Routing
+        |app -> 是开发程序的主体，必须可调用，必须能够接受服务端传过来的两个参数environ和callback函数。将传入进来的参数，进一步出来生成responce响应信息，传回服务器端
+
+    |Server
+        def run(application):
+            # 准备 environ 参数，这是一个字典，里面的内容是一次 HTTP 请求的环境变量
+            environ={}                                   #设定环境信息
+            environ = dict(os.environ.items())
+            environ['wsgi.input']        = sys.stdin
+            environ['wsgi.errors']       = sys.stderr
+            environ['wsgi.version']      = (1, 0)
+            environ['wsgi.multithread']  = False
+            environ['wsgi.multiprocess'] = True
+            environ['wsgi.run_once']     = True
+            environ['wsgi.url_scheme'] = 'http'
+
+            def start_response(status,headers):          #define callback function
+                pass
+
+            result=application(environ,start_response)   #call application
+
+            def write(data):                             #把应答的结果输出到终端
+                sys.stdout.write(data)
+                sys.stdout.flush()
+
+            for data in result:                          #访问result iterator
+                write(data)
+        -> run是服务端程序，调用可调用应用程序application。定义一个start_response函数传递给application,作为回调函数。run调用application后，返回一个iterator 迭代对象，将其赋值给result。write()函数在start_response将响应头信息发送后，发送响应body信息
+
+    |Middleware -> 处于服务器和应用两侧，起粘合作用，具体包括：请求处理、environ处理
+        def dispath(url_app_mapping):
+            def midware_app(envion,start_responce):      #callable function
+                url=environ['PATH_INFO']
+                app=url_app_mapping[url]                 #get the view function
+                result=app(environ, start_response)      #call app
+                return result
+            return midware_app
+
+        class dispath():
+            def __init__(self,application):              #调用合适的app
+                self.app=application
+            def __call__(self,environ,start_response):
+                #do sometiong
+                return self.app(environ,start_response)  #自身可调用
+        -> middleware 即是服务端又是应用端。那么就应满足 服务端条件：能够配置envion,具有start_response并将其传递给应用程序调用应用程序；应用端条件：可调用，接收两个参数，返回迭代对象
+
+    |Application -> '{可被调用}'的对象，一般指包含__call__方法(实例可以当作函数调用)的对象
+        def application(environ,start_response):         #可调用接收两个参数
+            status='200 ok'
+            headers=[('Content-type','text/plain')]      #设置响应状态码和响应信息
+            start_response(status,headers)               #调用回调函数
+            return ["hello world"]                       #返回body 可迭代对象
+        -> 一个简易的app应用程序，注意返回的body要是一个可迭代对象
+
 |常用扩展 -> Flask-SQLAlchemy、Flask-Script、Flask-DebugToolbar、Flask-Migrate、Flask-WTF、Flask-Security、Flask-RESTful、Flask-Admin和Flask-Asset
 -> 依赖库Werkzeug的使用
 
 |SQLAlchemy
     -> python操作数据库的一个库.能够进行orm映射.采用简单的Python语言,为高效和高性能的数据库访问设计,实现了完整的企业级持久模型.SQLAlchemy的理念是,SQL数据库的量级和性能重要于对象集合,而对象集合的抽象又重要于表和行
-
--> Celery

@@ -1,12 +1,31 @@
 |进程fd -> 进程文件描述符
-|死锁 -> 假设有两个全局资源，a和b，有两个线程thread1，thread2. thread1占用a，想访问b，但此时thread2占用b，想访问a，两个线程都不释放此时拥有的资源，并互相等待，那么就会造成死锁
-    |解决方法 -> 单线程异步IO
 
 |挂起(动作) -> 由系统或程序主动执行,阻塞当前进程/线程,需主动唤醒(不释放CPU,可能释放内存,放在外存)
 |睡眠(动作) -> 由系统或程序主动执行, 阻塞当前进程/线程，定时唤醒
 |阻塞(状态) -> 被动执行，在抢占资源中得不到资源，被动的挂起在内存，等待某种资源或信号量（即有了资源）将他唤醒(释放CPU，不释放内存).进程/线程的'{阻塞和唤醒}'会导致CPU从'{用户态切换到内核态}'
 
 -> 大数据处理的效率在于良好的分布计算逻辑(并行计算),而不是什么语言.'{瓶颈在IO}',使用SSD硬盘解决
+
+-> *RPC*通常意味着进程是在和其它进程通信（可能是本地服务进程或者远程服务进程）
+
+\死锁
+    -> 假设有两个全局资源，a和b，有两个线程thread1，thread2. thread1占用a，想访问b，但此时thread2占用b，想访问a，两个线程都不释放此时拥有的资源，并互相等待，那么就会造成死锁
+
+    |可抢占资源 -> CPU，主存等可以共享的资源
+    |不可抢占资源 -> 打印机，光驱等不可共享的资源(临界资源)
+
+    |安全状态 -> 如果存在一个由所有进程构成的'{安全序列}'P1，…，Pn，则系统处于安全状态. 不存在安全序列则是不安全状态. 安全状态一定没有死锁发生
+        |安全序列 -> 每个线程必须先获取第一个资源, 才能继续顺序获取下一个资源
+
+    |必要条件
+        1.互斥 -> 某资源只能被一个进程使用，其他进程请求该资源时只能等待，直到资源使用完后释放
+        2.请求和保持 -> 程序已经占用了至少一个资源，但是又请求其他进程占用的资源
+        3.不可抢占 -> 进程已获得的资源没有使用完，不能被抢占
+        4.循环链 -> 必然存在一个循环链
+
+    |解决方法 -> 保证所有线程按照一致的顺序(安全序列)获取资源
+        1.单线程异步IO
+        2.银行家算法
 
 \Coroutine
     -> '{用户态}'的轻量级线程, 切换时不需要陷入系统调用(system call)(不会进入内核态)
@@ -84,13 +103,34 @@
     -> Python进程有各自独立的GIL锁
 
     -> 进程是并发执行的程序在执行过程中分配和管理资源的基本单位
-    -> 进程有自己的内存空间，数据栈等，只能使用进程间通讯（InterProcessCommunication, IPC），不能直接共享信息
-    -> 线程是CPU调度的基本单位.计算机软硬件资源的分配与线程无关，线程只能共享它所属进程的资源
+    -> 进程有自己的内存空间，数据栈等，只能使用进程间通讯（InterProcessCommunication, IPC），不能直接共享信息. Linux中每个进程有两个栈，分别用于用户态和内核态的进程执行
+    -> 线程是CPU调度的基本单位.软硬件资源的分配与线程无关，线程只能共享它所属进程的资源
     -> python里的线程是操作系统的真实线程
     -> 进程拥有一个完整的虚拟地址空间，不依赖于线程而独立存在；线程是进程的一部分，没有自己的地址空间，与进程内的其他线程一起共享分配给该进程的所有资源
-    -> 每个进程都有进程控制表(PCB)，每个线程也有自己的线程控制表(TCB)
+    -> 每个进程都有进程控制表(PCB)，每个线程也有线程控制表(TCB)
     -> 进程至少有 5 种基本状态，它们是：新建，执行，阻塞，就绪，终止
     -> 线程有 4 个基本状态：新建，执行，阻塞，终止.存在 5 种基本操作来切换线程的状态：派生，阻塞，唤醒，调度，结束
+
+    |进程卡死(hanging挂起)原因: IO操作或并发过高, 一般是卡在某个系统调用上
+        1.read很大的数据流, 等待对方输入
+        2.IO请求的接收端(磁盘, 数据库)长时间没有反应, 进程等待
+        3.消息队列数据量过大导致轮询进程卡死
+        4.pipe缓冲区满, write阻塞等待; pipe缓冲区空, read阻塞等待
+
+        |定位
+            1.gdb -p <pid> > bt|backtrace|where -> 查看
+            2.strace + pstack
+            3.top查看CPU使用情况
+            4.查看 /proc 文件系统内核态信息.检测/proc/<pid>目录是否可读，可判断进程是否存在
+            5.查看/proc/<pid>/wchan 查看导致进程睡眠或者等待的函数
+            6.查看/proc/<pid>/status 中上下文切换次数,多次查询后,若切换次数没有增加,说明进程完全卡死. 进程状态D(Disk Sleep)表示不可中断睡眠
+            7.查看/proc/<pid>/stack 查看进程调用栈
+            8.查看/proc/<pid>/syscall 找到进程挂在哪个系统调用上
+            9.grep num /usr/include/asm-generic/unistd.h 查看syscall num对应的api
+
+    |僵尸进程 -> 如果子进程先于父进程退出,同时父进程又没有调用wait/waitpid,则该子进程将成为僵尸进程。通过ps命令查看其带有defunct的标志。僵尸进程是一个早已死亡的进程，但在进程表 （processs table）中仍占了一个位置（slot）
+        -> 要在当前进程中生成一个子进程，一般需要调用fork这个系统调用，fork这个函数的特别之处在于一次调用，两次返回，一次返回到父进程中，一次返回到子进程中，我们可以通过返回值来判断其返回点
+        -> 为了防止产生僵尸进程，在fork子进程之后我们都要wait它们；同时，当子进程退出的时候，内核都会给父进程一个SIGCHLD信号，所以我们可以建立一个捕获SIGCHLD信号的信号处理函数，在函数体中调用wait（或waitpid），就可以清理退出的子进程以达到防止僵尸进程的目的
 
     |线程退出
         -> 线程结束运算时就会退出。线程可以调用thread.exit()之类的退出函数，也可以使用退出进程的标准方法sys.exit(n)或raise SystemExit(1)。不可以直接杀掉Kill一个线程
@@ -106,6 +146,7 @@
 
     |IO密集型任务 -> 频繁网络传输、读取硬盘及其他设备，99%的时间都花在IO上('{经常阻塞}')
         -> IO密集型任务花在CPU上的时间很少，用运行速度极快的C语言替换用Python这样运行速度极低的脚本语言，完全无法提升运行效率。对于IO密集型任务，最合适的语言就是开发效率最高（代码量最少）的语言，脚本语言是首选，C语言最差
+        -> 如果瓶颈是IO问题，CPU占用率应该很低，或者就是0%
 
     -> 当我们想实现多任务处理时,首先要想到使用'{multiprocessing}',但是如果觉着进程太笨重,那么就要考虑使用线程. 如果多任务处理中需要处理的太多了,可以考虑多进程,每个进程再采用多线程.如果还处理不要,就要使用轮询模式,比如使用poll event,twisted等方式.如果是GUI方式,则要通过事件机制,或者是消息机制处理,GUI使用单线程
 
@@ -175,7 +216,9 @@
         > t2.join()
         > print 'the curent threading  %s is ended' % threading.current_thread().name
         -----------------------------------------
-        #线程锁
+        #线程锁(threading.Lock互斥锁. 有两个方法：acquire() and release())
+        #acquire -> 无参数或参数为ture时，阻塞方式获得锁，即要等到锁释放后方能加锁，而后返回Ture; 有参数且参数设为false时，即为非阻塞方式获得锁。具体来说，如果已被锁定，直接返回false，不等待；如果未被锁定，则返回ture
+        #release -> 释放锁
         > a = 3
         > lock = threading.Lock()
         > #with lock: #do something
@@ -219,72 +262,4 @@
         >        condition.release()
         |Socket
 
-\WSGI
-    -> Web Server Gateway Interface是服务器和web框架或web应用之间建立的一种通用接口规范
-    -> WSGI不是服务器，不是API，不是模块，更不是框架，而是一种服务器和客户端交互的'{接口规范}'
-    -> WSGI接口规范的目的就是规范Web服务器与Web应用之间的交互，在协议之间进行转换
-    -> 主要由三大部分组成WSGI SERVER、WSGI Middleware 、WSGI Application
-        |server -> 接收来自客户端的request请求，封装environ环境变量，给app提供回调函数；调用app,并将environ和回调函数一起传递给app；最后接收来自app的header/status/body响应信息，传给客户端
-        |Middleware -> 是Server和app之间的桥梁，中间件同时扮演两种角色，在服务端看来，中间是app能够被调用，在应用程序看来，它是服务端，能够进一步包装需要出来的信息，并将出来的信息传递调用app
-            -> 例如，服务器拿到了客户端请求的URL, 不同的URL需要交由不同的函数处理，这个功能叫做 URL Routing
-        |app -> 是开发程序的主体，必须可调用，必须能够接受服务端传过来的两个参数environ和callback函数。将传入进来的参数，进一步出来生成responce响应信息，传回服务器端
-
-    |Server
-        def run(application):
-            # 准备 environ 参数，这是一个字典，里面的内容是一次 HTTP 请求的环境变量
-            environ={}                                   #设定环境信息
-            environ = dict(os.environ.items())
-            environ['wsgi.input']        = sys.stdin
-            environ['wsgi.errors']       = sys.stderr
-            environ['wsgi.version']      = (1, 0)
-            environ['wsgi.multithread']  = False
-            environ['wsgi.multiprocess'] = True
-            environ['wsgi.run_once']     = True
-            environ['wsgi.url_scheme'] = 'http'
-
-            def start_response(status,headers):          #define callback function
-                pass
-
-            result=application(environ,start_response)   #call application
-
-            def write(data):                             #把应答的结果输出到终端
-                sys.stdout.write(data)
-                sys.stdout.flush()
-
-            for data in result:                          #访问result iterator
-                write(data)
-        -> run是服务端程序，调用可调用应用程序application。定义一个start_response函数传递给application,作为回调函数。run调用application后，返回一个iterator 迭代对象，将其赋值给result。write()函数在start_response将响应头信息发送后，发送响应body信息
-
-    |Middleware -> 处于服务器和应用两侧，起粘合作用，具体包括：请求处理、environ处理
-        def dispath(url_app_mapping):
-            def midware_app(envion,start_responce):      #callable function
-                url=environ['PATH_INFO']
-                app=url_app_mapping[url]                 #get the view function
-                result=app(environ, start_response)      #call app
-                return result
-            return midware_app
-
-        class dispath():
-            def __init__(self,application):              #调用合适的app
-                self.app=application
-            def __call__(self,environ,start_response):
-                #do sometiong
-                return self.app(environ,start_response)  #自身可调用
-        -> middleware 即是服务端又是应用端。那么就应满足 服务端条件：能够配置envion,具有start_response并将其传递给应用程序调用应用程序；应用端条件：可调用，接收两个参数，返回迭代对象
-
-    |Application -> '{可被调用}'的对象，一般指包含__call__方法(实例可以当作函数调用)的对象
-        def application(environ,start_response):         #可调用接收两个参数
-            status='200 ok'
-            headers=[('Content-type','text/plain')]      #设置响应状态码和响应信息
-            start_response(status,headers)               #调用回调函数
-            return ["hello world"]                       #返回body 可迭代对象
-        -> 一个简易的app应用程序，注意返回的body要是一个可迭代对象
-
-\消息队列
-    -> 使用Beanstalkd
-    -> 解释AMQP，深入理解RabbitMQ，介绍RabbitMQ插件系统，RabbitMQ集群的故障转移方法等
-
-    |Celery
-    -> 介绍Celery的架构，运行起一个真实的应用，在Flask应用中使用Celery等功能
-    -> 深入Celery，介绍Celery的依赖及独立用法、Worker管理、监控等高级功能
-        -> Celery是一个由Python编写的简单、灵活、可靠的用来处理大量信息的分布式队列的管理系统,它同时提供操作和维护分布式系统所需的工具.专注于实时任务处理，支持任务调度
+        |可重入锁 -> 为了支持在同一线程中多次请求同一资源，python提供了“可重入锁”：threading.RLock。RLock内部维护着一个Lock和一个counter变量，counter记录了acquire的次数，从而使得资源可以被多次require。直到一个线程所有的acquire都被release，其他的线程才能获得资源
