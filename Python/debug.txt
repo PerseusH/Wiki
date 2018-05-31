@@ -7,7 +7,10 @@
     $ python -m [pdb/ipdb] test.py #以调试模式运行程序,直接进入pdb控制台
 
 \MemoryLeak
-    -> 内存泄漏是由于一个'{长期持有的对象}'不断的往一个dict或者list对象里添加新的对象, 而又没有即时释放，就会导致这些对象占用的内存越来越多，从而造成内存泄漏。另外，对象的'{交叉引用}'也会造成内存无法释放的问题
+    -> 内存泄漏是由于一个'{长期持有的对象}'不断的往一个dict或者list对象里添加新的对象, 而又没有即时释放，就会导致这些对象'{占用的内存越来越多}'，从而造成内存泄漏。另外，对象的'{交叉引用}'也会造成内存无法释放的问题
+    -> 进程占用内存一直升高，与逻辑预期不一致，就可能发生了Memory Leak
+    -> python有GC机制,出现内存泄露的场景一般是扩展库内存泄露,循环引用或全局容器里的对象没有释放
+    -> 属于SegmentFault(段错误)
     -> python中同时满足以下条件的对象无法被回收(UncollectableObject),这种对象会持续占据内存
         1.循环引用
         2.循环引用链上某对象定义了__del__方法
@@ -15,12 +18,32 @@
 
     |Graphviz -> 将图结构转化成png图片表示的工具.通过对象的引用关系，找到内存泄漏的对象
 
-    |GC
-        >>> import gc
+    |GC -> 添加检查点
+        >>> import gc, sys
         >>> gc.collect() #find out uncollectable object and put them in gc.garbage
         >>> gc.garbage #print all uncollectable objects
+        >>> gc.get_objects() #可以取得当前所有不能回收的对象(引用计数不为0)的列表
+        >>> sys.getrefcount(var) #获取变量的引用计数
 
-    |Objgragh -> 通常为了查找出哪些对象有内存泄漏，一般用每隔一段时间调用一次show_growth,然后找出对象的个数一直在增长的对象，这些对象即为发生了内存泄漏的对象
+    |memory_profiler -> 逐行测算内存使用, 统计内存使用情况
+        > from memory_profiler import profile
+        > @profile
+        > def func():
+        > ...
+
+        $ python -m memory_profiler xxx.py
+
+        Line #    Mem usage    Increment   Line Contents
+        ================================================
+            12   28.570 MiB    0.000 MiB   @profile
+            13                             def func():
+            14   28.570 MiB    0.000 MiB       obj = []
+            15  106.203 MiB   77.633 MiB       for i in range(10000):
+            16  106.203 MiB    0.000 MiB           obj = get_current_obj(obj)
+            17  106.203 MiB    0.000 MiB           if(i%100==0):
+            18  105.445 MiB   -0.758 MiB               print(memory_usage_psutil())
+
+    |Objgragh -> 通常为了查找出哪些对象有内存泄漏，一般每隔一段时间调用一次show_growth,然后找出对象的个数一直在增长的对象，这些对象即为发生了内存泄漏的对象. 可用graphviz可视化结果
         > import objgraph
         > objgraph.show_most_common_types(n) #获取前n大内存对象,用于查找ML和大内存对象
         > objgraph.show_growth() #输出增长的对象. 首次调用打印出来的是当前所有对象的总数
@@ -61,16 +84,16 @@
     |$ (gdb) bt #获取程序的调用栈、调用参数以及所在行的代码. py-bt只查找python程序
 
     |pyrasite -> 直接连上一个正在运行的python程序，打开一个类似ipython的交互终端来运行命令、检查程序状态
-        -> 连接到有问题的python程序，开始收集信息：
+        -> 连接到有问题的python程序，开始收集信息
             $ pyrasite-shell <pid>
-            >>>
         -> 接下来就可以在<pid>进程里调用任意python代码，查看进程状态
 
     |psutil -> 查看python进程状态
         $ pyrasite-shell <pid> #首先attach到目标进程, 查看python进程占用的系统内存RSS
         >>> import psutil, os
         >>> psutil.Process(os.getpid()).memory_info().rss 29095232
-        -> rss the real memory (resident set) size of the process (in 1024 byte units) #基本与ps命令显示结果一致
+            rss -> the real memory (resident set) size of the process (in 1024 byte units) #基本与ps命令显示结果一致
+        >>> psutil.Process(os.getpid()).memory_info()[0] / float(2 ** 20)
 
     |guppy -> 获取各种对象的内存使用情况.如果python进程中有未释放的对象，造成内存占用升高，可通过guppy查看
         $ pyrasite-shell <pid> #attach到目标进程
@@ -102,8 +125,12 @@
 
     -> 若以上工具都不能找到不能回收的对象，可推测libc的malloc实现问题。使用tcmalloc替代libc默认的malloc
 
+    |使用Valgrind对整个应用程序的运行过程进行分析
+        $ valgrind -v --leak-check=yes --num-callers=256 --logfile=d python xxx.py
+        -> --show-reachable=yes 会把还在使用的内存情况也打印出来
+
 \死锁
-    $ (gdb) info threads #一般加锁、死锁情况存在时，会有线程卡在xx_wait等函数上
+    $ (gdb) info threads #查看线程. 一般加锁、死锁情况存在时，会有线程卡在xx_wait等函数上
         Id Target Id Frame
         206 Thread 0x7febdbfe3700 (LWP 124916) "python2"0x00007febe9b75413in select () at ../sysdeps/unix/syscall-template.S:81
         205 Thread 0x7febdb7e2700 (LWP 124917)"python2"0x00007febe9b75413 in select () at ../sysdeps/unix/syscall-template.S:81

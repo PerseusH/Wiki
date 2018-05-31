@@ -93,8 +93,9 @@
     |字段搜索
 
 |python
+    |dict原理和哈希冲突解决
     |ordereddict自定义
-    |用C实现pylist
+    |用C实现python-list
     |第三方C语言包内存泄漏
     |进程卡死怎么定位
     |flask g变量

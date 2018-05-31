@@ -1,6 +1,7 @@
 |CPython
     -> Python'{默认解释器}'
-    -> 当我们从Python官方网站下载并安装好Python 3.x后，就直接获得了一个官方版本的解释器:CPython。这个解释器是用C开发的，所以叫CPython。在命令行下运行python就是启动CPython
+    -> 从官网下载并安装好Python 3.x后，就获得了官方版本的解释器:CPython。这个解释器是用C开发的，所以叫CPython。在命令行下运行python就是启动CPython
+    -> Python解释器使用引用计数。当对象引用为0时，垃圾收集器调用free()/delete()释放该对象
 
 |PyPy -> 即时(JIT)编译器。它不关心Python代码的词法分析和语法树.用Python编写，直接利用Python的Code Object. Code Object是Python字节码的表示，也就是说，PyPy直接分析Python代码所对应的字节码,这些字节码即不是以字符形式也不是以某种二进制格式保存在文件中，而是在Python运行环境中
 
@@ -14,11 +15,6 @@
     cumtime -> 表示该函数及其所有子函数的调用运行的时间,即函数开始调用到返回的时间
     percall -> (第二个 percall)即函数运行一次的平均时间,等于cumtime/ncalls
     filename:lineno(function) -> 每个函数调用的具体信息
-
-|memory_profiler -> 逐行测算内存使用, 统计内存使用情况
-    > from memory_profiler import profile
-    > @profile
-    > def func(): pass
 
 |timeit -> 返回代码运行时间(secs)
     -> number可以省略,默认值为1000000

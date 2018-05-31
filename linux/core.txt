@@ -21,7 +21,8 @@ perror err_code #查看错误代码信息
 
 \gdb
     gdb -p <pid> #attach进程, 调试正在运行的程序
-    bt/backtrace/where #gdb指令,查看core文件中的堆栈信息
+    (gdb) bt/backtrace/where #gdb指令,查看core文件中的堆栈信息
+    (gdb) info threads #查看线程
 
 \系统信息
     arch #显示机器的处理器架构(1)

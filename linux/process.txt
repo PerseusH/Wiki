@@ -12,11 +12,10 @@
     lsof path/filename #查看目录/文件被什么进程占用,显示已打开该目录或文件的所有进程信息
     lsof -p <pid> #查看进程使用的文件
 
-|strace -> 追踪进程的系统调用
-    -> mac下用dtruss
+|strace -> 追踪进程的系统调用(mac下用dtruss)
     strace -p 15427 #简单追踪进程正在做什么
     Process 15427 attached - interrupt to quit
-    futex(0x402f4900, FUTEX_WAIT, 2, NULL #在调用futex()的时候挂起卡死了
+    futex(0x402f4900, FUTEX_WAIT, 2, NULL #在调用futex()的时候阻塞(挂起)卡死了
     Process 15427 detached
 
     sudo strace -T -tt -e trace=all -p 11124 #查看该进程正在持续的状态
@@ -72,7 +71,10 @@
 |thread
     ps -eLf | grep java | wc -l #监控java线程数
     ls /proc/PID/task | wc -l #监控PID对应的线程数
-    pmap PID #输出进程内存的状况，可以用来分析线程堆栈
+
+|pmap
+    pmap -x <pid> #查看进程占用的堆内存大小
+    pmap <pid> #输出进程内存的状况，可以用来分析线程堆栈
 
 |awk
     |awk [-F 'seperator'] '/pattern/{action}' <file>

@@ -68,9 +68,15 @@
         |Third-Class Function -> 三者都不可以
 
     |Variable
-        |赋值 -> 拷贝对象的引用(内存地址)给变量. 赋值就是一种修改
-        |重新定义 -> 修改不可变对象, 不改变对象本身内存, 重新分配一块内存赋值给变量
-        |原地操作 -> 修改可变对象, 在对象本身内存做修改
+        -> 可变和不可变类型指的是'{值}'是否可变
+        a = 1; b = a; a = 2; c = 1 -> id(1) == id(b) == id(c)
+        l = []; l1 = l; l.append(1) -> l == l1 == [1]
+            l = [3] -> l != l1, l == [3], l1 == [1]
+        l = []; idl = id([]); l.append(1); idl1 = id([]) -> id(l) == idl != idl1
+
+        |赋值 -> 拷贝对象的引用(内存地址)给变量. 赋值就是一种非原地修改
+        |重新定义 -> 修改不可变变量, 不改变对象本身内存, 重新分配一块内存赋值给变量
+        |原地操作 -> 修改可变变量, 在对象本身内存做修改
 
         |Copy
             |嵌套items -> 浅copy始终共享,主改从变; deepcopy不共享
@@ -94,24 +100,29 @@
             >     mylist[:] = [1, 2, 3] #原地修改, 变量内存地址不变, 没有重新定义变量
             >     mylist[0], mylist[1] = mylist[1], mylist[0] #原地修改
 
-            -> 字典, 列表, time.time()作为函数默认值时,在函数定义时就已经在内存中生成了
-            -> 可变对象作为函数参数默认值时若隐式访问func(), 该对象会一直留在内存中
-            > def func(l=[]):
-            >     l.append(1) #原地操作 才会生成 “缓存”(append, extend, +=)
-            > [func() for i in range(3)] -> l -> [1, 1, 1]
-            -> 正确做法
-            > def func(l=None):
-            >     if l is None:
-            >         l = []
+            |可变对象留存
+                1.函数默认值
+                    -> 字典,列表,time.time()作为函数默认值时,在函数定义时就已经在内存中生成
+                    -> 可变对象作为函数参数默认值时若隐式访问foo()或l=[];foo(l),该对象会一直留在内存中; foo([])会覆盖默认值, 不会有默认值留存
+                    > def foo(l=[]):
+                    >     l.append(1) #原地操作 才会生成 “缓存”(append, extend, +=)
+                    > [foo() for i in range(3)] -> l -> [1, 1, 1]
+                    -> 正确做法
+                    > def foo(l=None):
+                    >     if l is None:
+                    >         l = []
 
-        > l = [] #[]可换成任意类型值
-        > def foo():
-        >     l += [''] #l.append(''), l.extend(['']) 原地操作不报错; 赋值操作报错
-        >     logging.info(l)
-        > foo()
-        >>> 报错: "local variable 'l' referenced before assignment"
+                    > def foo(t=time.time()): print(t) #一直是第一次的时间
 
-        |在当前作用域修改其他作用域变量 -> 在函数中直接引用全局变量或在嵌套函数中直接引用父级函数局部变量都没问题; 但是要修改的话需要分别加上'{global xxx | nonlocal xxx}'
+                2.函数外声明可变对象, 函数内作原地操作(函数没有定义默认值)
+                    > l = [] #[]可换成任意类型值
+                    > def foo():
+                    >     l.append(1) #l.extend([1])原地操作不报错; 赋值操作报错
+                    >     logging.info(l)
+                    > [foo() for i in range(3)] -> [1, 1, 1]
+                    >>> 报错: "local variable 'l' referenced before assignment"
+
+        |在当前作用域修改其他作用域变量 -> 在函数中直接引用全局变量或在嵌套函数中直接引用父级函数局部变量都没问题; 但是要修改的话需要分别加上'{global xxx | nonlocal xxx}', 否则报错. python2.x中不能用nonlocal
 
         -> 当函数/方法, 变量等发生重复命名时, python会按照以下顺序查找, 以第一个找到该变量的命名空间为准
             1.local namespace -> 当前函数或类方法
@@ -120,10 +131,11 @@
             4.build-in namespace -> 所有模块
 
         |Closure -> 嵌套函数留存对父级函数作用域的变量引用,父级函数返回嵌套函数.装饰器就是闭包
+            |nonlocal -> python3.x主要用于修改外层(父级)函数变量.不能在module level使用
             > def closure(): #c = closure(), c中会有一个闭包属性元组: __closure__
             >     num = 0
             >     def sub_closure():
-            >         nonlocal num #python2.7+ 指示变量不在当前函数作用域, 没有会报错
+            >         nonlocal num #指示变量不在当前函数作用域, 没有会报错
             >         num += 1
             >         print(num)
             >     return sub_closure
