@@ -6,6 +6,10 @@
     brew services mysqld restart|brew services start|stop|restart mysql #Mac
     sudo /etc/init.d/mysql start|stop|restart #Ubuntu
     mysql.server [start|stop|restart|status]
+
+    -> 解决Can 't connect to local MySQL server through socket '/tmp/mysql.sock '
+        -> mysql -uroot -h 127.0.0.1 -proot
+
     mysqlslap -a -c 100 -uroot -proot #压力测试工具, -c 100为并发连接数
     -> MySQL服务器允许的最大连接数16384
 

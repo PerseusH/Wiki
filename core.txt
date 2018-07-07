@@ -96,10 +96,12 @@
     |dict原理和哈希冲突解决
     |ordereddict自定义
     |用C实现python-list
+
     |第三方C语言包内存泄漏
     |进程卡死怎么定位
+
     |flask g变量
-    |flask路由
+    |flask 路由
     |WSGI的组成部分
 
 |challenge

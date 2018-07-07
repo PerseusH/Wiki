@@ -1,0 +1,13 @@
+|compiler
+	c -> gcc hello.c -o hl
+	c++ -> g hello.cpp -o hl | g++ hello.cpp -o hl
+
+|指针 -> 变量内存地址
+	int *p = &a;
+	p <=> &a <=> &*p, *p <=> a, **p <=> *&a <=> a的值
+
+	printf("Address: %p", p); //打印内存地址
+
+-> C++中没有现成的获取数组元素个数的方法，只有自己写
+	int count = sizeof(array) / sizeof(array[0]);
+	int count = sizeof(array) / sizeof(int);
