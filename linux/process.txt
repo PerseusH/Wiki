@@ -1,4 +1,4 @@
-"working process | master" #主进程
+working process | master #主进程
 -> linux系统调用fork()创建子进程，进程间的关系是一棵树，树的根就是PID为1的init进程
 
 |前后台调度

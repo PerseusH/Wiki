@@ -1,5 +1,13 @@
 \分词
     |jieba -> Python中英文分词器
+        |分词模式
+            |精确模式 -> 试图将句子最精确地切开,适合文本分析
+            |全模式 -> 把句子中所有的可以成词的词语都扫描出来,速度非常快,但是不能解决歧义
+            |搜索引擎模式 -> 在精确模式的基础上对长词再次切分,提高召回率,适用于搜索引擎分词
+        import jieba
+        result = jieba.cut(txt[, cut_all=False]) #返回一个分词结果生成器. 精确模式(默认)
+        result = jieba.cut(txt, cut_all=True) #全模式
+        result = jieba.cut_for_search(txt) #搜索引擎模式
 
 \倒排索引
-    -> 关键词 -> 文档列表(按PageRank排序)
+    -> 关键词: 文档列表(按词频, PageRank排序)
