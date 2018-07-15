@@ -35,7 +35,7 @@
     echo "xxx" >> README.md  #生成内容为"xxx"的文件README.md,文件存在则新添一行"xxx"
     echo xxx.txt #输出"xxx.txt"
     touch -t 0712250000 file1 #修改一个文件或目录的时间戳 - (YYMMDDhhmm)
-    file file1 #outputs the mime type of the file as text
+    file file1 #获取文件的媒体类型信息. 如 a.out: Mach-O 64-bit executable x86_64
     iconv -l #列出已知的编码
     iconv -f fromEncoding -t toEncoding inputFile > outputFile #creates a new from the given input file by assuming it is encoded in fromEncoding and converting it to toEncoding.
 
@@ -234,7 +234,7 @@
     find /var/log -name '*.log' | tar cv --files-from=- | bzip2 > log.tar.bz2 #查找所有以 '.log' 结尾的文件并做成一个bzip包
     dd if=/dev/hda of=/dev/fd0 bs=512 count=1 #做一个将 MBR (Master Boot Record)内容复制到软盘的动作
     dd if=/dev/fd0 of=/dev/hda bs=512 count=1 #从已经保存到软盘的备份中恢复MBR内容
-    
+
 -光盘
     cdrecord -v gracetime=2 dev=/dev/cdrom -eject blank=fast -force #清空一个可复写的光盘内容
     mkisofs /dev/cdrom > cd.iso #在磁盘上创建一个光盘的iso镜像文件
