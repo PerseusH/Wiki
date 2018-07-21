@@ -60,8 +60,10 @@ import flask; flask.__version__ #查看版本
 
     |信号机制 -> 允许特定的发送端通知订阅者发生了什么(既然知道发生了什么,那我们可以知道接下来该做什么了),可以实现一部分的业务解耦.信号依赖于Blinker库
 
-\全局变量
-    |current_app -> 代表当前的flask程序实例,使用时需要flask的程序上下文激活
+\全局对象
+    -> Flask 在分发请求之前激活（push）程序和请求上下文，请求处理完成后再将其删除。程序/请求上下文被推送后，就可使用全局对象
+
+    |current_app -> 代表当前的flask程序实例
         from test import app
         from flask import current_app
         #current_app.name #应用上下文未激活，会报错
@@ -90,8 +92,32 @@ import flask; flask.__version__ #查看版本
             return render_template('xxx.html',form=form,name=session.get('name'))
 
 \Route
+    Werkzeug中间件 -> endpoint-view mapping 自由绑定url和视图函数. 自动根据复杂度为路由排序
 
+    |核心代码
+        self.url_map.add(rule)
+        rule = self.url_rule_class(rule, methods=methods, **options)
+        self.view_functions[endpoint] = view_func
 
+    |应用方式
+        1.装饰器
+            def route(self, rule, **options):
+                def decorator(f):
+                    endpoint = options.pop('endpoint', None)
+                    self.add_url_rule(rule, endpoint, f, **options)
+                    return f
+                return decorator
+
+            @app.route('/xxx')
+            def view(): pass
+        2.视图类
+            class CounterAPI(MethodView):
+                def get(self):
+                    return session.get('counter', 0)
+                def post(self):
+                    session['counter'] = session.get('counter', 0) + 1
+                    return 'OK'
+            app.add_url_rule('/counter', view_func=CounterAPI.as_view('counter'))
 
 \WSGI
     -> Web Server Gateway Interface是服务器和web框架或web应用之间建立的一种通用接口规范
@@ -130,21 +156,21 @@ import flask; flask.__version__ #查看版本
         -> run是服务端程序，调用可调用应用程序application。定义一个start_response函数传递给application,作为回调函数。run调用application后，返回一个iterator 迭代对象，将其赋值给result。write()函数在start_response将响应头信息发送后，发送响应body信息
 
     |Middleware -> 处于服务器和应用两侧，起粘合作用，具体包括：请求处理、environ处理
-        def dispath(url_app_mapping):
-            def midware_app(envion,start_response):      #callable function
+        def dispatch(url_app_mapping):
+            def midware_app(environ,start_response):      #callable function
                 url=environ['PATH_INFO']
                 app=url_app_mapping[url]                 #get the view function
                 result=app(environ, start_response)      #call app
                 return result
             return midware_app
 
-        class dispath():
+        class dispatch():
             def __init__(self,application):              #调用合适的app
                 self.app=application
             def __call__(self,environ,start_response):
                 #do sometiong
                 return self.app(environ,start_response)  #自身可调用
-        -> middleware既是服务端又是应用端。那么就应满足 服务端条件：能够配置envion,具有start_response并将其传递给应用程序调用应用程序；应用端条件：可调用，接收两个参数，返回迭代对象
+        -> middleware既是服务端又是应用端。那么就应满足 服务端条件：能够配置environ,具有start_response并将其传递给应用程序调用应用程序；应用端条件：可调用，接收两个参数，返回迭代对象
 
     |Application -> '{可被调用}'的对象，一般指包含__call__方法(实例可以当作函数调用)的对象
         def application(environ,start_response):         #可调用接收两个参数
