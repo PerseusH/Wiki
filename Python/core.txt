@@ -87,11 +87,16 @@
 
         |db -> mysql
 
-        |orm -> metaclass+mysql.connector
+        |orm -> SQLAlchemy | metaclass+mysql.connector
 
         |login
 
         |paging
+
+        |search engine
+            |'spider'
+            |index
+            |match
 
         |cache -> redis
 

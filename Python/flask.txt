@@ -1,11 +1,12 @@
 import flask; flask.__version__ #查看版本
 
--> 模板引擎Jinja2和Mako的使用
-
 \上下文设计
     |Flask两种上下文
-        |应用上下文(Application Context) -> 字面意思是应用上下文，但它不是一直存在的，它只是request context中的一个对app的代理，所谓local proxy。它的作用主要是帮助request获取当前的应用，它是伴request而生，随request而灭的
-        |请求上下文(Request Context) ->
+        |应用上下文(Application Context) -> 调用app = Flask(name)创建的对象, 表示用于响应WSGI请求的应用本身. 字面意思是应用上下文，但它不是一直存在的，它只是request context中的一个对app的代理，所谓local proxy。它的作用主要是帮助request获取当前的应用，它是伴request而生，随request而灭的
+        |请求上下文(Request Context) -> 每次http请求发生时，WSGI server(比如gunicorn)调Flask.call()之后，在Flask对象内部创建线程独立的Request对象, 表示每次http请求
+            -> 在每个请求上下文的函数中我们都可以访问request对象，然而request对象却并不是全局的. request对象只有在其上下文的生命周期内才有效，离开了请求的生命周期，其上下文环境不存在了，也就无法获取request对象了。而四种请求hook函数会挂载在生命周期的不同阶段，因此在其内部都可以访问request对象
+        -> app的生命周期大于request，一个app生命周期内可能发生多次http请求，所以会有多个request
+        -> Flask通过'{_RequestContext}'将App与Request关联起来
 
     |Thread local context
         -> 全局对象，你可以往里面保存东西，a线程保存到local对象的，只有a线程能取到，b线程的只有b线程能取到，如果，a，b保存了名字相同的东西，比如x，a取到的值是自己保存的，不会和b保存的混淆，修改操作也一样。 request，session，g都是用相同的原理实现的，都是保存在local对象里的线程（包括greenlet协程）安全的变量。 flask自己实现了local对象而不是使用标准库的threading.Local对象
@@ -43,31 +44,95 @@ import flask; flask.__version__ #查看版本
             -> 对g的调用就是这样一个过程，可以线程隔离的访问自己的g
                 访问g-->从当前线程的应用上下文栈顶获取应用上下文-->取出其中的g对象-->进行操作
 
-    -> application指的就是当你调用app = Flask(name)创建的这个对象app
-    -> application表示用于响应WSGI请求的应用本身，request表示每次http请求
-    -> request指的是每次http请求发生时，WSGI server(比如gunicorn)调Flask.call()之后，在Flask对象内部创建的Request对象
-    -> application的生命周期大于request，一个application存活期间，可能发生多次http请求，所以，也就会有多个request
-    -> Flask通过'{_RequestContext}'将App与Request关联起来
-
-    -> 钩子用于改变行为（比如身份验证或错误处理）,信号用于记录事件（比如记录日志）
-
     |上下文钩子
         |请求hook
-            1.@before_first_request -> 注册一个在处理第一个请求之前运行的函数
-            2.@before_request -> 注册一个在处理请求之前运行的函数
-            3.@after_request -> 注册一个函数，如果没有未处理的异常抛出，在每次请求之后运行
-            4.@teardown_request -> 注册一个函数,即使有未处理的异常抛出,也在每次请求之后运行
+            1.@before_first_request -> 注册一个函数，在处理第一个请求之前运行
+            2.@before_request -> 注册一个函数，在处理每次请求之前运行
+            3.@after_request -> 注册一个函数，无异常抛出则在每次请求之后运行
+            4.@teardown_request -> 注册一个函数,有异常抛出也在每次请求之后运行
+                -> 注册的函数至少需要含有一个参数,这个参数实际上为服务器的响应,且函数中需要返回这个响应参数
+        -> 当before_request有返回值时就不会执行后续视图函数了，没有返回值的时候才会执行后续函数，而after_request,teardown_request必须有返回值
 
-    |信号机制 -> 允许特定的发送端通知订阅者发生了什么(既然知道发生了什么,那我们可以知道接下来该做什么了),可以实现一部分的业务解耦.信号依赖于Blinker库
+        from flask import g
+
+        @app.before_first_request
+        def bf_first_request():
+            g.string = 'before_first_request'
+
+        @app.before_request
+        def bf_request():
+            g.string = 'before_request'
+
+        #注册的函数至少需要含有一个参数,这个参数实际上为服务器的响应,且函数中需要返回此响应参数
+        @app.after_request
+        def af_request(param):
+            return param
+
+        #注册的函数至少需要含有一个参数,这个参数实际上为服务器的响应,且函数中需要返回此响应参数
+        @app.teardown_request
+        def td_request(param):
+            return param
+
+        @app.route('/test')
+        def test():
+            return g.string
+
+    |信号机制 -> 允许特定的发送端通知订阅者发生了什么(既然知道发生了什么,那我们可以知道接下来该做什么了),可实现部分业务解耦.Flask从0.6开始，通过Blinker提供了信号支持
+        -> 所有的信号处理器是无序执行的，并且不修改任何数据, 回调函数都没有返回值
+        -> 使用信号的connect(func[, sender])方法来订阅信号。第二个参数可选，用于确定信号发送者。一个信号可以拥有多个订阅者。用disconnect()方法来退订信号
+        -> 使用send(signal/sender[, **dict_args])发送信号, 触发执行回调函数
+            from blinker import signal
+            s = signal("test start")
+
+            def each(round, **kw):
+                print("each {}".format(round))
+
+            def round_two(round, **kw):
+                print("round {}".format(round))
+
+            s.connect(each)
+            s.connect(round_two,sender=2)   # 表示值为2的时候才会接收信号
+            for index in range(1,4):
+                s.send(index[, key=val, ...])
+
+            >>>
+                each 1
+                each 2
+                round 2
+                each 3
+
+            -> 或者简写成
+            from blinker import signal
+            s = signal("test start")
+
+            @s.connect
+            def each(round)
+                print("each {}".format(round))
+            ...
+
+            |命名空间
+            from blinker import Namespace
+            signals = Namespace()
+            model_saved = signals.signal('model-saved')
+
+        |Flask中的内置信号
+            1.flask.template_rendered -> 模板渲染成功的时候发送，这个信号与模板实例template上下文的字典一起调用
+            2.flask.request_started -> 建立请求上下文后，在请求处理开始前发送，订阅者可以用request之类的标准代理访问请求
+            3.flask.request_finished -> 在响应发送给客户端之前发送，可以传递reponse
+            4.flask.got_request_exception -> 在请求处理中抛出异常时发送，异常本身会通过execption传递到订阅函数
+            5.flask.request_tearing_down -> 在请求销毁时发送，它总是被调用，即使发生异常
+            6.flask.appcontext_tearing_down -> 在应用上下文销毁时发送，它总是被调用，即使发生异常
+
+    -> 钩子用于改变行为（比如身份验证或错误处理）,信号用于记录事件（比如记录日志, 模板渲染）
 
 \全局对象
-    -> Flask 在分发请求之前激活（push）程序和请求上下文，请求处理完成后再将其删除。程序/请求上下文被推送后，就可使用全局对象
+    -> Flask在分发请求之前激活（push）程序和请求上下文，请求处理完成后再将其释放。应用/请求上下文被推送后可使用全局对象
 
-    |current_app -> 代表当前的flask程序实例
-        from test import app
+    |current_app -> current_app是一个本地代理，它的类型是werkzeug.local. LocalProxy，它所代理的即是我们的app对象，也就是说current_app == LocalProxy(app)。使用current_app是因为它也是一个ThreadLocal变量，对它的改动不会影响到其他线程。可以通过current_app._get_current_object()方法来获取app对象。current_app只能在请求线程里存在，因此它的生命周期也是在应用上下文里，离开了应用上下文也就无法使用
         from flask import current_app
         #current_app.name #应用上下文未激活，会报错
-        ctx=app.app_context()
+        app = Flask('__name__')
+        ctx = app.app_context()
         ctx.push() #激活应用上下文
 
         @app.route('/')
@@ -81,6 +146,14 @@ import flask; flask.__version__ #查看版本
         g.name='Hyman' | logging.info(g.name)
 
     |request -> 请求对象,封装了客户端发送的HTTP请求的内容
+        -> 可以使用Flask的内部方法request_context()来构建一个请求上下文
+            from werkzeug.test import EnvironBuilder
+            ctx = app.request_context(EnvironBuilder('/', url).get_environ())
+            ctx.push()
+            try:
+                print request.url
+            finally:
+                ctx.pop()
 
     |session -> 字典类型用户会话,记录各请求间的值。属私有存储，保存在cookie中
         @app.route('/', methods=['GET','POST'])
@@ -92,7 +165,7 @@ import flask; flask.__version__ #查看版本
             return render_template('xxx.html',form=form,name=session.get('name'))
 
 \Route
-    Werkzeug中间件 -> endpoint-view mapping 自由绑定url和视图函数. 自动根据复杂度为路由排序
+    Werkzeug中间件 -> endpoint-view mapping自由绑定url和视图函数. 自动根据复杂度为路由排序
 
     |核心代码
         self.url_map.add(rule)
@@ -124,8 +197,8 @@ import flask; flask.__version__ #查看版本
     -> WSGI不是服务器，不是API，不是模块，更不是框架，而是一种服务器和客户端交互的'{接口规范}'
     -> WSGI接口规范的目的就是规范Web服务器与Web应用之间的交互，在协议之间进行转换
     -> 主要由三大部分组成WSGI SERVER、WSGI Middleware 、WSGI Application
-        |server -> 接收来自客户端的request请求，封装environ环境变量，给app提供回调函数；调用app,并将environ和回调函数一起传递给app；最后接收来自app的header/status/body响应信息，传给客户端
-        |Middleware -> 是Server和app之间的桥梁，中间件同时扮演两种角色，在服务端看来，中间是app能够被调用，在应用程序看来，它是服务端，能够进一步包装需要出来的信息，并将出来的信息传递调用app
+        |server -> 接收客户端请求,封装environ环境变量,给app提供回调函数;调用app,并将environ和回调函数传给app;最后接收来自app的header/status/body响应信息,传给客户端
+        |Middleware -> Server和app间的桥梁,同时扮演两种角色.在服务端看来，中间件是app能够被调用，在应用程序看来它是服务端，能够进一步包装需要出来的信息，并将出来的信息传递调用app
             -> 如服务器拿到了请求的URL, 不同URL需要交由不同函数处理，这个功能叫URLRouting
         |app -> 是开发程序的主体，必须可调用，必须能够接受服务端传过来的两个参数environ和callback函数。将传入进来的参数，进一步出来生成response响应信息，传回服务器端
 
@@ -170,7 +243,7 @@ import flask; flask.__version__ #查看版本
             def __call__(self,environ,start_response):
                 #do sometiong
                 return self.app(environ,start_response)  #自身可调用
-        -> middleware既是服务端又是应用端。那么就应满足 服务端条件：能够配置environ,具有start_response并将其传递给应用程序调用应用程序；应用端条件：可调用，接收两个参数，返回迭代对象
+        -> middleware既是服务端又是应用端。那么就应满足 服务端条件：能够配置environ,具有start_response并将其传递给应用程序调用；应用端条件：可调用接收两个参数，返回迭代对象
 
     |Application -> '{可被调用}'的对象，一般指包含__call__方法(实例可以当作函数调用)的对象
         def application(environ,start_response):         #可调用接收两个参数
@@ -181,7 +254,6 @@ import flask; flask.__version__ #查看版本
         -> 一个简易的app应用程序，注意返回的body要是一个可迭代对象
 
 |常用扩展 -> Flask-SQLAlchemy、Flask-Script、Flask-DebugToolbar、Flask-Migrate、Flask-WTF、Flask-Security、Flask-RESTful、Flask-Admin和Flask-Asset
--> 依赖库Werkzeug的使用
+-> WSGI依赖库Werkzeug的使用, 模板引擎Jinja2和Mako的使用
 
-|SQLAlchemy
-    -> python操作数据库的一个库.能够进行orm映射.采用简单的Python语言,为高效和高性能的数据库访问设计,实现了完整的企业级持久模型.SQLAlchemy的理念是,SQL数据库的量级和性能重要于对象集合,而对象集合的抽象又重要于表和行
+|SQLAlchemy -> python操作数据库的一个库.能够进行orm映射.采用简单的Python语言,为高效和高性能的数据库访问设计,实现了完整的企业级持久模型.SQLAlchemy的理念是,SQL数据库的量级和性能重要于对象集合,而对象集合的抽象又重要于表和行

@@ -139,56 +139,56 @@ import re
 
 
 # m个有序且长度为l的有序整数数组, 找出其中前n大的整数
-def Get_Top_N_Max_Numbers_Of_M_IntArrays():
-    m, n, l = 3, 5, 10
-    result = []
-    arrs = [randints(500, sorted=1) for i in range(m)]
-    for arr in arrs:
-        logging.info('Array: %s', arr)
-
-    ###algorithm begin###
-    #插入排序 时间复杂度 O(N**2) 空间复杂度 O(2)
-    def insert_sorted(L, data, update=0):
-        if data in L:
-            return
-
-        if update:
-            L[0] = data
-        else:
-            L.append(data)
-
-        lth = len(L)
-        for i in range(lth):
-            if update:
-                if i == lth - 1:
-                    break
-                elif L[i] > L[i + 1]:
-                    L[i], L[i + 1] = L[i + 1], L[i]
-            else:
-                j = lth - 1 - i
-                if j == 0 or L[j] >= L[j - 1]:
-                    break
-                else:
-                    L[j - 1], L[j] = L[j], L[j - 1]
-
-    while l > 0:
-        k = 0
-        while k < m:
-            lth = len(result)
-            arr = arrs[k]
-            data = arr[l - 1]
-            if lth < n:
-                insert_sorted(result, data)
-                k += 1
-            elif data > result[0]:
-                insert_sorted(result, data, update=1)
-                k += 1
-            else:
-                arrs.pop(k)
-                m -= 1
-        l -= 1
-    ###algorithm end###
-    logging.info('Result: %s', result)
+# def Get_Top_N_Max_Numbers_Of_M_IntArrays():
+#     m, n, l = 3, 5, 10
+#     result = []
+#     arrs = [randints(500, sorted=1) for i in range(m)]
+#     for arr in arrs:
+#         logging.info('Array: %s', arr)
+#
+#     ###algorithm begin###
+#     #插入排序 时间复杂度 O(N**2) 空间复杂度 O(2)
+#     def insert_sorted(L, data, update=0):
+#         if data in L:
+#             return
+#
+#         if update:
+#             L[0] = data
+#         else:
+#             L.append(data)
+#
+#         lth = len(L)
+#         for i in range(lth):
+#             if update:
+#                 if i == lth - 1:
+#                     break
+#                 elif L[i] > L[i + 1]:
+#                     L[i], L[i + 1] = L[i + 1], L[i]
+#             else:
+#                 j = lth - 1 - i
+#                 if j == 0 or L[j] >= L[j - 1]:
+#                     break
+#                 else:
+#                     L[j - 1], L[j] = L[j], L[j - 1]
+#
+#     while l > 0:
+#         k = 0
+#         while k < m:
+#             lth = len(result)
+#             arr = arrs[k]
+#             data = arr[l - 1]
+#             if lth < n:
+#                 insert_sorted(result, data)
+#                 k += 1
+#             elif data > result[0]:
+#                 insert_sorted(result, data, update=1)
+#                 k += 1
+#             else:
+#                 arrs.pop(k)
+#                 m -= 1
+#         l -= 1
+#     ###algorithm end###
+#     logging.info('Result: %s', result)
 
 
 # 倒序打印一个单链表
@@ -263,6 +263,9 @@ def Get_Top_N_Max_Numbers_Of_M_IntArrays():
     #         三数取中 -> 取l[l], l[(l + r) // 2], l[r]三者大小为中的. 取值时顺便排序
     # 最好情况 -> 每次选取的枢纽都是中间值, 时间复杂度为O(NlgN)
     # 平均时间复杂度 -> O(NlgN)
+    # 最优空间复杂度: O(lgN) 最差空间复杂度: O(N)
+    # 每次执行都会产生一个位置中间值支持下次递归调用，必须使用栈。所以空间复杂度就是栈使用的空间
+    # 当函数被递归调用时，它的变量空间是创建于运行时堆栈上的。上级调用的函数变量仍保留在堆栈上，但它们被新递归函数的变量所掩盖，因此是不能被访问的。递归结束时堆栈空间反向依次释放
     # '''
 #     def qs(l, start=0, end=9):
 #         ### algorithm begin ###
@@ -294,6 +297,64 @@ def Get_Top_N_Max_Numbers_Of_M_IntArrays():
 
 
 # HeapSort
+def Heap_Sort():
+    '''
+    1.建堆(升) 2.排序(降)
+    时间复杂度O(NlgN)
+    空间复杂度O(1)(就地排序)
+    '''
+    smpl = randints(1, 100)
+    logging.info('Sample: %s', smpl)
+
+    def HS(seq):
+        def down(s, icur=0, ilast=9):
+            '''
+            @s -> sequence
+            @icur -> index of current item
+            @_len -> countable length of items
+            '''
+            while icur <= (ilast - 1)//2:
+                il, ir = icur*2 + 1, icur*2 + 2
+
+                if il < ilast:
+                    if ir < ilast:
+                        if s[il] > s[ir] and s[icur] > s[ir]:
+                            s[icur], s[ir] = s[ir], s[icur]
+                            icur = ir
+                        elif s[ir] > s[il] and s[icur] > s[il]:
+                            s[icur], s[il] = s[il], s[icur]
+                            icur = il
+                        else:
+                            break
+                    elif s[icur] > s[il]:
+                        s[icur], s[il] = s[il], s[icur]
+                        icur = il
+                        break
+                    else:
+                        break
+                else:
+                    break
+
+            return seq
+
+        _len = len(seq)
+        for i in list(range(_len))[::-1]:
+            while i > 0:
+                iprt = (i - 1)//2
+                if seq[iprt] > seq[i]:
+                    seq[i], seq[iprt] = seq[iprt], seq[i]
+                    seq = down(seq, i)
+
+                i = iprt
+
+        for i in range(_len - 1):
+            seq[0], seq[_len - 1 - i] = seq[_len - 1 - i], seq[0]
+            seq = down(seq, 0, _len - 1 - i)
+
+        return seq[::-1]
+
+    result = HS(smpl)
+    logging.info(result)
 
 
 # 一个列表A=[A1，A2，…,An]，打印出来列表中所有的组合情况
@@ -375,5 +436,5 @@ def exec(func):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
-    exec(Get_Top_N_Max_Numbers_Of_M_IntArrays)
+    exec(Heap_Sort)
     # logging.info(randints(300, 20))
