@@ -85,7 +85,7 @@
 |Must do -> 用户注册登录模块 -> XSS攻防 -> 网络编程 -> MQ中间件 -> Celery
 
 |mysql
-    |查询计划
+    |执行计划
     |查看语句IO和CPU使用情况
     |show profile
     |为什么语句没有使用索引

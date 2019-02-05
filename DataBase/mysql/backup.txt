@@ -1,0 +1,89 @@
+\Mysqldump
+    |导出
+        $ mysqldump -uroot -p123456 test -l -F > /tmp/bc.sql #备份数据到bc.sql
+            -l: 读锁（只能读取，不能更新）
+            -F: 即flush logs，可以重新生成新的日志文件，当然包括log-bin日志
+        $ mysqldump -uroot -p123456 -d test tbname >tb.sql; #导出数据库test的一张表结构（不加-d为同时导出表结构及表数据）
+
+    |导入
+        1.导入之前备份的数据到test库
+            $ mysql -uroot -p123456 test -v -f < /tmp/bc.sql
+                -v: 查看导入的详细信息
+                -f: 当中间遇到错误时，可以skip过去，继续执行下面的语句
+        2.将备份数据导入到当前数据库('数据库或单张表结构和数据')
+            $ mysql> source /tmp/bc.sql;
+
+\Binlog
+    -> binlog日志用来记录mysql内部'增删改'等对mysql数据库'有更新的内容'的记录(对数据库的改动), 查询select或show等不会被binlog记录; 主要用于数据库'主从复制'以及'增量恢复'
+    -> mysql的binlog日志必须打开log-bin功能才能使用binlog日志
+    -rw-rw---- 1 mysql mysql   669 8月  10 21:29 mysql-bin.000001
+    -rw-rw---- 1 mysql mysql   126 8月  10 22:06 mysql-bin.000002
+
+    |打开MySQL的log-bin功能
+        $ grep log-bin my.cnf
+        log-bin = mysql-bin #编辑my.cnf配置文件[mysqld], 然后重启mysql
+        mysql> show variables like 'log_bin'; #查看是否启用了日志(log_bin=ON)
+        mysql> show master status; #查看最后一个bin日志文件是那个,现在位置
+        mysql> show binlog events in 'mysql_bin.000001'; #查看产生的binary log
+        mysql> reset master; #备份完成后, 重置binlog日志(清空现有的binlog记录)
+        mysql> flush logs; #备份完成后启用新的binlog文件, 新文件名在当前文件的编号上加1
+
+    |Mysqlbinlog解析工具
+        -> Mysqlbinlog功能是将Mysql的binlog日志转换成Mysql语句，默认情况下binlog日志是二进制文件，无法直接查看
+        参数	描述
+        -d	指定数据库的binlog
+        -r	相当于重定向到指定文件
+        --start-position--stop-position	按照指定位置精确解析binlog日志（精确），如不接--stop-positiion则一直到binlog日志结尾
+        --start-datetime--stop-datetime	按照指定时间解析binlog日志（模糊，不准确），如不接--stop-datetime则一直到binlog日志结尾
+        备注：myslqlbinlog分库导出binlog，如使用-d参数，更新数据时必须使用use database。
+
+        1.精确解析(从位置100到位置200间的数据)binlog文件(mysql-bin.000002)并恢复到指定数据库test
+            $ mysqlbinlog --no-defaults mysql-bin.000002 --start-position="100" --stop-position="200" | more #先查好那一点（用more来查看）
+            $ mysqlbinlog --no-defaults mysql-bin.000002 --start-position="100" --stop-position="200" | /usr/bin/mysql -uroot -p123456 test #恢复数据
+
+        2.解析binlog并写入my.sql再恢复
+            $ mysqlbinlog -d test mysql-bin.000002 -r my.sql #解析全文件
+            $ mysqlbinlog mysql-bin.000002 --start-position=100  --stop-position=200 -r my.sql #精确解析
+            $ mysql -uroot -p123456 test -v -f < my.sql #恢复到数据库test
+
+    |MySQL binlog的三种工作模式
+    　　1.Row level
+    　　-> 日志中会记录每一行数据被修改的情况，然后在slave端对相同的数据进行修改。
+    　　优点：能清楚的记录每一行数据修改的细节
+    　　缺点：数据量太大
+    　　2.Statement level（默认）
+    　　-> 每一条被修改数据的sql都会记录到master的bin-log中，slave在复制的时候sql进程会解析成和原来master端执行过的相同的sql再次执行
+    　　优点：解决了 Row level下的缺点，不需要记录每一行的数据变化，减少bin-log日志量，节约磁盘IO，提高新能
+    　　缺点：容易出现主从复制不一致
+    　　3.Mixed（混合模式）
+    　　-> 结合了Row level和Statement level的优点
+
+    |MySQL企业binlog模式的选择
+        -> 互联网公司使用MySQL的功能较少(不用存储过程、触发器、函数),选择默认的Statement level
+        -> 用到MySQL的特殊功能（存储过程、触发器、函数）则选择Mixed模式
+        -> 用到MySQL的特殊功能（存储过程、触发器、函数），又希望数据最大化一直则选择Row模式
+
+    5、设置MySQL binlog模式
+    mysql> show global variables like "binlog%"; #查看MySQLbinlog模式
+    +-----------------------------------------+-----------+
+    | Variable_name                           | Value     |
+    +-----------------------------------------+-----------+
+    | binlog_cache_size                       | 1048576   |
+    | binlog_direct_non_transactional_updates | OFF       |
+    | binlog_format                           | STATEMENT | #系统默认为STATEMENT模式
+    | binlog_stmt_cache_size                  | 32768     |
+    +-----------------------------------------+-----------+
+    4 rows in set (0.00 sec)　
+
+    mysql> set global binlog_format='ROW'; #MySQL中开启binlog模式
+    binlog_format='ROW' #my.cnf中开启binlog模式, 放在mysqld模块下面
+
+    6、配置完成后需要重启mysql服务
+    $ mysqlbinlog --base64-output="decode-rows" -v mysql-bin.000001 #Row模式下解析binlog
+
+\将一个mysql数据库中的一个表导入到另一个mysql数据库中
+    1.登录db2执行 create table tb select * from db1.tb;
+    2.执行 mysqldump -u root -p db1 tb file=tb.sql; 登录db2执行 source tb.sql;
+    3.登录db1执行select * from tb into outfile "tb .txt"; 导出纯数据格式
+      登录db2执行 load data infile tb .txt into table tb; 需要先建一张和原表结构一样的空表
+    4.建一个odbc连接，先导出到access中，再导出到另一个库中

@@ -2,6 +2,7 @@
     -> 遇到权限问题, 尝试sudo python xxx.py
     |monkey patch -> 在运行时动态地对已定义的函数或对象进行修改或添加
     > import sys; sys.path.append(lib_path) #添加库模块路径后可以从其他目录import lib
+    $ uncompyle6 -o xxx.py xxx.pyc #反编译还原 xxx.pyc -> xxx.py
 
     |comment for docstring #在class或function内部
         > """

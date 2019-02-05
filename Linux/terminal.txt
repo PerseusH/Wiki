@@ -1,0 +1,42 @@
+\Mac CMD
+    Finder -> Go -> /etc/hosts #hosts
+    Atom -> opt+cmd+i #es6 console
+	desktop -> cmd+k #远程连接
+
+	|Terminal
+	    1.将光标移动到行首 -> ctrl + a
+	    2.将光标移动到行尾 -> ctrl + e
+	    3.清除屏幕 ->        ctrl + l
+	    4.搜索以前使用命令 -> ctrl + r
+	    5.清除当前行 ->      ctrl + u
+	    6.清除至当前行尾 ->   ctrl + k
+	    7.单词为单位移动 ->   option + 方向键
+
+\Shell
+    ctrl+alt+t #打开终端
+    参数 -> 命令行输入, 以空格分割
+    $0  -> ./test.sh,即命令本身, 相当于c/c++中的argv[0]
+    $1  -> -f,第一个参数
+    $2  -> config.conf
+    $3, $4 ... -> 类推
+    $   -> 参数的个数, 不包括命令本身, 上例中$#为4
+    $@  -> 参数本身的列表, 也不包括命令本身, 如上例为 -f config.conf -v --prefix=/home
+    $*  -> 和$@相同, 但"$*" 和 "$@"(加引号)并不同, "$*"将所有的参数解释成一个字符串, 而"$@"是一个参数数组。
+
+\Windows & PowerShell
+    Atom -> C:\Users\duhui\AppData\Local\atom\app-1.21.2\resources\app\apm\bin\apm
+    pip -> "E:\Program Files\Python 3.5\Scripts\pip.exe" install objgraph
+	> '"Hello,Powershell Script"' > MyScript.ps1 #创建脚本
+	> .\MyScript.ps1 #执行脚本
+	-> $args外部传入参数数组
+	cinst <package> #PowerShell下的安装工具
+	taskkill /F /IM python.exe #批量删除进程
+	Alt+F4 #关闭当前所有窗口
+
+\Chrome
+    chrome://net-internals/#dns #查看Chrome浏览器DNS缓存
+
+\Future
+	-> 遗传算法
+	-> 最大熵模型应用:词性标注、短语识别、指代消解、语法分析、机器翻译、文本分类、问题回答、语言模型
+	-> 类型论(Type Theory)

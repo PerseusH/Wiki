@@ -57,7 +57,7 @@
 \re -> 正则查找模块
     > import re
     > s = str_sample
-    > reg = re.compile(r'text') #编译要查找的正则对象
+    > reg = re.compile(r'\s\S') #编译要查找的正则对象
     > #reg.xxx(s) == re.xxx(pattern, s)
     > reg.findall(s) #返回所有匹配字符串数组, 加len()可获取符合的结果个数(重复查找)
     > reg.findall(r'(?=word)', s) #返回匹配word结果个数的空字符串数组
@@ -86,6 +86,10 @@
     |urllib/urllib2/httplib
 
     |requests
+        #下载图片
+        pic = requests.get('https://xxx.jpg').content
+        with open('local.jpg', 'wb') as f:
+            f.write(pic)
 
     |scrapy
 
@@ -95,6 +99,16 @@
     > import logging
     > logging.basicConfig(level = logging.INFO)
     > logging.info('xxx xxx') #调试程序, 记录信息
+
+\uuid(全局唯一标识符)
+    import uuid
+
+    uuid.uuid1()　　基于MAC地址，时间戳，随机数来生成唯一的uuid，可以保证全球范围内的唯一性。
+    uuid.uuid2()　　算法与uuid1相同，不同的是把时间戳的前4位置换为POSIX的UID。不过需要注意的是python中没有基于DCE的算法，所以python的uuid模块中没有uuid2这个方法。
+    uuid.uuid3(namespace,name)　　通过计算一个命名空间和名字的md5散列值来给出一个uuid，所以可以保证命名空间中的不同名字具有不同的uuid，但是相同的名字就是相同的uuid了。【感谢评论区大佬指出】namespace并不是一个自己手动指定的字符串或其他量，而是在uuid模块中本身给出的一些值。比如uuid.NAMESPACE_DNS，uuid.NAMESPACE_OID，uuid.NAMESPACE_OID这些值。这些值本身也是UUID对象，根据一定的规则计算得出。
+    uuid.uuid4()　　通过伪随机数得到uuid，是有一定概率重复的
+
+uuid.uuid5(namespace,name)　　和uuid3基本相同，只不过采用的散列算法是sha1
 
 \shutil
     shutil.rmtree(dir_path) #递归删除非空目录内容

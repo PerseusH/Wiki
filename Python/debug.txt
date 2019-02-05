@@ -16,6 +16,8 @@
         2.循环引用链上某对象定义了__del__方法
             -> 官方解释是：循环引用的一组对象被gc模块识别为可回收，但需先调用每个对象上的__del__才可被回收。当用户自定义了__del__的对象，gc系统无法判断应先调用环上的哪个__del__，因此无法回收这类对象
 
+    $ free -gt #查看内存、SWAP消耗情况. 如果统计结果中cached和used相差特别大，基本可确定系统发生内存泄露
+
     |Graphviz -> 将图结构转化成png图片表示的工具.通过对象的引用关系，找到内存泄漏的对象
 
     |GC -> 添加检查点
@@ -70,7 +72,7 @@
             objgraph.show_growth()
 
         -> 但是用这些函数还是不能定位到具体的是那些代码里产生泄漏的，特别是dict和list这两个对象被许多模块，包括python解释器本身大量的使用
-        -> 为了将自己用的dict和list与其它模块的dict和list区分开,我们'{自定义dict和list类}'
+        -> 为了将自己用的dict和list与其它模块的dict和list区分开,我们'自定义dict和list类'
         -> 范围又可以进一步的缩小了，离目标又近了一步，但是还是有一段距离
 
         |程序最后执行
@@ -81,11 +83,10 @@
             $ pyrasite-shell <pid>
             > import objgraph; objgraph.show_refs(chain, filename='chain.png')
 
-    |$ (gdb) bt #获取程序的调用栈、调用参数以及所在行的代码. py-bt只查找python程序
+    $ (gdb) bt #获取程序的调用栈、调用参数以及所在行的代码. py-bt只查找python程序
 
     |pyrasite -> 直接连上一个正在运行的python程序，打开一个类似ipython的交互终端来运行命令、检查程序状态
-        -> 连接到有问题的python程序，开始收集信息
-            $ pyrasite-shell <pid>
+        $ pyrasite-shell <pid> #连接到有问题的python程序，开始收集信息
         -> 接下来就可以在<pid>进程里调用任意python代码，查看进程状态
 
     |psutil -> 查看python进程状态
@@ -139,10 +140,9 @@
 
 \logging
     -> 级别高低: CRITICAL>ERROR>WARNING>INFO>DEBUG>NOTSET, level以下的logging不会执行
-
-        > import logging
-        > #name为系统当前用户名
-        > logging.basicConfig(level=logging.INFO, format='%(asctime)s %(filename)s: %(lineno)s %(name)s %(levelname)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-        > logging.debug('This message should appear on the console')
-        > logging.info('So should this')
-        > logging.warning('And this, too')
+    > import logging
+    > #name为系统当前用户名
+    > logging.basicConfig(level=logging.INFO, format='%(asctime)s %(filename)s: %(lineno)s %(name)s %(levelname)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    > logging.debug('This message should appear on the console')
+    > logging.info('So should this')
+    > logging.warning('And this, too')

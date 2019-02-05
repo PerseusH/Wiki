@@ -73,6 +73,34 @@
     a<<n                     左移n位, 结果为 a * (2 ** n)
     a>>n                     右移n位, 结果为 a / (2 ** n)
 
+    |str judgement
+    isalnum()
+    Returns true if string has at least 1 character and all characters are alphanumeric and false otherwise.
+
+    isalpha()
+    Returns true if string has at least 1 character and all characters are alphabetic and false otherwise.
+
+    isdigit()
+    Returns true if string contains only digits and false otherwise.
+
+    islower()
+    Returns true if string has at least 1 cased character and all cased characters are in lowercase and false otherwise.
+
+    isnumeric()
+    Returns true if a unicode string contains only numeric characters and false otherwise.
+
+    isdecimal()
+    Returns true if a unicode string contains only decimal characters and false otherwise
+
+    isspace()
+    Returns true if string contains only whitespace characters and false otherwise.
+
+    istitle()
+    Returns true if string is properly "titlecased" and false otherwise.
+
+    isupper()
+    Returns true if string has at least one cased character and all cased characters are in uppercase and false otherwise.
+
 \特殊方法
     |__iter__ & __next__
         python3.x:__next__() for next(obj_cls),python2.x:next() for obj_cls.next()

@@ -1,0 +1,140 @@
+mysql> COMMIT; #显式提交. 用SQL命令间接完成的提交为隐式提交
+|DML（data manipulation language）数据操纵语言 -> SELECT、UPDATE、INSERT、DELETE
+    -> DML操作会被放到rollback segment中, 事务显式commit后才生效. 可手动控制事务的提交和回滚
+|DDL（data definition language）数据库定义语言 -> CREATE、ALTER、DROP、TRUNCATE
+    -> DDL操作是隐式提交的, 操作立即生效，不放到rollback segment中. '不能rollback'
+|脏页 -> linux内核中的概念，因为硬盘的读写速度远赶不上内存的速度，系统就把读写比较频繁的数据事先放到内存中，以提高读写速度，这就叫高速缓存，linux是以页作为高速缓存的单位，'当进程修改了高速缓存(缓冲池)里的数据时，该页就被内核标记为脏页'，内核将会在合适的时间'把脏页的数据写到磁盘'中去，以保持高速缓存中的数据和磁盘中的数据是一致的
+
+\表空间
+    -> 'InnoDB'管理数据，存储表数据和索引的方式. InnoDB管理主要基于表空间文件和日志文件
+    |共享表空间 -> 一个数据库的所有表数据，索引文件全部放在一个文件中，默认路径在data目录下. 默认的文件名为:ibdata1, 初始为10M
+        -> 共享表空间中会包含Undo信息，在事务未提交时数据即已经写入了表空间文件，当事务rollback时Undo信息不会被删除，但是此空间会被标记，后续会以覆盖的方式被重新使用
+        -> 可以将表空间分成多个文件存放到各个磁盘上（表空间文件大小不受表大小的限制，如一个表可以分布在不同的文件上）。数据和文件放在一起方便管理
+        |缺点 -> 所有的数据和索引存放到一个文件中，虽然可以把一个大文件分成多个小文件，但是'多个表及索引在表空间中混合存储'，这样对于一个表做了大量删除操作后表空间中将会有'大量碎片'，特别是对于统计分析，日值系统这类应用最不适合用共享表空间
+    |独立表空间 -> 每个表都将会生成以独立的文件方式来进行存储，每一个表都有一个.frm表描述(结构)文件和一个.ibd文件。.ibd文件包括了单独一个表的'数据、索引、插入缓冲'的内容，其余数据仍存放在共享表空间中，独立表空间的存储位置默认是在表的位置之中. 不管怎么删除,空间碎片不会太严重的影响性能,而且还有机会处理
+        -> 每个表都有独立的表空间存储表的数据和索引. 可以实现单表在不同的数据库中移动
+        |空间可以回收（除drop table操作处，表空不能自已回收）       
+            1. Drop table操作自动回收表空间，如果对于统计分析或是日值表，删除大量数据后可以通过:alter table TableName engine=innodb; 回收不用的空间     
+            2. 对于使innodb-plugin的Innodb使用turncate table也会使空间收缩     
+        |缺点 -> 单表增加过大，如超过100个G
+    -> '独立表空间'的性能更高
+    -> innodb_file_per_table = ON #在my.cnf中[mysqld]下设置, 开启独立表空间. 修改完需重启
+        -> 参数修改后仅对'后续操作'生效，如原来为共享表空间，动态修改为独立表空间后仅新建的表为独立表空间
+    -> innodb_data_file_path #在my.cnf中[mysqld]下设置一个或者多个文件组成表空间
+
+    |innodb 共享表空间转独立表空间
+        1.先逻辑备份，然后修改配置文件my.cnf中的参数innodb_file_per_table参数为1或ON，重启服务后将逻辑备份导入即可. 对所有表有效
+        2.修改配置文件my.cnf中的参数innodb_file_per_table参数为1，重启服务后将需要修改的所有innodb表都执行一遍：alter table table_name engine=innodb; 仅对修改后新建的表有效
+
+\配置文件 /etc/my.cnf
+    [mysqld]
+    max_connections = 2000              //最大连接数
+    lower_case_table_names = 1            //不区分大小写, 0为要区分
+    #mysql5.5以后用character_set_server=utf8 取代default-character-set=utf8
+    character-set-server = utf8           //设置服务端的默认字符集
+    default-collation = utf8_general_ci //排序规则
+    tmpdir=/apps/tmp             //mysql的临时目录是用于mysql分组和排序时产生临时文件的位置
+
+    [client]
+    character-set-server = utf8           //设置客户端默认字符集
+
+    -> mac上mysql没有自带配置文件，需手动生成/etc/my.cnf
+    -> linux上mysql自带配置文件在/etc/mysql下,my.cnf和./mysql.conf.d/mysqld.cnf
+    -> mysql'{默认只允许本机访问}'.在[mysqld]下设置'{bind-address=0.0.0.0}'后能远程访问
+        > [mysqld]
+        > skip_networking #使MySQL只能通过本机Socket连接(socket连接也是本地连接的默认方式），放弃对TCP/IP的监听
+        > bind_address=127.0.0.1 #只允许本机访问.远程访问会拒绝连接(errcode:111/10061)
+    -> 远程访问一个MySQL-server时需要在server上添加客户端用户和权限,'%'指所有IP都能访问
+        grant all privileges on *.* to client_user@'%' identified by 'pwd';
+
+\设计范式
+    1.字段原子性 -> 表字段'{不能再分}'成其他几列
+    2.字段依赖主键 -> 表字段直接'{依赖主键}',服务于同一功能或领域
+    3.字段与主键直接相关 -> 表'{没有冗余字段}'
+    |反范式 -> 实际应用中常设置'{冗余字段减少联表}'查询
+
+\命名规则
+    1.数据库和表名和业务模块名一致;服务与同一个子模块的一类表应尽量以子模块名为前缀或后缀
+    2.联合索引名称应尽量包含所有索引键字段名或缩写,且各字段名在索引名中的顺序应与索引键在索引中的索引顺序一致,并尽量包含一个类似idx的前缀或后缀,以表明期对象类型是索引.
+    3.约束等其他对象也应该尽可能包含所属表或其他对象的名称,以表明各自的关系
+
+\SQL执行过程
+    1.客户端将sql传到服务器端
+    2.服务器端检查查询缓存，如果已经存在则返回缓存中的结果。如果不存在则将sql传到下一步
+    3.服务器'解析sql，预处理，并形成执行计划'
+    4.执行引擎调用存储引擎api执行查询
+    5.服务器端将结果返回给客户端
+
+\存储引擎
+    1.MyIASM管理非事务表,提供高速存储和检索以及全文搜索能力,如果执行大量select,应选MyIASM
+    2.InnoDB用于事务处理,具有ACID事务支持等特性,如果执行大量insert和update,应选InnoDB
+
+    |关闭Innodb引擎方法
+    1.关闭mysql服务 -> net stop mysql
+    2.找到mysql安装目录下的my.ini文件 ->
+    3.找到default-storage-engine=INNODB 改为default-storage-engine=MYISAM
+    4.找到#skip-innodb 改为skip-innodb
+    5.启动mysql服务 -> net start mysql
+
+\JOIN
+    -> MySQL表关联的算法是NestLoopJoin(内层嵌套循环). 通过'驱动表的结果集'作为循环基础数据，然后将结果集中的数据作为过滤条件'一条条地到下一个表中查询数据'，然后合并结果
+    |Inner Join -> 两表的交集. 有INNER JOIN，WHERE(等值连接),STRAIGHT_JOIN,JOIN(省略INNER)四种写法. '驱动表为mysql优化器自动选择的小表'
+    |Outer Join -> 两表的并集
+    |Left Join -> 两表的交集和左表剩余列. '驱动表为左表'
+    |Right Join -> 两表交集和右表剩余列. '驱动表为右表'
+    |Using(col) <=> on t1.col = t2.col
+    -> inner join是由mysql选择驱动表，但是有些特殊情况需要选择另个表作为驱动表，比如有group by、order by等「Using filesort」、「Using temporary」时。STRAIGHT_JOIN来强制连接顺序，在STRAIGHT_JOIN左边的表名就是驱动表，右边则是被驱动表。在使用STRAIGHT_JOIN有个前提条件是该查询是内连接，也就是inner join。其他链接不推荐使用STRAIGHT_JOIN，否则可能造成查询结果不准确. 这个方式有时可能减少3倍的时间
+
+\Execution
+    SELECT DISTINCT <select_list>
+    FROM <left_table> <join_type>
+    JOIN <right_table> ON <join_condition>
+    WHERE <where_condition>
+    GROUP BY <group_by_list>
+    HAVING <having_condition>
+    ORDER BY <order_by_condition>
+    LIMIT <limit_number>
+    >>>>>>
+    FROM <left_table>
+    ON <join_condition>
+    <join_type> JOIN <right_table>
+    WHERE <where_condition>
+    GROUP BY <group_by_list>
+    HAVING <having_condition>
+    SELECT
+    DISTINCT <select_list>
+    ORDER BY <order_by_condition>
+    LIMIT <limit_number>
+
+\master-slave
+    -> 同步前需确保主从库有相同的数据库/表结构.第一个数据行不能为空,否则报1032
+    |master
+        > [mysqld]
+        > bind-address=0.0.0.0
+        > log-bin=mysql-bin
+        > server-id=last_num_of_IP
+
+        mysql> grant all privileges on *.* to client_usr@'%' identified by 'pwd';
+        mysql> show master status; #查看master状态
+
+    |slave
+        > [mysqld]
+        > log-bin=mysql-bin
+        > server-id=last_num_of_IP
+
+        mysql> change master to
+                master_host='IP',
+                master_user='client_usr',
+                master_password='pwd',
+                master_log_file='mysql-bin-file',
+                MASTER_LOG_POS=master-pos;
+        mysql> stop slave; #终止slave
+        mysql> start slave; #启动slave
+        mysql> show slave status; #查看slave状态
+
+    |errcode:1032 -> slave缺少master中数据行对象，同步失败
+        |解决(slave)
+        1.手动在slave中添加指定数据行
+        2.mysql> stop slave;
+        3.mysql> set global sql_slave_skip_counter=1; #跳过本次同步,转向下一次
+        3.mysql> start slave;

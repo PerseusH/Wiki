@@ -1,58 +1,266 @@
-\ConnectionPool
-    #redis.ConnectionPool(...)
-    > def __init__(self, connection_class=Connection, max_connections=None,
-    >              **connection_kwargs):
-    >     max_connections = max_connections or 2 ** 31
-    >     if not isinstance(max_connections, (int, long)) or max_connections < 0:
-    >         raise ValueError('"max_connections" must be a positive integer')
+$ pip install redis #安装
 
-    >     self.connection_class = connection_class
-    >     self.connection_kwargs = connection_kwargs
-    >     self.max_connections = max_connections
+\连接
+    -> redis提供两个类Redis和StrictRedis用于实现Redis的命令，StrictRedis用于实现大部分官方的命令，并使用官方的语法和命令，Redis是StrictRedis的子类，用于向后兼容旧版本的redis-py
+    -> redis连接实例是线程安全的，可直接将redis连接实例设置为一个全局变量使用。如需另一个Redis实例，就要重新创建redis连接实例来获取一个新的连接。python的redis没有实现select命令
+        import redis #导入redis模块
+        #连接时加decode_responses=True，写入的value为str类型，不加这个参数写入的则为字节类型
+        r = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
-    #core method of rdconn.[set|get|etc.]
-    > def execute_command(self, *args, **options):
-    >     pool = self.connection_pool
-    >     command_name = args[0]
-    >     connection = pool.get_connection(command_name, **options)
-    >     try:
-    >         connection.send_command(*args)
-    >         return self.parse_response(connection, command_name, **options)
-    >     except (ConnectionError, TimeoutError) as e:
-    >         connection.disconnect()
-    >         if not connection.retry_on_timeout and isinstance(e, TimeoutError):
-    >             raise
-    >         connection.send_command(*args)
-    >         return self.parse_response(connection, command_name, **options)
-    >     finally:
-    >         pool.release(connection)
+    |ConnectionPool -> redis-py使用ConnectionPool来管理对一个redis server的所有连接，避免每次建立、释放连接的开销。默认每个Redis实例都会维护一个自己的连接池
+        -> ConnectionPool实例中有两个list: _available_connections,_in_use_connections,分别表示可用的连接集合和正在使用的连接集合,获取连接的过程是
+            1._available_connections
+            2.如果获取不到, 重新创建连接
+            3.将获取到的连接添加到_in_use_connections
+        -> 每次执行完redis command后pool.release将连接从_in_use_connections放回 _available_connections,这样后续的连接获取就能再次使用这个连接了
 
-    > def get_connection(self, command_name, *keys, **options):
-    >     "Get a connection from the pool"
-    >     self._checkpid()
-    >     try:
-    >         connection = self._available_connections.pop()
-    >     except IndexError:
-    >         connection = self.make_connection()
-    >     self._in_use_connections.add(connection)
-    >     return connection
+        #usage
+        > import redis
+        > pool = redis.ConnectionPool(host='127.0.0.1', port=6379, > password='xxxxx', socket_timeout=3, max_connections=10)
+        > r = redis.StrictRedis(connection_pool=pool)
 
-    > def make_connection(self):
-    >     "Create a new connection"
-    >     if self._created_connections >= self.max_connections:
-    >         raise ConnectionError("Too many connections")
-    >     self._created_connections += 1
-    >     return self.connection_class(**self.connection_kwargs)
+        #redis.ConnectionPool(...)
+        > def __init__(self, connection_class=Connection, max_connections=None,
+        >              **connection_kwargs):
+        >     max_connections = max_connections or 2 ** 31
+        >     if not isinstance(max_connections, (int,long)) or max_connections < 0:
+        >         raise ValueError('"max_connections" must be a positive integer')
 
-    -> 在ConnectionPool的实例中,有两个list,依次是_available_connections,_in_use_connections,分别表示可用的连接集合和正在使用的连接集合,在上面的get_connection中,获取连接的过程是
-        1.从可用连接集合尝试获取连接
-        2.如果获取不到, 重新创建连接
-        3.将获取到的连接添加到_in_use_connections
-    -> 每次执行完redis command后pool.release将连接从_in_use_connections放回 _available_connections,这样后续的连接获取就能再次使用这个连接了
+        >     self.connection_class = connection_class
+        >     self.connection_kwargs = connection_kwargs
+        >     self.max_connections = max_connections
 
-    #usage
-    > import redis
-    > rdconnpool = redis.ConnectionPool(host='127.0.0.1', port=6379, > password='xxxxx', socket_timeout=3, max_connections=10)
-    > rdconn = redis.StrictRedis(connection_pool=rdconnpool)
-    > rdconn.set('name', 'Perseus')
-    > rdconn.get('name')
+        #core method of rdconn.[set|get|etc.]
+        > def execute_command(self, *args, **options):
+        >     pool = self.connection_pool
+        >     command_key = args[0]
+        >     connection = pool.get_connection(command_key, **options)
+        >     try:
+        >         connection.send_command(*args)
+        >         return self.parse_response(connection, command_key, **options)
+        >     except (ConnectionError, TimeoutError) as e:
+        >         connection.disconnect()
+        >         if not connection.retry_on_timeout and isinstance(e, TimeoutError):
+        >             raise
+        >         connection.send_command(*args)
+        >         return self.parse_response(connection, command_key, **options)
+        >     finally:
+        >         pool.release(connection)
+
+        > def get_connection(self, command_key, *keys, **options):
+        >     "Get a connection from the pool"
+        >     self._checkpid()
+        >     try:
+        >         connection = self._available_connections.pop()
+        >     except IndexError:
+        >         connection = self.make_connection()
+        >     self._in_use_connections.add(connection)
+        >     return connection
+
+        > def make_connection(self):
+        >     "Create a new connection"
+        >     if self._created_connections >= self.max_connections:
+        >         raise ConnectionError("Too many connections")
+        >     self._created_connections += 1
+        >     return self.connection_class(**self.connection_kwargs)
+
+\常用命令
+    |键值常用命令 -> keys/exits/del/expire/ttl/move/persist/randomkey/rename/type
+    |服务器常用命令 -> ping/echo/select/quit/dbsize/info/config get/flushdb/flushall
+
+\常用函数
+    r.set('key', 'junxi')  # key是"foo" value是"bar" 将键值对存入redis缓存
+    r.get('key') | r['key'] #取出e键key对应的值
+    r.delete("gender") #删除key为gender的键值对
+    r.keys() #查询所有的Key
+    r.dbsize() #当前redis包含多少条数据
+    r.save() #执行"检查点"操作，将数据写回磁盘。保存时阻塞
+    r.flushdb() #清空r中的所有数据
+    r.delete("gender") #删除key为gender的键值对
+    r.exists("zset1") #检查名字是否存在
+    keys(pattern='') #模糊匹配(慎用). 根据模型获取redis的key
+        KEYS * 匹配数据库中所有 key 。
+        KEYS h?llo 匹配 hello ， hallo 和 hxllo
+        KEYS hllo 匹配 hllo 和 heeeeello
+        KEYS h[ae]llo 匹配 hello 和 hallo ，但不匹配 hillo
+
+        r.keys("foo*")
+    r.expire("list5", time=3) #设置超时时间
+    r.rekey("list5", "list5_1") #重命名
+    r.randomkey() #随机获取一个key（不删除）
+    r.type("set1") #获取key对应值的类型
+    r.scan(cursor=0, match=None, count=None) #查看所有元素
+
+\String
+    set(key, value, ex=None, px=None, nx=False, xx=False) #设置值，默认无则创建有则修改
+        |ex -> 过期时间（秒）
+        |px -> 过期时间（毫秒）
+        |nx -> 如果设置为True，则只有key不存在时，当前set操作才执行
+        |xx -> 如果设置为True，则只有key存在时，当前set操作才执行
+    r.set('food', 'mutton', ex=3) #过期时间是3秒，3秒后food的值就变成None
+    r.set('food', 'beef', px=3) #过期时间是3豪秒，3毫秒后food的值就变成None
+    r.set('fruit', 'watermelon', nx=True) #只有key不存在时，当前set操作才执行（新建）
+        # 如果键fruit不存在，那么输出是True；如果键fruit已经存在，输出是None
+    r.set('fruit', 'watermelon', xx=True) #只有key存在时，当前set操作才执行 （修改）
+        # 如果键fruit已经存在，那么输出是True；如果键fruit不存在，输出是None
+    r.setnx('fruit', 'banana') #设置值，只有key不存在时，执行设置操作（添加）
+    r.setex("fruit", "orange", 5) #5秒后，fruit的值变成None
+    r.psetex("fruit", 5000, "apple") #5000毫秒后，fruit的值变成None
+    r.mset(k1="v1", k2="v2") #mset(*args, **kwargs) 批量设置值
+    r.mget("k1", "k2") | r.mget(["k1", "k2"]) #批量获取值
+    r.getset("key", "new_val") #设置新值并获取原来的值
+    r.getrange("key", 0, 2) #获取子序列（根据字节获取，非字符）切片
+    r.setrange("key", 1, "ccc") #修改值内容. 'xyyyz'从索引号1开始替换成ccc -> xcccz
+    r.setbit('key', 7, 1) #对key对应值的二进制表示的指定位进行操作. 示例为将第7位设置为1
+        |扩展 -> 转换二进制表示：
+            source = "陈思维"
+            source = "foo"
+            for i in source:
+            num = ord(i)
+            print bin(num).replace('b','')
+            特别的，如果source是汉字 "陈思维"怎么办？
+            答：对于utf-8，每一个汉字占 3 个字节，那么 "陈思维" 则有 9个字节
+            对于汉字，for循环时候会按照 字节 迭代，那么在迭代时，将每一个字节转换 十进制数，然后再将十进制数转换成二进制
+    r.getbit("key", 8) #获取key对应的值的二进制表示中的某位的值（0或1）
+    r.bitcount("key",0,4) #获取key对应的值的二进制表示中 1 的个数(前5个字节中)
+    r.bitop("AND","key","k1","k2") #获取多个值并将其做位运算，将结果保存至新的key对应的值
+    r.strlen("foo") #返回key对应值的字节长度（一个汉字3个字节）
+    r.incr("foo", amount=1)  #自增，当key不存在时，则创建{key: amount}，否则则自增
+        |应用场景 -> 页面点击数. 如论坛每个帖子都要记录点击数，而点击数比回帖数多得多。如果使用关系数据库存储，可能存在大量的行级锁争用. 当redis服务启动时，可从关系数据库读入点击数的始值
+    r.incrbyfloat("key", amount=2.0) #自增，当key不存在时，则创建{key: amount}，否则则自增
+    r.decr("key", amount=3) #自减，当key不存在时，则创建{key: amount}，否则则自减
+    r.append("key", "haha") #在key对应的值后面追加内容
+
+\hash
+    -> Hash是一个String类型的k-v映射表，value的内部存储结构为HashMap，因此Hash特别适合存储对象. key/value都是String类型，将整个对象存储在Hash类型中会占用更少内存
+    hset(key, key, value) #key对应的hash中设置一个键值对（不存在，则创建；否则，修改）
+    hsetnx(key, key, value) #当key对应的hash中不存在当前key时则创建（相当于添加）
+    r.hset("hash1", "k1", "v1")
+    r.hset("hash1", "k2", "v2")
+    r.hkeys("hash1") # 取hash中所有的key
+    r.hget("hash1", "k1") # 单个取hash的key对应的值
+    r.hmget("hash1", "k1", "k2") # 多个取hash的key对应的值
+    r.hsetnx("hash1", "k2", "v3") # 只能新建
+    r.hmset("hash2", {"k2": "v2", "k3": "v3"}) #在key对应的hash中批量设置键值对
+    r.hmget("hash2", "k2", "k3") | r.hmget("hash2", ["k2", "k3"]) # 批量取出hash2的值
+    r.hgetall("hash1") #获取hash1的所有键值
+    r.hlen("hash1") #获取hash1对应的hash中键值对的个数
+    r.hkeys("hash1") #获取hash1对应的hash中所有的key的值
+    r.hvals("hash1") #获取hash1对应的hash中所有的value
+    r.hexists("hash1", "key") #检查hash1中的key是否存在
+    r.hdel("hash1", "k1") #删除一个键值对
+
+    hincrby(key, key, amount=1) #自增key对应的hash中的指定key的值，无则创建{key:amount}
+    r.hset("hash1", "k3", 123)
+    r.hincrby("hash1", "k3", amount=-1) #-1
+    r.hincrby("hash1", "k4", amount=1)  #+1
+    hincrbyfloat(key, key, amount=1.0) #自增自减浮点数，无则创建{key:amount}
+
+    hscan(key, cursor=0, match=None, count=None) #增量式迭代获取，对于数据大的数据非常有用，hscan可以实现分片的获取数据，并非一次性将数据全部获取完，从而放置内存被撑爆
+        |参数
+        key -> redis的key
+        cursor -> 游标（基于游标分批取获取数据）
+        match -> 匹配指定key，默认None 表示所有的key
+        count -> 每次分片最少获取个数，默认None表示采用Redis的默认分片个数
+
+        如：
+        第一次：cursor1, data1 = r.hscan('xx', cursor=0, match=None, count=None)
+        第二次：cursor2, data1 = r.hscan('xx', cursor=cursor1, match=None, count=None)
+        ...
+        直到返回值cursor的值为0时，表示数据已经通过分片获取完毕
+    hscan_iter(key, match=None, count=None) #利用yield封装hscan结果创建生成器
+
+\list
+    -> 每一个元素都是String类型的双向链表。可从链表头部和尾部添加或者删除元素。可作为栈或队列使用
+    |应用场景 -> 如'好友列表，粉丝列表，消息队列，最新消息排行'等
+    r.lpush("list1", 11, 22, 33) #在key对应的list中添加元素，每个新的元素都添加到列表最左边
+    r.rpush("list2", 11, 22, 33) #在key对应的list中添加元素，每个新的元素都添加到列表最右边
+    r.llen("list2") #列表长度
+    r.lrange("list2", 0, 3) #切片取值
+    r.lpushx("list10", 10) #向已经有的key的列表的左边添加元素，没有的话无法创建
+    r.rpushx("list2", 99) #向已经有的key的列表的右边添加元素，没有的话无法创建
+    r.linsert("list2", "before", "11", "00") #向列表中左边第一个出现的元素"11"前插入"00"
+    r.lset("list2", 0, -11) #把索引号是0的元素修改成-11
+    r.lrem("list2", "11", 1) #将列表中左边第一次出现的"11"删除
+    r.lrem("list2", "99", -1) #将列表中右边第一次出现的"99"删除
+    r.lrem("list2", "22", 0) #将列表中所有的"22"删除
+    r.lpop("list2") #删除列表最左边的元素，并且返回删除的元素
+    r.rpop("list2") #删除列表最右边的元素，并且返回删除的元素
+    r.ltrim("list2", 0, 2) #删除索引号是0-2之外的元素，值保留索引号是0-2的元素
+    r.lindex("list2", 0) #取出索引号是0的值
+    r.rpoplpush("list1", "list2") #把list1的元素移动到list2
+    r.brpoplpush("list1", "list2", timeout=2) #把list1的元素移动到list2, 超时时间为2s
+    r.blpop(keys, timeout) #将多个列表排列，按照从左到右去pop对应列表的元素
+    r.brpop(keys, timeout) #同blpop，将多个列表排列,按照从右像左去移除各个列表内的元素
+        r.lpush("list10", 3, 4, 5)
+        r.lpush("list11", 3, 4, 5)
+        while True:
+            r.blpop(["list10", "list11"], timeout=2)
+
+    #如果获取name对应的所有列表非常大，有可能在第一步时就将内存撑爆，因此需要自定义一个迭代器
+    def list_iter(name):
+        list_count = r.llen(name)
+        for index in range(list_count):
+            yield r.lindex(name, index)
+
+\set
+    -> 无序的String类型数据的集合，类似List，与List不同的是Set不能有重复的数据.内部是用HashMap实现的.Set只存放底层HashMap的key，value列为空，遍历时从HashMap中取出keySet来遍历
+    |应用场景 -> 集合有取交集、并集、差集等操作，因此可以求'共同好友、共同兴趣、分类标签'等
+    r.sadd("set1", 33, 44, 55, 66) #往集合中添加元素
+    r.scard("set1")) #获取集合的长度
+    r.smembers("set1") #获取集合中所有的成员
+    r.sscan("set1") #获取集合中所有的成员-元组形式
+    for i in r.sscan_iter("set1"): #获取集合中所有的成员-迭代器形式
+        print(i)
+    r.sdiff("set1", "set2") #差集. 在集合set1但是不在集合set2中
+    r.sdiffstore("set3", "set1", "set2") #获取set1和set2的差集, 存储到set3中
+    r.sinter("set1", "set2") #交集
+    r.sinterstore("set3", "set1", "set2") #获取set1和set2的交集, 存储到set3中
+    r.sunion("set1", "set2") #并集
+    r.sunionstore("set3", "set1", "set2") #获取set1和set2的并集, 存储到set3中
+    r.sismember("set1", 33) #判断是否是集合的成员 类似in
+    r.smove("set1", "set2", 44) #将某个成员从set1移动到set2
+    r.spop("set2") #随机删除key并且返回被删除值，集合是无序的
+    r.srem("set2", 11) #从集合中删除指定值 11
+
+\sorted-set
+    -> 集合中每个元素有值和分数,根据分数排序. 分数在添加修改元素时可以指定,指定后会自动重新排序
+    |应用场景 -> 如'按时间排序的时间轴'
+    r.zadd(name, *args, **kwargs) #在name对应的有序集合中添加元素
+    r.zadd("zset1", n1=11, n2=22)
+    r.zadd("zset2", 'm1', 22, 'm2', 44)
+    r.zcard("zset1") #获取有序集合长度
+    r.zrange(name, start, end, desc=False, withscores=False, score_cast_func=float) #(从小到大)获取有序集合的元素
+    r.zrange("zset1", 0, -1) #获取有序集合中所有元素
+    r.zrange("zset2", 0, -1, withscores=True) #获取有序集合中所有元素和分数
+    r.zrevrange("zset1", 0, -1) #(从大到小)只获取元素，不显示分数
+    r.zrevrange("zset1", 0, -1, withscores=True) #获取有序集合中所有元素和分数,分数倒序
+    r.zrangebyscore("zset3", 12, 22, withscores=True) #在分数是12-22之间，取出符合条件的元素（带分数）, 按照分数正序
+    r.zrevrangebyscore("zset3", 22, 11, withscores=True) #在分数22-11之间，取出符合条件的元素, 按照分数倒序
+    r.zscan(key, cursor=0, match=None, count=None, score_cast_func=float) #获取所有元素-默认按照分数顺序排序
+    r.zscan_iter(key,match=None,count=None,score_cast_func=float) #获取所有元素-迭代器
+        for i in r.zscan_iter("zset3"):
+            print(i)
+    r.zcount("zset3", 11, 22)) #获取name对应的有序集合中分数在[11,22]之间的元素个数
+    r.zincrby("zset3", "n2", amount=2)    # 每次将n2的分数自增2
+    r.zrank(name, value) #获取某个值在name对应的有序集合中的索引（从小到大）
+    r.zrevrank(name, value) #获取某个值在name对应的有序集合中的索引（从大到小）
+    r.zrem("zset3", "n3")   # 删除有序集合中的元素n3 删除单个
+    r.zremrangebyrank("zset3", 0, 1)  # 删除有序集合中的索引号是0, 1的元素
+    r.zremrangebyscore("zset3", 11, 22)   # 删除有序集合中的分数是11-22的元素
+    r.zscore(name, value) #获取name对应有序集合中value对应的分数
+
+\管道(pipeline)
+    -> 默认情况下pipline是原子性操作
+    -> redis默认执行每次请求时都会创建和断开一次连接. 可使用pipline实现一次请求中执行多个命令
+    -> 管道在单个请求中缓冲多条命令. 通过减少服务器-客户端间的TCP包，从而大大提高了性能
+    #pipe = r.pipeline(transaction=False) #默认的情况下，管道里执行的命令可以保证执行的原子性，执行pipe = r.pipeline(transaction=False)可以禁用这一特性。
+    #pipe = r.pipeline(transaction=True)
+    pipe = r.pipeline() #创建一个管道
+    pipe.set('key', 'jack')
+    pipe.sadd('faz', 'baz')
+    pipe.incr('num')    #如果num不存在则vaule为1，如果存在，则value自增1
+    pipe.execute()
+
+    #管道的命令可以写在一起
+    pipe.set('hello', 'redis').sadd('faz', 'baz').incr('num').execute()

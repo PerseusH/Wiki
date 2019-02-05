@@ -1,0 +1,172 @@
+\Mysql
+    /usr/local/mysql/bin #程序目录,含mysql,mysqld,mysqiadmin等
+    /usr/local/mysql/support-files/ #含mysql.server等
+    mysql [-hIP] -uuser -p[pwd] [-Pport] #进入mysql | pwd: root
+    mysqladmin -uusr -p[pwd] shutdown或brew services mysqld restart #重启mysql服务器
+    brew services mysqld restart|brew services start|stop|restart mysql #Mac
+    sudo /etc/init.d/mysql start|stop|restart #Ubuntu
+    mysql.server [start|stop|restart|status]
+    sudo cat /usr/local/mysql/data/mysqld.local.err #查看错误日志
+
+    -> 解决Can 't connect to local MySQL server through socket '/tmp/mysql.sock '
+        -> mysql -uroot -h 127.0.0.1 -proot
+    -> 解决Error!MySQL server PID file could not be found!
+        -> 修改my.cnf: 在mysqld下增加pid-file=/usr/local/mysql/data/mysqld.local.pid
+
+    mysqlslap -a -c 100 -uroot -proot #压力测试工具, -c 100为并发连接数
+    -> MySQL服务器允许的最大连接数16384
+
+    mysql> show variables like 'xxx%'; #查看参数'xxxabc'
+    mysql> select version(); #查看Mysql服务器上的版本
+    mysql> show engins; #查看存储引擎
+    mysql> explain select ... #query性能分析
+
+    mysql> set profiling=1|on; #query性能分析
+    mysql> show profiles; #查看profiling结果, 主要显示每个query的执行时长和query语句号码
+    mysql> show profile cpu, block io for query 问题query号码; #查看指定sql的CPU,IO开销
+        |查询选项(cpu, block io可替换)
+        ALL: 显示所有的开销信息
+        BLOCK IO ： 显示块IO相关开销
+        CONTEXT SWITCHS: 上下文切换相关开销
+        CPU : 显示cpu 相关开销
+        IPC: 显示发送和接收相关开销
+        MEMORY： 显示内存相关开销
+        PAGE FAULTS：显示页面错误相关开销信息
+        SOURCE ： 显示和Source_function ,Source_file,Source_line 相关的开销信息
+        SWAPS：显示交换次数相关的开销信息
+
+        |日常开发需要注意的结论(profiling结果中的'status'字段)：
+        1.converting HEAP to MyISAM ： 查询结果太大，内存都不够用了，往磁盘上搬了；
+        2.creating tmp table ：创建临时表，拷贝数据到临时表，然后再删除；
+        3.copying to tmp table on disk ：把内存中临时表复制到磁盘，危险！！！
+        5.locked
+        -> 以上四个中若出现一个或多个，表示'sql语句必须优化'
+
+    mysql> show index form table; #查看表中索引信息
+        Table:索引所在的表名
+        Non_unique:非唯一的索引，可以看到primary key 是0，因为必须是唯一的
+        Key_name:索引名称
+        Seq_in_index:索引中该列的位置
+        Column_name:索引的列
+        Collation:列以什么方式存储在索引中。可以是A或者NULL，B+树索引总是A，即排序的
+        'Cardinality'：表示索引中唯一值的数目的估计值。如果非常小，那么需要考虑是否还需要建立这个索引了。优化器会根据这个值来判断是否使用这个索引
+        Sub_part:是否是列的部分被索引。100表示只索引列的前100个字符
+        Packed:关键字如果被压缩
+        Null：是否索引的列含有NULL值
+        Index_type:索引的类型。InnoDB只支持B+树索引，所以显示BTREE
+    mysql> [query] \G; #竖直显示结果列表
+    mysql> select found_rows(); #select后获取结果行数
+    mysql> select row_count(); #update|insert|delete后获取更新的行数.高并发下可以此判断秒杀是否成功(1:修改成功, 0:未修改数据, -1:SQL错误或未执行修改SQL)
+        1.update 商品表 set 库存-1 where id=商品id AND 库存!=0;
+        2.select row_count(); 如果不为1，就是抢购失败。为1，就是抢购成功
+    mysql> desc table_name; #显示表结构，字段类型，主键，是否为空等属性，但不显示外键
+    mysql> show create table table_name; #显示建表命令语句
+    mysql> show variables like '%max_connections%'; #查看最大连接数(最大并发数)
+    mysql> show variables like '%tmp%'|'tmpdir'; #查看mysql临时文件目录
+    mysql> set global max_connections=1000 #重新设置最大连接数
+    mysql> show [full] processlist; #显示哪些线程正在运行. 只列出前100条，如果想全列出使用show full processlist. 重点是state字段(当前连接的sql语句的状态)
+        -> 如果有SUPER权限，则可以看到全部的线程; 否则只能看到当前MySQL帐户发起的线程
+        | ID    | USER      | HOST              | DB     | COMMAND | TIME  | STATE  | INFO(Sql) |
+        +-------+-----------+-------------------+--------+---------+-------+-----------+----------------------------------------------+
+        | 46661 | root      | localhost         | advsql | Query   |     0 | executing | select * from information_schema.processlist |
+        | 46586 | tkcssuser | 10.90.13.61:55838 | tkcss  | Sleep   |   279 |           | NULL                                         |
+        | 46585 | root      | localhost         | advsql | Query   |     0 | init  | show processlist |
+    $ kill tid #关闭在执行的线程
+    mysql> show status like 'xxx%'; #查看任何部件详细信息
+    mysql> show status like 'Threads%'; #查看连接数
+        | Variable_name     | Value
+        ---------------------------
+        | Threads_cached    | 58
+        | Threads_connected | 57     #打开的连接数
+        | Threads_created   | 3676
+        | Threads_running   | 4      #激活的连接数，一般远低于connected数值
+    mysql> show engine innodb status; #获取innodb详细状态信息(死锁,事务,IO,线程,缓冲池等)
+    mysql> SHOW OPEN TABLES WHERE IN_USE > 0; #查看是否有表死锁
+    mysql> SELECT * FROM INFORMATION_SCHEMA.INNODB_TRX; #查看当前的事务. trx_mysql_thread_id列为死锁列
+    mysql> SELECT * FROM INFORMATION_SCHEMA.INNODB_LOCKS; #查看当前锁定的事务
+    mysql> SELECT * FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS; #查看当前等锁的事务
+    mysql> select * from user_summary\G
+        *************************** 1. row ***************************
+                          user: root
+                    statements: 3331        //用户执行的SQL语句总数量
+             statement_latency: 2.86 s        //该用户执行SQL总的等待时间，即累计的SQL执行时间
+         statement_avg_latency: 857.30 us    //单次SQL的平均执行时间
+                   table_scans: 67    //全表扫描次数
+                      file_ios: 23626    //io次数
+               file_io_latency: 1.72 s    //io消耗的总时间
+           current_connections: 1    //该用户的当前连接会话数
+             total_connections: 9    //该用户连接会话总数
+                  unique_hosts: 1    //用户发起连接中唯一主机的数量,即从几个主机发起过数据库连接
+                current_memory: 0 bytes    //当前被分配的内存
+        total_memory_allocated: 0 bytes    //总共被分配的内存
+    mysql> show status like 'last_query_cost'; #查看查上一个查询的代价(需要做多少个数据页的随机查找才能完成查询)，它是io_cost和cpu_cost的开销总和，通常也是我们评价一个查询的执行效率的一个常用指标. 其他指标参数有Bytes_received, Bytes_sent
+         (1)它是作为比较各个查询之间的开销的一个依据
+         (2)它只能检测比较简单的查询开销，对于包含子查询和union的查询是测试不出来的
+         (3)当我们执行查询的时候，MySQL会自动生成一个执行计划，也就是query plan，而且通常有很多种不同的实现方式，它会选择最低的那一个，而这个cost值就是开销最低的那一个
+         (4)它对于比较我们的开销是非常有用的，特别是我们有好几种查询方式可选的时候
+
+    |TransactionIsolation
+    mysql> select @@tx_isolation; #查看当前会话隔离级别
+    mysql> select @@global.tx_isolation; #查看系统当前隔离级别
+    mysql> set session transaction isolatin level repeatable read; #设置当前会话隔离级别
+    mysql> set global transaction isolation level repeatable read; #设置系统当前隔离级别
+    mysql> set autocommit=off 或者 start transaction #命令行，开始事务时
+
+    -> 在MySQL内部，in转换成or操作，not in转换成and操作
+    mysql> select * from players where name regexp '^ba'; #正则
+
+    mysql> select * from player where leagueno=null; #error……报错
+    mysql> select * from player where leagueno <=> null;
+    或
+    mysql> select * from player where leagueno is null;
+    <=> -> 安全的等于运算符, 和=类似，在操作数相等时返回True，不同之处在于即使操作的值为NULL也可以正确比较
+
+    |查看mysql服务器支持的字符集
+    mysql> show character set;
+    mysql> select * from information_schema.character_sets;
+    mysql> select character_set_name, default_collate_name, description, maxlen from information_schema.character_sets;
+
+    |查看字符集的排序(校对)规则
+    mysql> show collation;
+    mysql> show collation like 'utf8';
+
+    |函数 -> COUNT SUM AVG MAX MIN, a % b <=> mod(a, b)
+
+    |DDL -> 全面数据定义语言（Data Define Language）
+        -> 主要DDL动词: CREATE, DROP, ALTER, TRUNCATE, RENAME
+        1.使用DDL时，必须在动词后跟上数据库对象名词(TABLE、VIEW、INDEX、SCHEMA、TRIGGER等)
+        2.MySQL的DDL语言创建数据库，如CREATE DATABASE、DROP DATABASE（在Oracle中没有）
+
+    -> 反引号(``)是为了区分MYSQL的'{保留字与普通字符}'而引入的符号.
+        mysql> SELECT `limit` FROM `test` WHERE select='字段值'
+
+    |查询分页
+        #取前5条数据
+        select * from table_name limit 0,5 | select * from table_name limit 5
+        #查询第11到第15条数据
+        select * from table_name limit 10,5
+
+        limit关键字的用法：LIMIT [offset,] rows
+        offset指定要返回的第一行的偏移量，rows指定返回行的最大数目。初始行的偏移量是0(不是1)
+
+\Redis
+	redis-server /etc/redis.conf #start redis
+	pkill redis-server | redis-cli > shutdown #stop redis-server
+	redis-cli [-h IP] [-p port] #客户端连接
+	redis-sentinel /etc/sentinel.conf #start sentinel
+	redis-benchmark -n 10000 #压力测试工具. -n 10000为并发数
+
+	redis-cli> info #查看redis信息
+	redis-cli> info memory #查看redis内存使用情况
+		used_memory_peak : Redis 的内存消耗峰值（以字节为单位）
+		used_memory_peak_human : 以人类可读的格式返回 Redis 的内存消耗峰值
+		used_memory_lua : Lua 引擎所使用的内存大小（以字节为单位）
+		mem_fragmentation_ratio : used_memory_rss 和 used_memory 之间的比率
+		mem_allocator : 在编译时指定的内存分配器。可以是 libc、jemalloc或tcmalloc
+		1.当 rss > used ，且两者的值相差较大时，表示存在（内部或外部的）内存碎片。
+		内存碎片的比率可以通过 mem_fragmentation_ratio 的值看出。
+		2.当 used > rss 时，表示 Redis 的部分内存被操作系统换出到交换空间了，在这种情况下，操作可能会产生明显的延迟
+		当 Redis 释放内存时，分配器可能会，也可能不会，将内存返还给操作系统。
+		如果 Redis 释放了内存，却没有将内存返还给操作系统，那么 used_memory 的值可能和操作系统显示的 Redis 内存占用并不一致。查看 used_memory_peak 的值可以验证这种情况是否发生
+
+	redis-cli> GETSET key value #将key值设为value并返回key的旧值(old value).当key存在但不是字符串类型时，返回一个错误

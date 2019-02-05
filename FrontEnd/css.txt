@@ -1,0 +1,200 @@
+描述下 “reset” CSS 文件的作用和使用它的好处。
+解释下浮动和它的工作原理。
+列举不同的清除浮动的技巧，并指出它们各自适用的使用场景。
+解释下 CSS sprites，以及你要如何在页面或网站中使用它。
+你最喜欢的图片替换方法是什么，你如何选择使用。
+讨论CSS hacks，条件引用或者其他。
+如何为有功能限制的浏览器提供网页？
+有哪些的隐藏内容的方法（如果同时还要保证屏幕阅读器可用呢？）
+你用过栅格系统吗？如果使用过，你最喜欢哪种？
+你用过媒体查询，或针对移动端的布局/CSS 吗？
+你熟悉 SVG 样式的书写吗？
+如何优化网页的打印样式？
+在书写高效 CSS 时会有哪些问题需要考虑？
+使用 CSS 预处理器的优缺点有哪些？(SASS，Compass，Stylus，LESS)
+描述下你曾经使用过的 CSS 预处理的优缺点。
+如果设计中使用了非标准的字体，你该如何去实现？
+Webfonts (字体服务例如：Google Webfonts，Typekit 等等。)
+解释下浏览器是如何判断元素是否匹配某个 CSS 选择器？
+解释一下你对盒模型的理解，以及如何在 CSS 中告诉浏览器使用不同的盒模型来渲染你的布局。
+请解释一下 * { box-sizing: border-box; } 的作用, 并且说明使用它有什么好处？
+请罗列出你所知道的 display 属性的全部值
+请解释一下 inline 和 inline-block 的区别？
+请解释一下 relative、fixed、absolute 和 static 元素的区别
+请问你有使用过 CSS Flexbox 或者 Grid specs 吗？
+
+\Box
+    |盒模型 -> 在W3C标准中，如果设置一个元素的宽度和高度，指的是元素内容的宽度和高度，而在Quirks 模式下，IE的宽度和高度还包含了padding和border
+
+    |边距重叠解决方案(BFC) -> Block Formatting Context 直译为“块级格式化上下文”
+        |原理
+            内部的box会在垂直方向，一个接一个的放置
+            每个元素的margin box的左边，与包含块border box的左边相接触（对于从做往右的格式化，否则相反）
+            box垂直方向的距离由margin决定，属于同一个bfc的两个相邻box的margin会发生重叠
+            bfc的区域不会与浮动区域的box重叠
+            bfc是一个页面上的独立的容器，外面的元素不会影响bfc里的元素，反过来，里面的也不会影响外面的
+            计算bfc高度的时候，浮动元素也会参与计算
+
+        |怎么取创建bfc
+            float属性不为none（脱离文档流）
+            position为absolute或fixed（脱离文档流）
+            display为inline-block,table-cell,table-caption,flex,inine-flex
+            overflow不为visible
+            根元素
+
+        |应用场景
+            自适应两栏布局
+            清除内部浮动
+            防止垂直margin重叠
+
+    |行内元素和块级元素
+        |行内元素 -> 渲染完成后不会自动换行，并且元素'没有宽和高'. 元素的高度、宽度及顶部和底部边距不可设置. 元素的宽度就是它包含的文字、图片的宽度，不可改变
+        |块级元素 -> 渲染完会'自动换行'，有宽高可以修改, 元素的宽度如果不设置的话，默认为父元素的宽度
+        |行内块元素 -> 既不换行又能设置宽高、行高以及顶和底边距
+
+        行内元素有：head   title  lable  span  br  a   style  em  b  i   strong
+        块级元素有：body  from  select  textarea  h1-h6 html table  button  hr  p  ol  ul  dl  center  div
+        行内块元素有： img  input  td
+
+    |设置行内元素的高宽 -> 在Standards模式下，给<span>等行内元素设置wdith和height都不会生效，而在quirks模式下，则会生效
+
+    |设置百分比的高度 -> 在standards模式下，一个元素的高度是由其包含的内容来决定的，如果父元素没有设置百分比的高度，子元素设置一个百分比的高度是无效的
+
+    |设置水平居中 -> 使用margin:0 auto在standards模式下可以使元素水平居中，但在quirks模式下却会失效
+
+    |div的垂直居中问题 -> vertical-align:middle;将行距增加到和整个DIV一样高line-height:200px; 然后插入文字，就垂直居中了。缺点是要控制内容不要换行
+
+    -> overflow: hidden;//清除内部浮动元素的影响
+
+\CSS3
+    /* 使用CSS3可以开启硬件加速，将效果计算任务分配给GPU */
+    /* IE9以及更早的版本不支持border-radius,box-shadow和text-shadow属性。*/
+    .box {
+      -moz- /* Firefox */
+      -webkit- /* Safari 和 Chrome */
+      无前缀 /* Opera 10.5+, 以及使用了IE-CSS3的IE浏览器 */
+
+      border-radius: radius /* 圆角 */ JS: object.style.borderRadius="25px";
+      box-shadow: x y [blur spread color inset]; /* 盒模型阴影 */ JS: object.style.boxShadow="10px 10px 20px #000";
+      text-shadow: x y [blur color]; /* 文字阴影 */ JS: object.style.textShadow="10px 10px 20px #000";
+
+      behavior: url(ie-css3.htc); /* 通知IE浏览器调用脚本文件ie-css3.htc作用于'box'类 ，使IE兼容CSS3效果，原理为VML(The Vector Markup Language矢量可标记语言)，可以理解为IE的矢量画笔工具*/
+    }
+
+    /* IE9以及更早的版本不支持@keyframe,animationm,transform和transition属性。*/
+    |2D或3D转换
+      transform: rotate[3d](angle)|matrix[3d](n,n,n,n,n,n)|translate[3d](x,y)|scale[3d](x,y); /* 。对元素进行旋转、缩放、移动或倾斜 */
+             JS: object.style.transform="rotate(7deg)";
+
+    |过渡效果
+      transition: property duration timing-function delay;
+             JS: object.style.transition="width 2s";
+      .span-hover{
+        color: #FFFFFF;
+        -moz-transform: scaleY(1) translateZ(0);
+        -webkit-transform: scaleY(1) translateZ(0);
+        -o-transform: scaleY(1) translateZ(0);
+        transform: scaleY(1);
+        -webkit-transition: all 150ms ease-out;
+        -moz-transition: all 150ms ease-out;
+        -o-transition: all 150ms ease-out;
+        transition: all 150ms ease-out;
+      }
+
+    |动画
+      .ani{
+        width:480px;
+        height:320px;
+        margin:50px auto;
+        overflow: hidden;
+        box-shadow:0 0 5px rgba(0,0,0,1);
+        background-size: cover;
+        background-position: center;
+        -webkit-animation-name: "loops";
+        -webkit-animation-duration: 20s;
+        -webkit-animation-iteration-count: infinite;
+      }
+      @-moz-keyframes "loops" /* Firefox */
+      @-webkit-keyframes "loops" /* Safari 和 Chrome */
+      @-o-keyframes "loops" /* Opera */ {
+          0% {
+              background:url(http://d.hiphotos.baidu.com/image/w%3D400/sign=c01e6adca964034f0fcdc3069fc27980/e824b899a9014c08e5e38ca4087b02087af4f4d3.jpg) no-repeat;
+          }
+          25% {
+              background:url(http://b.hiphotos.baidu.com/image/w%3D400/sign=edee1572e9f81a4c2632edc9e72b6029/30adcbef76094b364d72bceba1cc7cd98c109dd0.jpg) no-repeat;
+          }
+          50% {
+              background:url(http://b.hiphotos.baidu.com/image/w%3D400/sign=937dace2552c11dfded1be2353266255/d8f9d72a6059252d258e7605369b033b5bb5b912.jpg) no-repeat;
+          }
+          75% {
+              background:url(http://g.hiphotos.baidu.com/image/w%3D400/sign=7d37500b8544ebf86d71653fe9f9d736/0df431adcbef76095d61f0972cdda3cc7cd99e4b.jpg) no-repeat;
+          }
+          100% {
+              background:url(http://c.hiphotos.baidu.com/image/w%3D400/sign=cfb239ceb0fb43161a1f7b7a10a54642/3b87e950352ac65ce2e73f76f9f2b21192138ad1.jpg) no-repeat;
+          }
+      }
+
+\响应式布局
+    |viewport
+      /* 在移动设备上设置原始大小显示和是否缩放 */
+      <meta name="viewport" content="width=device-width; initial-scale=1.0">
+
+    |@Media query
+      /* 在link中使用@media */
+      <link rel="stylesheet" type="text/css" media="only screen and (max-width: 480px),only screen and (max-device-width: 480px)" href="link.css" rel="external nofollow" />
+      /* 在样式表中内嵌@media */
+      /* 当浏览器的可视区域小于650px */
+      @media screen and (max-width: 650px) {
+           #header {height: auto;}
+           #searchform {position: absolute;top: 5px;right: 0;}
+           #content {width: auto; float: none; margin: 20px 0;}
+           #sidebar {width: 100%; float: none; margin: 0;}
+       }
+
+\LESS
+    /* 使用less.js解析 */
+   .border-radius (@radius: 3px) {
+    border-radius: @radius;
+    -moz-border-radius: @radius;
+    -webkit-border-radius: @radius;
+   }
+   .button {
+    .border-radius(6px);
+   }
+   .button2 {
+    .border-radius();
+   }
+
+\IE & FF
+    -> FF设置padding后,div会增加height和width，但IE不会，故需要用!important多设一个height和width
+    -> FF支持!important，IE则忽略，可用!important为FF特别设置样式
+
+    |在mozilla firefox和IE中的BOX模型解释不一致导致相差2px解决方法
+        div{margin:30px!important;margin:28px;}
+        注意这两个margin的顺序一定不能写反，!important这个属性IE不能识别，但别的浏览器可以识别。
+        所以在IE下其实解释成这样：div{maring:30px;margin:28px}
+
+    |CSS透明问题(最好两个都写，并将opacity属性放在下面)
+        IE：filter:progid:DXImageTransform.Microsoft.Alpha(style=0,opacity=60)。
+        FF：opacity:0.6。
+
+    -> ie7以下版本不支持圆角。解决方法：Jquery Corners
+    -> cursor:hand|pointer(IE) & cursor:pointer(Others)
+    -> font-size:small(IE: 16px, Others: 13px)。解决方法：指定字体大小。
+    -> 并排的多个元素（图片或者链接）的div和div之间的空格符和回车符在firefox中都会被忽略，而IE中却默认显示为空格（约3px）
+    CSS双线凹凸边框：
+        IE：border:2px outset;
+        FF: -moz-border-top-colors: #d4d0c8 white;-moz-border-left-colors: #d4d0c8 white;-moz-border-right-colors:#404040 #808080;-moz-border-bottom-colors:#404040 #808080;
+    建议：页面采用标准XHTML标准编写，较少使用table，CSS定义尽量依照标准DOM，同时兼顾IE、Firefox、Opera等主流浏览器。很多情况下，FF和 Opera的CSS解释标准更贴近CSS标准，也更具有规范性。
+    IE Bug:
+        双边距Bug:
+            设置为float的div在ie下设置的margin会加倍。这是一个ie6存在的bug。
+            解决方案：在这个div里面加上display:inline;
+                eg.  #IamFloat{
+                        float:left;
+                        margin:5px;/*IE下margin为10px*/
+                        display:inline;/*IE下这样margin为5px*/
+                      }
+        伪类名称连字符Bug:
+            IE在处理伪类时，如果伪类的名称中带有连字符'-'，伪类名称后面就得跟一个空格，不然样式的定义就无效。而在FF中，加不加空格都可以正常处理。
+                eg.  p:first-letter {font-size:300%}

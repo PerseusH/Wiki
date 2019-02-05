@@ -18,7 +18,7 @@
     |Soft state -> 软状态 状态可以有一段时间不同步，异步
     |Eventually consistent -> 最终一致性 最终数据是一致的就可以了，而不是时时高一致
         -> 通过异步事件实现
-        -> 电商的很多业务，考虑更多的是'{BASE}'，而不是ACID(Atomicity、Consistency、Isolation和 Durability)。即为了满足高负载的用户访问，可以容忍短暂的数据不一致
+        -> 电商的很多业务，考虑更多的是'BASE'，而不是ACID(Atomicity、Consistency、Isolation和 Durability)。即为了满足高负载的用户访问，可以容忍短暂的数据不一致
             1.不做分布式事务，代价太大
             2.不一定需要实时一致性，只需要保证最终一致性即可
             3.通过状态机和严格的有序操作，来最大限度地降低不一致性

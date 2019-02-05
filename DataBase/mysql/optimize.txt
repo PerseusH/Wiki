@@ -1,0 +1,208 @@
+\设计优化
+    -> 经常需要计算和排序等消耗CPU的字段,应该尽量选择更为迅速的字段
+        TIMESTAMP(4个字节,最小值1970-01-01 00:00:00) -> Datetime（8个字节,最小值1001-01-01 00:00:00）
+        整型 -> 浮点型和字符型
+
+    -> 引擎在处理查询和连接时会'逐个比较字符串中每一个字符',而对于数字型只需要比较一次就够了
+    -> 对于二进制多媒体数据,流水队列数据(如日志),超大文本数据不要放在数据库字段中
+    -> 业务逻辑执行过程必须读到的表中必须要有初始值.避免读出负值或无穷大的值导致程序失败
+    -> 适度的字段冗余,让Query尽量减少Join
+    -> '访问频率较低的大字段'拆分出数据表.有些大字段占用空间多,访问频率较其他字段明显要少很多,这种情况进行拆分,频繁的查询中就不需要读取大字段,造成IO资源的浪费
+
+    |分库分表
+    -> 分库降低了单点机器的负载; 分表提高了数据操作的效率
+        |分库 -> 按照功能,城市,业务块分库;每个分库再分为主从库
+
+        |分表
+        1.水平分表 -> 解决行数过大问题
+        -> 根据id,时间拆分
+            1.id,时间号段分区
+            2.Hash取模(id%数据库个数)
+                create table hash(
+                　　a int(11),
+                　　b datetime
+                　　)partition by hash(YEAR(b))
+                　　partitions 4;
+        2.垂直分表 -> 解决列过多问题
+        -> 经常组合查询的列放在一张表中,不常用的字段单独放在一张表,把text，blob等大字段拆分出来放在附表中
+
+    -> insert 或 update 时有可能会重建索引
+    -> 索引是根据实际的设计所构造sql语句的where条件来确定的,'业务不需要的不要建索引',不允许在联合索引（或主键）中存在多余的字段.特别是该字段根本不会在条件语句中出现
+    -> 对于取值不能重复,'经常作为查询条件'的字段,应该建'唯一索引'(主键默认唯一索引),'查询语句中该字段条件置于第一个'位置.没有必要再建立与该字段有关的联合索引
+    -> 对于'经常作为查询条件值不唯一'的字段,也应该考虑建立'普通索引',查询语句中该字段条件置于第一个位置,对联合索引处理的方法同样
+    -> Mysql在并发量太高的时候,整体性能会急剧下降,这主要与Mysql内部资源的争用锁定控制有关,MyIsam用表锁,InnoDB好一些用行锁.'避免大事务操作,提高系统并发能力'
+    -> 合理使用cache,对于'变化较少的活跃数据'通过应用层的cache缓存到内存中
+    -> 当索引列有'大量数据重复'时,SQL查询可能不会去利用索引
+
+\Query优化
+    |慢查询优化的基本步骤
+        0.先运行看看是否真的很慢，注意设置SQL_NO_CACHE
+        1.where条件单表查，锁定最小返回记录表。这句话的意思是把查询语句的where都应用到表中返回的记录数最小的表开始查起，单表每个字段分别查询，看哪个字段的区分度最高
+        2.explain查看执行计划，是否与1预期一致（从锁定记录较少的表开始查询）
+        3.order by limit 形式的sql语句让排序的表优先查
+        4.了解业务方使用场景
+        5.加索引时参照建索引的几大原则
+        6.观察结果，不符合预期继续从0分析
+    -> 对重复执行相同的sql进行合并,减少IO次数
+    -> 根据测试'一次Insert1000条'时效率最高.query语句长度要小于mysqld参数max_allowed_packet
+    -> 查询条件中各种逻辑操作符性能顺序是'and>or>in',因此应该尽量'避免在大集合中使用in'
+    -> SELECT * 增加了很多消耗(cpu、io、内存、带宽),'很难使用覆盖索引'. 最好只取需要的columns,'尽量别select *'; 仅使用最有效的过滤字段,'where的过滤条件越少越好'
+    -> 避免使用游标,因为游标的效率较差,如果游标操作的数据超过1万行,那么就应该考虑改写.对小型数据集使用FAST_FORWARD游标通常要优于其他逐行处理方法,尤其是在必须引用几个表才能获得所需的数据时
+    -> 当'只查询一条数据时使用limit 1'. 这是为了使EXPLAIN中type列达到'const'类型
+    -> 如果排序字段没有用到索引，就尽量不要在mysql中排序, 可以在服务器程序中手动排序
+    -> 在一些用户选择页面中，可能一些用户选择的时间范围过大，扫描行数过多, 造成查询缓慢。这时可通过程序进行'分段查询，循环遍历'，将结果合并处理进行展示
+    -> 可以采用'force index'来强制优化器使用指定的索引
+    -> 尽可能不使用TEXT/BLOB类型，确实需要的话，建议拆分到子表中，不要和主表放在一起，避免SELECT * 的时候读性能太差
+    -> 读取数据时，只选取所需要的列，不要每次都SELECT *，避免产生严重的随机读问题，尤其是读到一些TEXT/BLOB列
+    -> 对一个VARCHAR(N)列创建索引时，通常取其50%（甚至更小）左右长度创建前缀索引就足以满足80%以上的查询需求了，没必要创建整列的全长度索引
+
+    |临时表 -> 避免频繁创建和删除'临时表',以减少系统表资源的消耗.尽量使用'表变量代替临时表'
+        -> 避免复杂的Join和子查询. mysql多表关联left join其他表的时候，如果以其他表的字段作为查询条件都会产生'临时表'
+        -> 需要'重复引用'大型表或常用表中'某个数据集'时,适当使用'临时表'可以使某些例程更有效
+        -> 若使用临时表,在存储过程的最后务必将所有的临时表显式删除,先truncate table,然后drop table,这样可以'避免系统表的长时间锁定'
+
+    |Join -> 永远用'小结果集驱动大结果集'原则来'减少嵌套循环次数', 以'减少IO总量及CPU运算次数'
+        -> EXPLAIN 结果中，'table列第一行'出现的表就是'驱动表'
+        -> '对驱动表会直接排序',对非驱动表的字段排序时会先对循环查询的合并结果(临时表)进行排序('using temporary')
+        -> a join b, b join c, a与c即'非直接关联', 在此基础上进行order by排序会很慢. 利用子查询优化为'直接关联'(合并b, c后再与a关联)
+        -> 多表联接查询时，关联字段类型尽量一致，并且都要有索引
+        -> 多表联接并且有排序时，排序字段必须是驱动表里的，否则排序列无法用到索引
+        |优化原则
+            1.根据驱动表字段排序
+            2.无法确定关联表大小时不要指定连接形式, 让mysql优化器自主选择驱动表
+            3.使用被驱动表的索引字段作为on连接字段
+
+    |Group By -> group by后面不能跟主键，因为主键无法分组
+        1. 如果GROUP BY 的列没有索引,产生临时表
+        2. 如果GROUP BY时,SELECT的列不止GROUP BY列一个,并且GROUP BY的列不是主键,产生临时表
+        3. 如果GROUP BY的列有索引,ORDER BY的列没索引.产生临时表
+        4. 如果GROUP BY的列和ORDER BY的列不一样,即使都有索引也会产生临时表
+        5. 如果GROUP BY或ORDER BY的列不是来自JOIN语句第一个表.产生临时表
+        -> 使用了'sql_small_result'选项，mysql会用到'in-memory临时表'。（sql_small_result与sql_big_result是一对相对的关键次，必须与group by distinct 一起使用，sql_small_result告知优化其结果会很小让mysql使用内存临时表而不使用排序
+
+    |Distinct -> DISTINCT只需要找出所有不同的值就可以了。而GROUP BY操作还要为其他聚集函数进行准备工作。从这一点上将，GROUP BY操作做的工作应该比DISTINCT所做的工作要多一些。GROUP BY 效率更高，'DISTINCT会读取所有记录'，而GROUP BY需要读取的记录数量与分组的组数量一样多，比实际存在的记录数目要少很多，因此单表查询时建议用'group by替换distinct'
+            select distinct name from user_access;
+            select count(distinct name) from user_access;
+            ->
+            select name from user_access group by name;
+            # Using index for group-by
+            select count(*) from (select distinct(name) from user_access)t;
+        -> 如果查询列值的种类很少(比如只有1,2,3三种值), distinct比group by快很多。而如果查询列值的种类很多时(有上千种)，group by比distinct快很多。这是由于两者使用的算法不同导致的
+        -> DISTINCT和GROUP BY的实现非常相似，只不过是在GROUP BY之后的每组中取出一条记录而已
+        -> 当MySQL无法只依赖索引完成DISTINCT或无法使用索引时，就不得不使用临时表来进行相应的操作
+        |distinct+order by -> mysql中distinct的执行顺序高于order by。distinct执行时会对查询的记录进行去重，产生一个临时表(无法只使用索引完成或无法使用索引时). order by执行时对查询的临时表进行排序，产生新的临时表. 一共产生'两个临时表', 尽量避免distinct+order by
+
+    |Order By
+        -> MySQL查询最多'只能使用一个索引'.若WHERE条件已经占用了索引,Order By就不能使用了
+        -> ORDER BY满足以下情况，会使用Index排序('否则使用filesort'):
+            1.ORDER BY的列满足最左前缀原则(...order by a, b, c)
+            2.Where子句与Order BY子句全部列的组合满足最左前缀原则(...where a b order by c)
+
+    |LIMIT分页(limit offset, rows) -> limit n,m 工作原理就是先读取n条记录，然后抛弃前n条，读m条想要的，所以n越大，性能会越差
+        SELECT * FROM member ORDER BY last_active LIMIT 50,5
+        ->
+        SELECT * FROM member INNER JOIN (SELECT member_id FROM member ORDER BY last_active LIMIT 50, 5) USING(member_id) # USING(xid)等同于 on a.xid = b.xid
+        -> 优化前的SQL需要更多IO，因为可能每查询一行都要'先读索引，再读数据(回表)'，然后抛弃无需的行。而优化后的SQL(子查询那条)只读索引就可以了，然后通过member_id读取需要的列
+
+        select * from Member limit 10, 100 -> select * from Member where MemberID >= (select MemberID from Member limit 10,1) limit 100 #利用子查询优化limit分页
+
+        -> 优先推荐使用INNER JOIN方式优化分页算法. 先用主键关联，然后返回结果集
+        -> Limit 0会非常快地返回一个空结果，这个功能可被应用于检测一条SQL的合法性
+
+    |慢查询日志分析 -> 让MySQL记录下查询超过指定时间的语句，我们将超过指定时间的SQL语句查询称为“慢查询”。对于有效率问题的SQL语句（“慢查询”），MySQL通过慢查询日志进行监控
+        mysql> SHOW VARIABLES LIKE ‘slow_query_log’; #查看慢查询日志是否开启
+        mysql> SET GLOBAL log_queries_not_using_indexes = ON; #设置全局变量，没用到索引的查询也要记录
+        mysql> SHOW VARIABLES LIKE ‘long_query_time’; #查看超过多长时间的查询会被记录到慢查询日志中
+        mysql> SET GLOBAL slow_query_log = ON; #开启慢查询日志
+        mysql> SET GLOBAL long_query_time = 0; #设置慢查询日志记录时间为0秒,即全部查询都记录
+        mysql> SHOW VARIABLES LIKE ‘slow%’; #查看慢查询日志所在位置
+        查看慢查询日志内容：
+            Time: 160715 15:00:30
+            User@Host: root[root] @ localhost [127.0.0.1]  Id:     1
+            Query_time: 0.000000  Lock_time: 0.000000 Rows_sent: 109  Rows_examined: 109
+            use sakila;
+            SET timestamp=1468566030;
+            SELECT * FROM country;
+        分析：
+            查询用户为：root[root] @ localhost [127.0.0.1]（User@Host）
+            查询花费时间：0.000000秒（Query_time）
+            锁定时间：0.000000秒（Lock_time）
+            返回记录行数：109（Rows_sent）
+            检索行数：109（Rows_examined）
+            查询语句：SELECT * FROM country;
+
+    |避免表扫描
+        -> '避免'在where子句中使用!=, or或<>操作符,否则引擎将'放弃使用索引而进行全表扫描'
+            select id from t where num=10 or num=20 -> select id from t where num=10 union all select id from t where num=20 #UNION ALL 要比UNION快很多
+            -> union和union all的差异主要是前者需要将结果集合并后再进行唯一性过滤操作，这就会涉及到排序，增加大量的CPU运算，加大资源消耗及延迟。union all的前提条件是两个结果集没有重复数据
+        -> in和not in要'慎用'(代以between, exists, <,<=,=,>,>=)
+            select id from t where num in(1,2,3) -> select id from t where num between 1 and 3
+            select num from a where num in(select num from b) -> select num from a where exists(select 1 from b where num=a.num)
+            select colname … from A表 where a.id not in (select b.id from B表) -> select colname … from A表 Left join B表 on where a.id = b.id where b.id is null #查询A表不在B表中的数据. 子查询的性能比较差，建议改造成JOIN写法
+            -> MySQL对于IN做了相应的优化，即将IN中的常量全部存储在一个数组里面，而且这个数组是排好序的。如果数组元素较多，产生的消耗也是比较大的
+            -> in和exists主要是造成了'驱动顺序的改变'(这是性能变化的关键)，exists以外表为驱动表(先被访问);IN先访问内表. 当内表的数据集小于外表时，in优于exists; 反之exists优于in
+        -> '避免'左模糊匹配
+            select id from t where name like '%李%' -> select id from t where name like '李%'
+        -> '避免'在where子句中使用参数
+            select id from t where num=@num -> select id from t with(index(index_col)) where num=@num
+        -> '避免'在where中=左边进行函数、算术运算或其他表达式运算,否则引擎将放弃使用索引而进行表扫描
+            select id from t where num/2=100 -> select id from t where num=100*2
+        -> '避免'在where子句中对字段进行函数操作,这将导致引擎放弃使用索引而进行全表扫描
+            select id from t where substring(name,1,3)='abc'
+        -> '避免'使用count(*)
+            select count(*) from member -> select count(1) from member
+
+\SWAP问题
+    -> 内存不足时, 因为大量的内存置换引发的IO阻塞
+    |产生原因
+        1.mysqldump以及mysql import很大的库或者表
+        2.数据库层大批量的并发io操作
+        3.在OS层copy一个大文件，比如上百G的数据库备份文件
+        4.mysqld进程内存泄漏
+        5.innodb_buffer_pool_size参数设置的值太大
+
+    |解决方案
+        1.在MySQL进程启动前，使用sysctl -q -w vm.drop_caches=3清空文件缓存所占用的空间
+        2.对MySQL使用HugePage. Linux的大页内存不会被换出物理内存，和memlock有异曲同工之妙
+        3.使用SSD或者PCIe SSD设备，至少获得数百倍甚至万倍的IOPS提升
+        4.尽可能选用RAID-10，而非RAID-5
+        5.使用机械盘的话，尽可能选择高转速的，例如选用15KRPM，而不是7.2KRPM的盘
+        6.将vm.swappiness设置为5-10左右即可，甚至设置为0（RHEL 7以上则慎重设置为0，除非你允许OOM kill发生），以降低使用SWAP的机会. 这个参数只能减少使用swap的概率，并不能避免swap
+        7.将vm.dirty_background_ratio设置为5-10，将vm.dirty_ratio设置为它的两倍左右，以确保能持续将脏数据刷新到磁盘，避免瞬间I/O写，产生严重等待（和MySQL中的innodb_max_dirty_pages_pct类似）
+        8.将net.ipv4.tcp_tw_recycle、net.ipv4.tcp_tw_reuse都设置为1，'减少TIME_WAIT'，提高TCP效率
+        9.mysqld进程发生'内存泄露'，建议'重启进程，并尽快升级到最新版本', 通常新版本会解决旧版本存在的问题
+        10.添加MySQL的配置参数'memlock'. 这个参数会强迫mysqld进程的地址空间一直被锁定在物理内存上，对于os来说是非常霸道的一个要求。必须要用root帐号来启动MySQL才能生效
+            #添加MySQL的配置参数memlock
+            $ echo "mysql  hard  memlock  unlimited ">> /etc/security/limits.conf
+            $ echo "mysql  soft  memlock  unlimited ">> /etc/security/limits.conf
+        11.修改MySQL的配置参数innodb_flush_method，开启O_DIRECT模式。这种情况下，InnoDB的buffer pool会直接绕过文件系统cache来访问磁盘，但是redo log依旧会使用文件系统cache。值得注意的是，Redo log是覆写模式的，即使使用了文件系统的cache，也不会占用太多
+
+\影响结果集 -> 查询条件与索引的关系决定影响结果集
+    -> 影响结果集不是输出结果数,不是查询返回的记录数,而是'索引所扫描的结果数'
+        select * from user where area=’厦门’ and sex=’女’
+        -> 假设索引为area,user表中area=’厦门’的有125000条,而搜索返回结果为60233条. 影响结果集是125000条,索引先命中125000条厦门用户,再遍历以sex=’女’进行筛选,得到60233条结果
+        -> 如果该SQL增加'limit 0,30'的后缀.查询时,先命中area=’厦门’,然后依顺序执行 sex=’女’ 筛选操作,直到满足可以返回30条为止,所涉及记录数未知.除非满足条件的结果不足30条,否则不会遍历125000条记录
+        -> 'limit 0,30'先根据area索引树，从最右侧叶子节点，反序取出n条，然后逐条去跟where条件匹配.若匹配上，则得出一条数据，直至取满30条为止
+        -> 如果SQL中有'排序',再有limit 0,30会遍历所有area=’厦门’的记录,而非返回30条即止
+    -> 影响结果集越趋近于实际输出或操作的目标结果集,索引效率越高
+    -> 影响结果集与查询开销的关系可以理解为线性相关.减少一半影响结果集,即可提升一倍查询效率！当一条搜索query可以符合多个索引时,选择影响结果集最少的索引
+    -> SQL优化'核心是对影响结果集的优化',认识索引是增强对结果集的判断,基于索引的认识,可以在编写SQL的时候,对该SQL可能的影响结果集有预判,并做出适当的优化和调整
+
+    |Limit
+    -> 如果索引与查询条件和排序条件完全命中,影响结果集就是limit后面的数字（$start + $end）,比如limit 200,30影响结果集是230,而不是30
+    -> 如果索引只命中部分查询条件,甚至无命中条件,在无排序条件情况下,会在索引命中的结果集中遍历到满足所有其他条件为止.
+        select * from user limit 10; 虽然没用到索引,但是因为不涉及二次筛选和排序,系统直接返回前10条结果,影响结果集依然只有10条,就不存在效率影响
+    -> 如果timeline不是索引,影响结果集是全表,就需要全表数据排序,这个效率影响就巨大
+        Select * from user order by timeline desc limit 10;
+    -> 如果area是索引,而area+timeline未建立索引,则影响结果集是所有命中area=’厦门’的用户,然后在影响结果集内排序
+        Select * from user where area=’厦门’ order by timeline desc limit 10;
+
+\其他建议
+    1、通常地，单表物理大小不超过10GB，单表行数不超过1亿条，行平均长度不超过8KB，如果机器性能足够，这些数据量MySQL是完全能处理的过来的，不用担心性能问题，这么建议主要是考虑ONLINE DDL的代价较高
+    2、不用太担心mysqld进程占用太多内存，只要不发生OOM kill和用到大量的SWAP都还好；
+    3、在以往，单机上跑多实例的目的是能最大化利用计算资源，如果单实例已经能耗尽大部分计算资源的话，就没必要再跑多实例了；
+    4、定期使用pt-duplicate-key-checker检查并删除重复的索引。定期使用pt-index-usage工具检查并删除使用频率很低的索引；
+    5、定期采集slow query log，用pt-query-digest工具进行分析，可结合Anemometer系统进行slow query管理以便分析slow query并进行后续优化工作；
+    6、可使用pt-kill杀掉超长时间的SQL请求，Percona版本中有个选项 innodb_kill_idle_transaction 也可实现该功能；
+    7、使用pt-online-schema-change来完成大表的ONLINE DDL需求；
+    8、定期使用pt-table-checksum、pt-table-sync来检查并修复mysql主从复制的数据差异；
