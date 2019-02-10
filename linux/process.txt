@@ -1,16 +1,16 @@
 working process | master #主进程
 -> linux系统调用fork()创建子进程，进程间的关系是一棵树，树的根就是PID为1的init进程
 
+|Linux malloc内存分配
+    1.malloc分配内存是先在虚拟内存中分配地址的，到实际使用时才真正的映射到物理内存
+    2.到了真正要映射物理内存时，首先分配物理内存，此时top的res增加
+    3.如果物理内存不够用了，分配swap，此时性能很差，此时top的res增加
+
 |前后台调度
     Ctrl+z #挂起当前进程
     jobs #查看后台任务列表，
     fg #将后台任务恢复到前台运行
     bg #激活后台被挂起的任务
-
-|lsof
-    lsof -p pid|wc -l #查看某个进程开了哪些句柄文件
-    lsof path/filename #查看目录/文件被什么进程占用,显示已打开该目录或文件的所有进程信息
-    lsof -p <pid> #查看进程使用的文件
 
 |strace -> 追踪进程的系统调用(mac下用dtruss)
     strace -p 15427 #简单追踪进程正在做什么
@@ -21,6 +21,28 @@ working process | master #主进程
     sudo strace -T -tt -e trace=all -p 11124 #查看该进程正在持续的状态
     Process 11124 attached - interrupt to quit
     15:33:07.259044 read(9,
+
+|iostat -> iostat -x 1 #查看磁盘IO情况. 总IO(io)/s = r/s(读) +w/s(写)
+    -> r/s | w/s | svctm | util% 居高不下, 说明带宽占用率极高，遇到了瓶颈
+    -> 重点指标是svctm和util这两列
+        |svctm -> 平均每次IO操作的服务时间 (毫秒)
+        |util% -> 每秒IO操作的发生率，或者说每秒有多少时间IO队列是非空的
+
+|iotop -> 查看IO负载主要落在了哪个进程上
+
+|pt-ioprofile -> sudo pt-ioprofile -p pid [-c sizes|--cell=sizes] #提供量化的数据描述了进程io的真实读写量
+    -> 原理是对某个pid附加一个strace进程进行IO分析
+    Tracing process ID 8534
+    total   read    pwrite  fsync  close filename
+    613878  613878   0      0      0     /.../sv_diff.frm
+    406924  406924   0      0      0     /.../sv_sample.frm
+    18432   0       18432   0      0     /.../ib_logfile1
+    3029    3029     0      0      0     /.../custom_query_view.frm
+
+|IO定位 -> 先用top|ps -ef -o stat|ps aux 查看STAT列(值为D则表示有阻塞IO), 再用iostat查看磁盘IO情况, 再用iotop定位高IO进程, 最后用pt-ioprofile定位具体文件
+    -> 常用来定位mysql进程IO
+    $ cat /proc/pid/io #获取进程的io信息
+    $ cat /proc/pid/stat #查看进程的详细状态信息
 
 |pstack
     pstack pid #查看进程函数堆栈
@@ -38,7 +60,7 @@ working process | master #主进程
     -> -c #显示执行任务的命令行
     -> top界面里输入b和x, 再输入shift+’>’或’<‘就可以按照某列排序
 
-    |status->S:Sleeping; R:Running; D:Disk Sleeping; T:Stop; s:有子进程; +:位于后台
+    |stat->S:Sleeping; R:Running; D:Disk Sleeping; T:Stop; s:有子进程; +:位于后台
 
     $ top
     #进程状态, 线程数. zombie(卡死的僵尸进程)
@@ -51,6 +73,7 @@ working process | master #主进程
     VM: 1252G vsize, 1100M framework vsize, 14564471(0) swapins, 15571181(0) swapouts.
     #网络使用情况
     Networks: packets: 41959091/48G in, 22745049/2603M out. Disks: 26247414/322G read, 28232872/318G written.
+    Stat: 该进程的状态。其中S代表休眠状态；D代表由于阻塞IO造成的不可中断的休眠；R代表运行状态；Z代表僵尸状态；T代表停止或跟踪状态
 
     PID    COMMAND      %CPU TIME     #TH   #WQ  #PORT MEM    PURG   CMPRS  PGRP  PPID  STATE    BOOSTS            %CPU_ME
     91947  top          4.0  00:00.61 1/1   0    23    2452K+ 0B     0B     91947 51072 running  *0[1]             0.00000
@@ -58,17 +81,21 @@ working process | master #主进程
     91786  mdworker     0.0  00:00.11 3     1    48    1912K  0B     1356K  91786 1     sleeping *0[1]             0.00000
 
 |ps -> 查看当前正在运行的进程
+    -> Stat: 该进程的状态。其中S代表休眠状态；D代表由于阻塞IO造成的不可中断的休眠；R代表运行状态；Z代表僵尸状态；T代表停止或跟踪状态
     |ps -l #查看进程的优先级
         -> niceness值(NI)
         -> PRI表示进程当前的总优先级,值越小表示优先级越高,由进程默认的PRI加上NI得到,即PRI(new) = PRI(old) + NI
 
-    |ps [aux|-ef]|grep xxx #查看进程是否存在xxx进程
+    |ps [aux|-ef|-aef]|grep xxx #查看进程是否存在xxx进程
         |aux 用BSD格式显示
         -> 显示项:USER, PID, %CPU, %MEM, VSZ, RSS, TTY, STAT, START, TIME, COMMAND
-        |-ef 用标准格式显示
+        |-ef/-aef 用标准格式显示
         -> 显示项:UID, PID, PPID, C, STIME, TTY, TIME, CMD
 
+    $ ps -ef -o stat #指定显示项
+
 |thread
+    ps -T -p <pid> #查看某进程下的线程
     ps -eLf | grep java | wc -l #监控java线程数
     ls /proc/PID/task | wc -l #监控PID对应的线程数
 

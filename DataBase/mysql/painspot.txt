@@ -1,0 +1,177 @@
+-> mysql查询最需要优化的地方是'死锁,临时表,随机IO,碎片和文件排序'. '磁盘IO'是衡量查询效率的标准
+
+|避免IO负载过高的问题
+    1. 如果你的服务器用来做日志分析，要避免多个crontab交叠执行导致多进程随机IO，避免定期的压缩、解压大日志（这种任务会造成某段时间的IO抖动）
+    2. 如果是前端应用服务器，要避免程序频繁打本地日志、或者异常日志等。
+    3. 如果是存储服务（mysql、nosql），尽量将服务部署在单独的节点上，不要和其它服务共用，甚至服务本身做读写分离以降低读写压力；调优一些buffer参数以降低IO写的频率等等。另外还可以参考LevelDB这种将随机IO变顺序IO的经典方式
+
+\死锁(DeadLock)
+    mysql> show engine innodb status \G; #查询死锁日志
+        TRANSACTION 1292943095需要
+        RECORD LOCKS space id 553 page no 376 n bits 368 index `index_user_id` of table `tbj`.`score_user
+        这个位置的X锁，一直等待这个X锁
+
+        TRANSACTION 1292943097这个已经持有
+        RECORD LOCKS space id 553 page no 376 n bits 368 index `index_user_id` of table `tbj`.`score_user
+        这个位置的S锁，这样导致TRANSACTION 1292943095无法在这个位置获得X锁
+
+        TRANSACTION 1292943097这个事务接下来也在
+        RECORD LOCKS space id 553 page no 376 n bits 368 index `index_user_id` of table `tbj`.`score_user
+        这个位置的等待X锁
+
+    所以问题点有了：
+    1. 为什么有一个线程会持有S锁，看前面的代码结构没有加过S锁？
+    2. 还有为什么TRANSACTION 1292943097这个事务不能继续加X锁提交？
+    
+    -> insert会对插入成功的行加上排它锁，这个排它锁是个记录锁，而非next-key锁（当然更不是gap锁了），不会阻止其他并发的事务往这条记录之前插入记录。在插入之前，会先在插入记录所在的间隙加上一个插入意向gap锁（简称I锁吧），并发的事务可以对同一个gap加I锁。如果insert 的事务出现了duplicate-key error ，事务会对duplicate index record加共享锁。这个共享锁在并发的情况下是会产生死锁的，比如有两个并发的insert都对要对同一条记录加共享锁，而此时这条记录又被其他事务加上了排它锁，排它锁的事务提交或者回滚后，两个并发的insert操作会发生死锁
+
+\临时表 & 内存表
+    -> Extra: using temporary
+     CREATE TEMPORARY TABLE tmp_table (
+         name VARCHAR(10) NOT NULL,
+         value INTEGER NOT NULL
+      ) #创建临时表
+
+    |内存表 -> 表结构存放在磁盘上(扩展名为.frm)，数据放在内存中. 服务器重启, 所有表数据丢失, 但表结构仍然存在. 默认使用Memory引擎, '对所有会话可见'
+        -> 内存表不支持事务，而且是表锁，当修改频繁时，性能会下降
+        -> 若单张内存表行数超过了max_heap_table_size，则'报数据满错误'
+        -> 内存表使用一个固定的记录长度格式，一般来说不要用varchar类型，如果使用了它会以varchar的最大长度来申请内存。内存表不支持BLOB或TEXT类型. 内存表不支持auto_increment
+        -> 如果内存表是复制的普通表，则复制之后所有主键、索引、自增等格式将不复存在，需要重新添加主键和索引
+        -> 内存表使用'哈希索引'把数据保存在内存中，因此具有极快的速度，适合作为'缓存'. 随着memcache、NoSQL的流行，越来越少使用内存表
+        |创建内存表
+            1. create table (...) type = heap;
+            2. create table (...) engine = memory|heap; #一般使用memory，heap用得少
+            -> type和engine都能决定表使用的引擎，如果没有type将使用mysql安装时默认的引擎. type是向下兼容的。推荐使用engine
+
+    -> 临时表是'会话级'的，只在当前会话可见, 多个session创建的表同名都互不影响. 表结构和数据都放在内存中, 会话消失表结构和数据都消失. 可以创建删除索引. show tables语句不会列出临时表，在information_schema中也不存在临时表信息；show create table可以查看临时表. 主库创建的临时表，从库查不到
+    |内存临时表 -> 表定义和数据都存储于内存中，对其操作不需要IO. 5.6.3以后新增的参数default_tmp_storage_engine可以控制CREATE TEMPORARY TABLE创建的临时表的引擎类型, 默认使用安装时的系统引擎
+    |磁盘临时表 -> 存储在磁盘上, 用来处理中间结果比较大的操作.磁盘临时表默认使用MyISAM引擎, 在5.7中可以通过INTERNAL_TMP_DISK_STORAGE_ENGINE参数选择使用InnoDB引擎
+    -> 一般情况下，MySQL会'先创建内存临时表'，超过最大上限后，MySQL会将内存临时表导出到磁盘('磁盘IO会大大降低性能')
+    |内部临时表 -> 'MySQL自动创建'用来进行性能优化(存储某些操作的中间结果), '对用户是不可见的', 但是通过EXPLAIN或者SHOW STATUS可以查看MYSQL是否使用了内部临时表.internal_tmp_disk_storage_engine可指定内部临时表引擎, 默认使用安装时系统引擎
+
+    |tmp_table_size -> 指定'系统创建'的内存临时表最大大小；
+    |max_heap_table_size -> 指定'用户创建'的内存表的最大大小；
+    -> 内存临时表大小大于'最大内存临时表上限'时将会被自动转换为磁盘临时表.最大内存临时表上限默认为tmp_table_size; max_heap_table_size比tmp_table_size小时，系统会取max_heap_table_size的值作为最大内存临时表上限(即取两个参数的'最小值')
+    -> 两个参数在my.cnf文件中设置, 修改完成后重启MySQL生效
+
+\随机IO
+    -> 如果一个索引树包含(或覆盖)所有需要查询的字段，称为'覆盖索引'。即只需扫描索引而无须回表查询
+        |回表 -> mysql在索引树中不能获取sql查询的全部列数据,根据索引到磁盘中查询表数据,有两次IO
+        -> 当使用索引的时候，除非是覆盖索引，否则一旦索引定位到数据地址后，会有回表操作，返回原始表中对应行的数据，以便引擎进行再次过滤，一旦回表操作过于频繁，引发随机IO, 性能将急剧下降, 优化器将改用'全表扫描'. 全表扫描没用索引，所以不存在回表操作. 因此全表扫描比随机IO效率高
+    -> 顺序IO是指读取和写入操作基于逻辑块逐个连续访问来自相邻地址的数据。在顺序IO访问中，HDD所需的磁道搜索时间显着减少，因为读/写磁头可以以最小的移动访问下一个块。'数据备份和日志记录'等业务是顺序IO业务。'随机IO'是指读写操作时间连续，但'访问地址不连续'，随机分布在磁盘LUN的地址空间中。产生随机IO的业务有'OLTP服务，SQL，即时消息服务'等（随机IO需要花费昂贵的磁头旋转和定位来查找, 因此顺序IO访问的速度远远快于随机IO）
+        -> 随机访问指的是本次IO所给出的扇区地址和上次IO给出扇区地址相差比较大，这样的话磁头在两次IO操作之间需要作比较大的移动动作才能重新开始读/写数据。相反的，如果当次IO给出的扇区地址与上次IO结束的扇区地址一致或者是接近的话，那磁头就能很快的开始这次IO操作，这样的多个IO操作称为连续访问。因此尽管相邻的两次IO操作在同一时刻发出，但如果它们的请求的扇区地址相差很大的话也只能称为随机访问，而非连续访问
+         ① 顺序I/O一般只需扫描一次数据、所以、缓存对它用处不大
+         ② 顺序I/O比随机I/O快
+         ③ 随机I/O通常只要查找'特定的行'、但I/O的粒度是页级的、其中大部分是寻址，耗费时间，顺序I/O所读取的数据、通常发生在想要的数据块上的所有行更加符合成本效益。 所以、缓存随机I/O可以节省更多的workload
+
+         |回表 -> '无法使用覆盖索引'时,mysql会'先查询索引树再回扫磁盘获取表数据','数据量大于内存大小时'容易引起'随机IO'. '一次回表, 两次IO'; 全表扫描和覆盖索引查询一次只有一次IO
+         -> 当需要读取的数据量超过一个临界值时，优化器会放弃从索引中读取而改为'全表扫描',以减少IO
+         -> 优化器会在索引存在的情况下，通过RANGE范围的条数和总数的比例选择使用索引还是进行全表扫描
+         EXPLAIN SELECT customer_id FROM rental WHERE customer_id>=300; 会使用覆盖索引
+         EXPLAIN SELECT * FROM rental WHERE customer_id>=300; 因为回表, mysql选择使用全表扫描
+
+        |随机IO问题
+            1. 当'数据量超过内存大小'的时候, 随机IO的问题出现(内存不足无法预读磁盘)
+            2. 页级缓存在大量全随机IO的情况下内存利用率低,同时页级缓存还带来了大量额外连续IO的问题
+            3. B+树当'索引超过内存大小'时, 每次'随机的索引搜索',插入和删除都将有至少一次随机IO
+            4. 索引组织表(HashTable)占用内存太大, 同时每次随机的索引搜索,插入和删除都将有一次随机IO
+
+        |解决方案
+            1.增加物理内存是解决随机I/O最好的办法
+            2.使用SSD(可以缓解随机读的问题, 但不能解决随机写的问题)
+            3.用缓存将随机IO转化为顺序IO(Memcached不能解决随机写的问题, 还有缓存和数据库一致性问题)
+            4.InnoDB利用事务日志把随机IO转成顺序IO(Binlog)
+            5. 采用LSM-Tree和Fractal Tree可以很好的解决索引的随机插入和删除问题
+                |LSM-Tree -> 主要针对写远多与读的场景, 将索引数据写入内存和log, 定期批量写入磁盘. 采用'分级索引块'批量更新的方式将随机写IO的开销降低到log(N)/B
+                    -> 这样随机写变为了连续写,但是读需要读内存和多个索引文件, 然后merge,开销比较大, 一般采用BloomFilter来过滤随机读,以减少不必要的随机读. HBase,Cassandra都采用这种方式
+                |Fractal Tree(分形树) -> 结构上也是多级索引块,从小到大, 随机写性能和LSM-Tree一样. 随机读采用了Fractional Cascading算法
+                    -> FC简单点说,就是给每个分级索引块中的每个索引元素加上2个指针,一个指向它前面一个索引块中最小比它大的索引元素,一个指向它后面一个索引块中最小比它大的索引元素
+                    -> 采用Fractional Cascading算法, 可以很大程度提升Range Tree的搜索性能(已经逼近了B+树)
+            6. 采用Bloom Filter可以消除绝大部分不必要的随机读
+
+    |MySQL 数据库包含如下几种文件类型
+        |数据文件(datafile) -> 存放表中的具体数据的文件.数据字典记录数据库中所有innodb表的信息
+        |重做日志(redolog) -> 记录数据库变更记录的文件，用于系统异常crash(掉电)后的恢复操作，可以配置多个比如 ib_logfile0、 ib_logfile1
+        |回滚日志(undolog) -> 也存在于mysql的ibdata文件，用户记录事务的回滚操作
+        |归档日志(binlog) -> 事务提交之后，记录到归档日志中
+        |中继日志(relaylog) -> 从master获取到slave的中转日志文件,sql_thread则会应用relaylog
+        |其他日志 -> slowlolg, errorlog, querylog
+        -> 对于以上文件的IO访问方式可以分为顺序访问(如binlog,redolog,relaylog)和随机读写(表数据文件，ibdata文件).IO访问的方式决定了在os配置磁盘信息时候如何分区,比如顺序写可以的log可以放到SAS盘,'随机读写'的数据文件可以'放到ssd或者fio高性能的存储'
+        |硬件方案
+            读多 SSD+RAID
+            写多 FIO(flashcache)
+            容量密集 fio + flashcache
+            由于随机io会严重降低性能，在当前的硬件水平下，可选择为数据库服务器配置ssd/fusionio
+
+\Fragment
+    -> 使用optimize table整理数据表的碎片空间
+    mysql> optimize table tbl_name; #可同时整理多表 optimize table tbl1, tbl2, tb3
+    mysql> show table status from db_name;
+        |结果字段解释
+            |Data_length -> 数据的大小
+            |Index_length -> 索引的大小
+            |'Data_free' -> 碎片空间大小，频繁删改会造成大量Data_free. 大于0就表示有碎片
+    mysql> SELECT table_schema,TABLE_NAME , concat(data_free/1024/1024,"M") FROM `information_schema`.tables WHERE data_free >8*1024*1024 AND ENGINE ='innodb'  ORDER BY data_free DESC; #查看全部表的碎片情况, 按碎片空间大小倒序排序
+    -> 删改的数据会重新放置，旧数据会形成碎片，随着时间的推移，碎片会越来越大
+    -> 对进行了'频繁删改操作'的表做'碎片整理'释放空间, '减少磁盘占用'(drop table会自动回收表空间, 删除行数据会遗留碎片空间, 如果进行新的插入操作，MySQL将尝试利用这些碎片空间). 整理之前取数据需要跨越很多碎片空间(多次访问磁盘)，整理后想要的数据都放在一起了，可一次拿到(磁盘预读, '降低IO')，效率提高
+
+    |磁盘预读 -> 为了'减少IO'，磁盘往往不是严格按需读取，而是每次都会预读，即使只需要一个字节，磁盘也会从这个位置开始，顺序向后读取一定长度的数据放入内核缓冲区。这样做的理论依据'局部性原理'
+        -> 预读的长度一般为页（page）的整倍数。页是计算机管理存储器的逻辑块，硬件及操作系统往往将主存和磁盘存储区分割为连续的大小相等的块，每个存储块称为一页（在许多操作系统中，页得大小通常为4k），主存和磁盘以页为单位交换数据。当程序要读取的数据不在主存(内核缓冲区)中时，会触发一个缺页异常，此时系统会向磁盘发出读盘信号，磁盘会找到数据的起始位置并向后连续读取一页或几页载入内存中，然后异常返回，程序继续运行
+        |read_buffer_size -> （数据文件存储顺序）MySQL读入缓冲区的大小，将对表进行顺序扫描的请求将分配一个读入缓冲区，MySQL会为它分配一段内存缓冲区，read_buffer_size变量控制这一缓冲区的大小，如果对表的顺序扫描非常频繁，并你认为频繁扫描进行的太慢，可通过增加该变量值以及内存缓冲区大小提高其性能，read_buffer_size变量控制这一提高表的顺序扫描的效率 数据文件顺序
+        |read_rnd_buffer_size -> MySQL的随机读缓冲区大小，当进行随机读取时（列如按照排序顺序）将分配一个随机读取缓冲区，进行排序查询时，MySQL会首先扫描一遍该缓冲，以避免磁盘搜索，提高查询速度，如果需要大量数据可适当的调整该值，但MySQL会为每个客户连接分配该缓冲区所以尽量适当设置该值，以免内存开销过大。表的随机的顺序缓冲 提高读取的效率
+
+    -> 系统会自动把optimize table转换成ALTER TABLE tbl_name ENGINE='Innodb'; 本质上是'alter table', 相当于表删除重建
+    |mysql 5.5 的改表过程
+        1.创建一张新的临时表tmp
+        2.把旧表'锁住'，'禁止插入删除'，只允许读写
+        3.把数据不断的从旧表拷贝到'新的临时表'(表数据过大时磁盘临时表会导致优化期间磁盘占满)
+        4.等表拷贝完后，进行瞬间的rename操作, 然后删除旧表
+    -> optimize最大的问题是'锁表'，锁表会导致insert，delete，update语句堵住. 在使用optimize table的时候，确保不要有任何dml语句，确保业务切走，否则可能会出事故
+    -> 为什么要锁表呢？alter过程里，数据不停从旧表拷贝到新表，如果这个时候旧表被delete了数据，那旧表与新表的数据就不一致了，到最后rename新表to旧表表名时候，数据量就多了
+    -> 并不是所有表都需要进行碎片整理，一般只需要对包含'VARCHAR、TEXT、BLOB等可变长度'的文本数据类型的表进行整理即可
+    -> optimize table只对'MyISAM, BDB和InnoDB引擎'起作用. 对不支持OPTIMIZE TABLE的engine可使用: alter table <table> engine=<engine>; 不需要经常运行，每周一次或每月一次
+        -> 对于MyISAM表，OPTIMIZE TABLE按如下方式操作
+            1.如果表已经删除或分解了行，则修复表
+            2.如果未对索引页进行分类，则进行分类
+            3.如果表的统计数据没有更新（并且通过对索引进行分类不能实现修复），则进行更新
+        -> 对于BDB表，OPTIMIZE TABLE目前被映射到ANALYZE TABLE上
+        -> 对于InnoDB表，OPTIMIZE TABLE被映射到ALTER TABLE上，这会'重建表'。重建操作能更新索引统计数据并释放成簇索引中的未使用的空间
+
+    |InnoDB
+        -> 5.6版本以前innodb的数据库不支持optimize, 使用'alter table tbl_name engine=innodb'也可以同样达到释放碎片的效果。这是由于在转换数据引擎（即便没有真正转换）时，mysql会将表数据读出，再重新写入，在这个过程中碎片自然就没有了
+
+        -> 默认情况下对'InnoDB'引擎的表使用OPTIMIZE TABLE，可能会提示「 Table does not support optimize, doing recreate + analyze instead」
+            |解决方法
+                1.alter table tbl_name ENGINE = 'InnoDB'; analyze table tbl_name;
+                2.用'dump & reload'备份清理(将数据使用mysqldump导出，然后再导入)
+                3.指定--skip-new或--safe-mode重启mysql使OPTIMIZE TABLE映射到alter table
+
+    |删除全表
+        |Delete -> 将表中数据一条一条删除, '保留表结构', '不释放空间', '日志有记录可回滚'
+            -> 因为不释放空间, 自增列不会从1开始计数
+            mysql> ALTER TABLE 表名 AUTO_INCREMENT=被删除自增列位置+1; #删除后重排自增列
+        |Truncate -> 一次性删除全部数据, '保留表结构', '释放数据空间', '不可回滚'
+            -> 对于外键（foreignkey ）约束引用的表，不能使用truncate table，而应使用不带 where 子句的delete语句。truncatetable不能用于参与了索引视图的表
+            -> 自增列从1开始计数
+        |Drop -> 一次性删除表结构和数据, '不保留表结构', '释放全部空间', '不可回滚'
+            -> drop语句将删除表的结构所依赖的约束，触发器，索引，依赖于该表的存储过程/函数将保留,但是变为invalid状态
+        |速度 -> drop > truncate > delete
+        -> drop和truncate操作可通过'dump备份结合binlog'点对点恢复(确保开启了binlog日志功能)
+        -> 如果想删除表，当然用drop
+        -> 如果想保留表而将所有数据删除，如果和事务无关，用truncate即可
+        -> 如果和事务有关，或者想触发trigger，还是用delete
+        -> 如果是整理表内部的碎片，可以先备份, 再用truncate跟上reuse stroage，再重新导入数据
+
+\Filesort
+    -> Extra: using filesort
+    -> filesort是通过相应的排序算法,将取得的数据在内存中进行排序(数据量大时会使用磁盘临时文件进行外排). MySQL需要将数据在内存中进行排序，所使用的内存区域也就是我们通过sort_buffer_size 系统变量所设置的排序区。这个排序区是每个Thread 独享的，'同一时刻在MySQL中可能存在多个sort buffer内存区域'. 索引排序比filesort快得多
+    |双路排序 -> 首先根据相应的条件取出相应的排序字段和可以直接定位行数据的'行指针'信息('扫描两次表数据')，然后在sort buffer中进行排序. 排序使用'quick sort'。如果内存不够则会按照block进行排序，将排序结果写入磁盘文件，然后再将结果合并. '会产生大量IO, 效率不高，但是节约内存'
+        -> '列长度之和'超过max_length_for_sort_data字节时就使用这个算法，原理是:先按照where筛选条件读取数据行，并存储每行的排序字段和行指针到排序缓冲区(sort buffer)。如果排序缓冲大小不够，就在内存中运行一个快速排序操作，把排序结果存储到一个临时文件里，用一个指针指向这个已经排序好了的块，然后继续读取数据，直到所有行都读取完毕为止。这是第一次读取记录。以上第一次读取记录时，可以按照索引排序或表扫描，可以做到顺序读取。但第二次读取记录时，虽然排序字段是有序的，行缓存里存储的行指针是有序的, 但所指向的物理记录需要随机读，所以这个算法可能会带来很多随机IO
+    |单路排序 -> '一次性'取出满足条件行的'所有字段'，然后在sort buffer中进行排序
+        -> 缺点是由于要读入所有字段，排序缓冲可能不够，需要磁盘临时文件协助排序，'增加IO成本'
+    -> 在MySQL4.1版本之前只有第一种排序算法双路排序，第二种算法是从MySQL4.1开始的改进算法，主要目的是为了减少第一次算法中需要两次访问表数据的操作(随机IO)，将两次变成了一次，但相应也会耗用更多的sortbuffer 空间。当然，MySQL4.1开始的以后所有版本同时也支持第一种算法
+    |优化filesort
+        -> 当无法避免filesort时，应该尽可能选择使用'单路排序算法'。这样可减少大量随机IO，大幅度提高排序的效率
+        -> MySQL主要通过比较我们所设定的系统参数max_length_for_sort_data的大小和Query语句所取出的字段类型大小总和来判定需要使用哪一种排序算法。如果 max_length_for_sort_data更大，则使用优化后的单路排序算法，反之使用双路排序算法。如果希望ORDER BY的效率尽可能的高，一定要注意max_length_for_sort_data 参数的设置。曾经有数据库出现大量的排序等待，造成系统负载很高，响应时间变得很长，最后查出是因为MySQL使用了传统的双路排序算法而导致，在'加大max_length_for_sort_data参数值'之后，系统负载马上得到了大的缓解(参数值增大后, max_length_for_sort_data可容纳一行所需列数据, 改用了单路排序)，响应也快了很多
+        -> '增大sort_buffer_size'可以尽量减少在排序过程中对需要排序的数据进行分段(需要排序的数据都能放入sort_buffer_size)，因为分段会造成MySQL不得不使用临时表(磁盘临时文件, 会造成过多IO)来进行交换排序
+        -> 在操作系统层面，优化临时文件的读写

@@ -38,8 +38,8 @@
 
 |示例
     edit : main.o kbd.o command.o display.o \
-    		insert.o search.o files.o utils.o       /*注释:如果后面这些.o文件比edit可执行文件新,那么才会去执行下面这句命令*/
-    	cc -o edit main.o kbd.o command.o display.o \
+    		insert.o search.o files.o utils.o     #如果后面这些.o文件比edit可执行文件新,那么才会去执行下面的编译命令
+    	cc -o edit main.o kbd.o command.o display.o \ #cc为c语言编译器, 指向gcc
     		insert.o search.o files.o utils.o
 
     main.o : main.c defs.h

@@ -27,10 +27,38 @@
         2.主键索引
 
         |unique key
-        1.约束(唯一性,每个表可以有多个unique key)
+        1.约束(唯一性,可为NULL,每个表可以有多个unique key)
         2.唯一索引
 
-        -> Primary key的1个或多个列(联合主键)必须为NOT NULL,如果列为NULL,在增加PRIMARY KEY时,列自动更改为NOT NULL.而UNIQUE KEY对列没有此要求
+        -> Primary key的1个或多个列(联合主键)必须为NOT NULL,如果列为NULL,在增加PRIMARY KEY时,列自动更改为NOT NULL.而UNIQUE KEY对列没有此要求.主键在建表时创建,唯一索引可随时创建
+
+        |复合主键 -> 同表多列. 为了实现多级主键(如: 相同品牌列 + 不同型号列)
+            create table student(
+            name varchar(30) comment '姓名',
+            age smallint comment '年龄',
+            sex enum('男','女') comment '性别',
+            primary key(name,age)
+            )
+
+        |联合主键 -> 多表主键
+            create table student(
+            id mediumint  auto_increment comment '主键id',
+            name varchar(30) comment '姓名',
+            age smallint comment '年龄',
+            primary key(id)
+            )
+            create table course(
+            id mediumint  auto_increment comment '主键id',
+            name varchar(30) comment '课程名称',
+            primary key(id)
+            )
+            create table IF NOT EXISTS stu_cour(
+            id mediumint  auto_increment comment '主键id',
+            stu_id mediumint comment '学生表id',
+            cour_id mediumint comment '课程表id',
+            primary key(id)
+            )
+            -> 通过学生课程表的id来获取对应的学生表和课程表的一条记录信息，学生课程表的id就是联合主键的结果
 
     4.外键有什么用,是否该用外键？外键一定需要索引吗？
         |作用 -> 表的主从关联
@@ -44,21 +72,18 @@
 
     5.myisam与innodb的区别？innodb的两阶段锁定协议是什么情况？
         -> myisam不支持事务,不会表扫描;innodb支持事务,会表扫描
-
         -> 因为有大量的并发访问,为了预防死锁,一般应用中使用一次封锁法,就是在方法的开始阶段,已经'{预先知道}'会用到哪些数据,然后全部锁住,在方法运行之后,再全部解锁.一次锁可以有效避免循环死锁,但在数据库中却不适用,因为在事务开始阶段,数据库'{并不知道会用到哪些数据}'
+        -> 对于InnoDB表来说'自动增长列'必须是索引。如果是组合索引，也必须是组合索引的第一列. 但是对于MyISAM表，自动增长列可以是组合索引的其他列，这样插入记录后，自动增长列按照组合索引前面几列进行排序后递增的
+        -> MYSQL中的'空间数据类型'有4种,分别是GEOMETRY、POINT、LINESTRING、POLYGON
 
-        |innodb两段锁定协议 -> 将'{事务}'分成加锁和解锁两个阶段
-        1.加锁阶段 -> 在对任何数据进行'{读操作之前}'要申请并获得S锁('{共享锁}',其它事务可以继续加共享锁,但不能加排它锁),在进行'{写操作之前}'要申请并获得X锁('{排它锁}',其它事务不能再获得任何锁).加锁不成功,则事务进入等待状态,直到'{加锁成功才继续执行}'.
-        2.解锁阶段 -> 当事务释放了一个封锁以后,事务进入解锁阶段,在该阶段只能进行解锁操作不能再进行加锁操作.锁在执行'{COMMIT和ROLLBAK的时候才会释放}',且所有锁在同一时刻被释放
-        -> 这种方式虽然无法避免死锁,但可以保证事务的'{并发}'调度'{串行化}'(串行化很重要,尤其是在数据恢复和备份的时候)
+        |mysql的'存储引擎'包括：MyISAM、InnoDB、BDB、Heap(MEMORY)、MERGE、EXAMPLE、NDBCluster、ARCHIVE、CSV、BLACKHOLE、FEDERATED等，其中InnoDB和BDB提供事务安全表，其他存储引擎都是非事务安全表
+            1.Myisam是Mysql的默认存储引擎(5.5版本以前)，当create创建新表时，未指定新表的存储引擎时，默认使用Myisam。每个MyISAM在磁盘上存储成三个文件。文件名都和表名相同，扩展名分别是.frm（存储表定义）、.MYD(MYData，存储数据)、.MYI(MYIndex，存储索引)。数据文件和索引文件可以放置在不同的目录，平均分布io，获得更快的速度
+            2.InnoDB存储引擎提供了具有提交、回滚和崩溃恢复能力的事务安全。但是对比Myisam的存储引擎，InnoDB写的处理效率差一些并且会占用更多的磁盘空间以保留数据和索引. 适用于类似计费系统或者财务系统等对'数据准确性'要求比较高的系统
+            3.Heap(MEMORY)默认使用哈希索引. 只有Heap(MEMORY)引擎才能'显式'支持哈希索引(NDB也支持但不常用)。Heap(MEMORY)引擎的数据是放在内存中的, 在mysql实例重启后，数据会丢失. 主要用于内容变化不频繁的代码表，或者作为统计操作的中间结果表，便于高效地对中间结果进行分析并得到最终的统计结果。对存储引擎为MEMORY的表进行更新操作要谨慎，因为数据没有写到磁盘中
 
     6.索引有什么用,大致原理是什么？设计索引有什么注意点？
         |索引作用 -> 快速定位数据,往往以索引文件的形式存储的磁盘上
-
-        |索引原理
-        1.B-Tree
-        2.B+Tree
-
+        |数据结构 -> B-Tree/B+Tree, Hash索引, FullText索引, R-Tree
         |索引设计要点
         1.尽量小的数据类型 -> 越小的数据类型在磁盘、内存和CPU缓存中占用更少的空间,处理起来更快
         2.尽量简单的数据类型 -> 整型数据比起字符型开销更小,字符串比较复杂

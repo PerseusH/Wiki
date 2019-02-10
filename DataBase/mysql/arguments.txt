@@ -1,0 +1,67 @@
+1、选择Percona或MariaDB版本的话，强烈建议启用thread pool特性，可使得在高并发的情况下，性能不会发生大幅下降。此外，还有extra_port功能，非常实用， 关键时刻能救命的。还有另外一个重要特色是 QUERY_RESPONSE_TIME 功能，也能使我们对整体的SQL响应时间分布有直观感受；
+2、设置default-storage-engine=InnoDB,建议不要使用MyISAM,InnoDB可满足99%以上的业务场景
+3、调整innodb_buffer_pool_size大小，如果是单实例且绝大多数是InnoDB引擎表的话，可考虑设置为物理内存的50% ~ 70%左右；
+4、根据实际需要设置innodb_flush_log_at_trx_commit、sync_binlog的值。如果要求数据不能丢失，那么两个都设为1。如果允许丢失一点数据，则可分别设为2和10。而如果完全不用care数据是否丢失的话（例如在slave上，反正大不了重做一次），则可都设为0。这三种设置值导致数据库的性能受到影响程度分别是：高、中、低，也就是第一个会另数据库最慢，最后一个则相反；
+5、设置innodb_file_per_table = 1，使用独立表空间，我实在是想不出来用共享表空间有什么好处了
+6、设置innodb_data_file_path = ibdata1:1G:autoextend，千万不要用默认的10M，否则在有高并发事务时，会受到不小的影响；
+7、设置innodb_log_file_size=256M，设置innodb_log_files_in_group=2，基本可满足90%以上的场景
+8、设置long_query_time = 1，而在5.5版本以上，已经可以设置为小于1了，建议设置为0.05（50毫秒），记录那些执行较慢的SQL，用于后续的分析排查；
+9、根据业务实际需要，适当调整max_connection（最大连接数）、max_connection_error（最大错误数，建议设置为10万以上，而open_files_limit、innodb_open_files、table_open_cache、table_definition_cache这几个参数则可设为约10倍于max_connection的大小；
+    |示例: 解决数据库IO瓶颈
+        -> 进入mysql查看show processlist，发现有1500多个任务，大部分处于sleep状态。mysql配置中，max_connection最大连接数设置的才只有2000，一旦到达上限, 新的连接请求就会阻塞等待
+        -> 对于sleep任务太多的处理
+            1.程序里每次连接数据库后，记得'关闭数据库'
+            2.在配置文件中设置mysql'超时时间wait_timout',默认是八小时，设置低一点
+            3.加大max_connection
+10、常见的误区是把tmp_table_size和max_heap_table_size设置的比较大，曾经见过设置为1G的，这2个选项是每个连接会话都会分配的，因此不要设置过大，否则容易导致OOM发生；其他的一些连接会话级选项例如：sort_buffer_size、join_buffer_size、read_buffer_size、read_rnd_buffer_size等，也需要注意不能设置过大；
+11、由于建议不使用MyISAM，因此可把key_buffer_size设置为32M，并且强烈建议关闭query cache功能；
+
+|sync_binlog -> 二进制日志文件binlog刷新同步到磁盘的方式，这个参数是对于MySQL系统来说是至关重要的，不仅影响到Binlog对MySQL所带来的性能损耗，而且还影响到MySQL中数据的完整性
+    1. sync_binlog=0 当事务提交之后，MySQL'不刷新binlog_cache中的信息到磁盘'，而让Filesystem自行决定什么时候来做同步，或者cache满了之后才同步到磁盘。如果没刷新到磁盘前'系统宕机，则会丢失'最后的binlog内容，但是此参数'性能最佳'
+    2. sync_binlog=n 当'每进行n次事务提交'之后，MySQL将进行一次fsync之类的磁盘同步指令来将binlog_cache中的数据'强制写入磁盘'
+    -> '1是最安全的值，但也是最慢的'. 适用于支付服务或订单系统这样的应用
+    -> 很多MySQL DBA设置的sync_binlog并不是最安全的1，而是'100或0'。这样牺牲一定的一致性，可以获得更高的并发性能
+
+|binlog_cache_size -> 二进制日志缓冲大小：一个事务，在没有提交（uncommitted）的时候，产生的日志，记录到Cache中；等到事务提交（committed）需要提交的时候，则把日志持久化到磁盘
+    -> 设置太大的话，会比较消耗内存资源（Cache本质就是内存），更加需要注意的是：binlog_cache是不是全局的，是按SESSION为单位独享分配的，也就是说当一个线程开始一个事务的时候，Mysql就会为这个SESSION分配一个binlog_cache
+
+|innodb_flush_log_at_trx_commit -> ib_logfile(记录redo log和undo log的信息)的刷新方式
+    1.如果innodb_flush_log_at_trx_commit设置为'0'，log buffer将'每秒一次'地写入log file中，并且log file的flush(刷到磁盘)操作'同时进行'.该模式下，在事务提交的时候，不会主动触发写入磁盘的操作. '任何mysqld进程的崩溃会删除崩溃前最后一秒的事务'
+    2.如果innodb_flush_log_at_trx_commit设置为'1'，'每次事务提交'时MySQL都会把log buffer的数据写入log file，并且flush(刷到磁盘)中去. '最安全的方式，但是速度最慢'
+    3.如果innodb_flush_log_at_trx_commit设置为'2'，'每次事务提交'时MySQL都会把log buffer的数据写入log file.但是flush(刷到磁盘)操作并'不会同时进行'。该模式下,MySQL会'每秒执行一次' flush(刷到磁盘)操作. '只有操作系统崩溃或掉电才会删除最后一秒的事务，不然不会丢失事务'. '兼顾了速度和安全性'
+
+|innodb_flush_method -> 这个参数控制着innodb数据文件及redo log的打开、刷写模式
+    -> 有三个值：fdatasync(BufferIO)，O_DSYNC(BufferIO)，O_DIRECT(DirectIO)
+    fdatasync -> 默认值. 调用fsync()去刷数据文件与redo log的buffer
+    O_DSYNC -> innodb会使用O_SYNC方式打开和刷写redo log,使用fsync()刷写数据文件
+    O_DIRECT -> innodb使用O_DIRECT打开数据文件，使用fsync()刷写数据文件跟redo log
+    -> 在大量随机写的环境中O_DIRECT比fdatasync效率更高，顺序写多的话，默认的fdatasync更高效
+
+-> MyISAM使用'操作系统的文件系统缓存'缓存经常被查询的数据。InnoDB使用自己的'InnoDB Buffer Pool'缓存数据(磁盘预读)
+
+|innodb_buffer_pool_size -> Innodb最重要的一个配置参数，控制Innodb的缓冲池大小。建议该参数的配置在'物理内存的70％－80％之间'. 如果有很多事务的更新，插入或删除很操作，通过修改innodb_buffer_pool 大小 这个参数会'节省大量的磁盘IO'，在MySQL 5.7.5版本后，innodb_buffer_pool_size参数的值可以动态的设置，这意味着你可以在不启动服务器的情况下，重新设置缓冲区的大小
+    -> 设置要根据自己的实际情况来设置，如果设置的值不在合理的范围内，并不是设置越大越好，可能设置的数值太大体现不出优化效果，反而造成系统的'swap空间被占用，导致大量IO'，降低sql查询性能
+    mysql> SET GLOBAL innodb_buffer_pool_size=size_in_bytes; #设置innodb-buffer-pool-size
+
+|innodb_log_buffer_size -> InnoDB写入到磁盘上的日志文件时使用的缓冲区(Log Buffer)的字节数，默认值为8M。一个'大的日志缓冲区'允许大量的事务'在提交之前不写日志到磁盘'. Log Buffer的主要作用就是缓冲Log数据，'提高写Log的IO性能'。如果系统不是写负载非常高且以大事务居多的话，8MB大小完全够用
+
+|异步IO线程数 -> 脏页读写的线程数，加大该参数可以提升写入性能. 根据CPU核数来更改相应的参数值，默认是4. 重启mysql实例起效
+    假如CPU是2颗8核的，那么可以设置：
+    innodb_read_io_threads = 8
+    innodb_write_io_threads = 8
+    如果数据库的读操作比写操作多，那么可以设置：
+    innodb_read_io_threads = 10
+    innodb_write_io_threads = 6
+
+|innodb_max_dirty_pages_pct -> 最大脏页百分数，当系统中脏页所占百分比超过这个值，INNODB就会执行写操作把页中的已更新数据写入到磁盘文件中。默认75，一般现在流行的SSD硬盘很难达到这个比例。可依据实际情况在75-80之间调节
+
+|innodb_adaptive_flushing -> 影响每秒刷新脏页的数目. 设置为ON, 使刷新脏页更智能
+    -> 规则由原来的“大于innodb_max_dirty_pages_pct时刷新100个脏页到磁盘”变为 “通过buf_flush_get_desired_flush_reate函数判断重做日志产生速度确定需要刷新脏页的最合适数目”，即使脏页比例小于innodb_max_dirty_pages_pct时也会刷新一定量的脏页
+
+|innodb_io_capacity -> 从缓冲区刷新脏页到磁盘时，一次刷新脏页的数量，一般可以按一块SAS 15000转的磁盘200个计算，6块盘的SAS做的Raid10这个值可以配到600即可。如果是普通的SATA一块盘只能按100算。(innodb-plugin, Percona有这个参数) 
+ 
+-> MYSQL对这方面的设置比较保守，因为它要充分保证数据在任何异常情况下都不能有丢失，这就要求事务提交时，日志必须被最终完全的刻到磁盘上，不可以到任何的缓存上。如果'innodb_buffer_pool_size参数设置的够大，能够容纳整个表'，并且把上面三个参数设置成最优设置（如：sync_binlog=0，innodb_flush_logs_at_trx_commit=0，innodb_flush_method=O_DIRECT），那么性能会有10-50倍的提高
+
+问题: 因为频繁写入binlog引发的大量IO
+    |解决 -> 设置innodb_flush_log_at_trx_commit=2, 把sync_binlog设置为每500次刷新一次磁盘
+        -> 适用于高并发, 对数据可靠性的要求并不如金融、订单系统那么高的系统

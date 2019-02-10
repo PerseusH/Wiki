@@ -39,6 +39,8 @@
     -> 协程没有开销的限制，理论上可以有'{无限个}'，把20W条url放在单进程的协程里执行，完全没问题
     -> '{多进程+协程}',既充分'{利用多核}',又充分发挥'{协程的高效率}',可获得极高的性能
     -> 调度协程有CPU开销,保存协程上下文有内存开销,性能'{不如事件驱动异步回调}'的编程模型
+    -> 阻塞队列：最常见的业务场景就是生产者不断生产任务放进阻塞队列中，消费者不断从阻塞队列中获取任务；当阻塞队列中填满数据时，所有生产者端的线程自动阻塞，当阻塞队列中数据为空时，所有消费端的线程自动阻塞
+    -> 非阻塞IO的本质是将用户程序和系统调用解耦
 
     |并发切换 -> IO->挂起当前过程->切换至其他过程运行->IO完毕,过程就绪->执行过程剩余代码
         |诱发动作
@@ -49,25 +51,54 @@
             5.threading.Condition().wait()
             6.threading.lock().aquire()
 
-    |gevent
-        -> 基于libevent的并发库。为各种并发和网络相关任务提供了整洁的API.主要模式是greenlet
-        |greenlet -> 以C扩展模块形式接入Python的轻量级协程。greenlet全部运行在主程序操作系统进程的内部，但它们被协作式地调度
+    |gevent -> 早期gevent使用libevent，1.0版本之后替换成'libev'，因为libev“提供更少的核心功能以求更改的效率”。libev使用轮训非阻塞的方式进行事件处理，比如unix下的epoll。为各种并发和网络相关任务提供了整洁的API.主要模式是greenlet
+        -> gevent来源于eventlet，自称比后者实现更简单、API更方便且性能更好，许多开源的web服务器也使用了gevent，如gunicorn、paste，当然gevent本生也可以作为一个python web服务器使用。这篇文章对常见的wsgi server进行性能对比，gevent不管在http1.0还是http1.1都表现非常出色
+        |greenlet -> 以C扩展模块形式接入Python的轻量级协程。greenlet全部运行在主程序操作系统进程的内部，但它们被协作式地调度. 协程的上下文切换遇到阻塞时才会发生
         -> libevent也是对linux'{同步io}'做了封装，使它看起来像异步
         -> gevent实现了python标准库里面大部分的阻塞式系统调用，包括socket、ssl、threading和select等模块，而将这些阻塞式调用变为'{协作式运行}'（monkey.patch_xxx()）
         -> monkey-patch充分利用了动态语言的灵活性，'{不改变源代码}'而对功能进行追加和变更,可以对现有的语言Api进行'{追加，替换，修改Bug}'，甚至性能优化等等
-        -> 通过monkey-patch的monkey.patch_xxx()将python标准库中模块或函数改成gevent中的响应的具有协程的协作式对象。这样在不改变原有代码的情况下，将应用的阻塞式方法变成协程式的
+        -> 通过monkey-patch的monkey.patch_xxx()将python标准库中模块或函数改成gevent中的响应的具有协程的协作式对象。这样在不改变原有代码的情况下，将python标准库的阻塞操作变成异步的
         -> monkey-patch在socket、ssl、threading和select等模块中所有可能进行IO操作的地方加了一个标记，相当于gevent.sleep(n)，打了补丁后，这些操作一开始执行就会阻塞并切换协程
+        -> gevent面对CPU密集型以及本地IO密集型的任务都很无力
+        -> 每一个greenlet.greenlet实例都有一个parent（可指定，默认为创建新的greenlet.greenlet所在环境），当greenlet.greenlet实例执行完逻辑正常结束、或者抛出异常结束时，执行逻辑切回到其parent
 
-        |hub
-        -> hub是gevent核心部件，依靠libev这个事件库，来'{调度}'所有的任务greenlet
-        -> hub也是一个greenlet，就是所谓的'{main greenlet}'
-        -> hub会首先启动，然后马上启动事件循环。也就是'{libev的loop}'
-        -> hub保存在线程的本地数据中，所以说每个线程中只存在一个main hub
+        |模式
+            1.当前greenlet发生系统调用, socket阻塞
+            2.挂起当前greenlet, 由main greenlet切换执行其他greenlet
+            3.libev事件循环监听阻塞的socket
+            4.IO完成, 内核将数据拷贝到libev事件循环
+            5.main greenlet切换到就绪socket的greenlet继续执行
+
+            在普通的greenlet中(非main greenlet)中，创建一个socket。 将socket风转到libev的io类型的watcher中，再将这个watcher和当前greenlet关联起来。 最后从当前greenlet切换到main greenlet。
+
+            最后由libev的loop轮询检测socket上发生的IO事件，当事件发生后，将从main greenlet切换到刚才被挂起的greenlet继续执行。
+
+            这样就体现了libev的异步和greenlet的同步完美的结合
+            当从socket接收数据并发生阻塞事件时，为了能异步的得到内核发送的事件通知，将watcher加入到libev的loop循环中。
+
+            self.hub.wait(self._read_event)就是将watcher加入到libev的loop循环中。
+
+            调用hub.wait方法后，会从当前greenlet切换到main greenlet，也就是hub。过程如下所述
+
+            由于hub管理着所有的greenlet，并将这些greenlet和libev的loop关联起来。这是通过libev的watcher来关联的。
+
+            在hub.wait中，启动一个Waiter: waiter = Waiter(), 并将water.switch这个回调函数和watcher关联起来: watcher.start(waiter.switch, unique)。
+
+            最后执行wait.get将当前greenlet切换到main greenlet。这时libev如果检测到socket上发生了greenlet感兴趣的事件，则从main greenlet切换到刚才被挂起的greenlet，并从挂起处继续执行
+
+            Libev是一个事件循环：你注册感兴趣的特定事件（比如一个文件可以读取时或者发生超时时），它将管理这些事件源，将这些事件反馈给你的程序。在进程或线程中执行事件循环句柄控制，然后通过'回调机制'进行事件通信。通过watchers注册感兴趣的特定事件，这些watchers都是相对较小的C语言结构体，它们通过初始化具体的事件得到，然后交由libev启动那个watcher。Libev支持 select,poll,Linux特有的epoll,BSD特有的kqueue以及Solaris特有的文件描述符事件端口机制（ev_io），Linux信息通知接口（ev_stat），Linux事件文件/信号文件（为了更快更完整的唤醒沉睡线程（ev_async）/信号捕捉（ev_signal））相对定时器（ev_timer），用户自定义的绝对定时器（ev_periodic），同步信号（ev_signal），进程状态改变事件（ev_child），和通过事件循环机制实现的事件观察者管理本身（ev_idle,ev_embed,ev_prepare和ev_check监控）也和文件监控（ev_stat）和有限支持的派生子进程事件（ev_fork）一样
+
+        |hub -> 底层greenlet任务阻塞时切换回hub, 然后由hub切换执行其他greenlet任务
+        -> hub是gevent核心部件，依靠libev这个事件库，hub调用libev提供的事件循环来'调度'所有的任务greenlet
+        -> hub也是一个greenlet，就是所谓的'main greenlet'
+        -> hub会首先启动，然后马上启动事件循环。也就是'libev的loop'
+        -> hub保存在线程的本地数据中，每个线程中只存在一个hub
         -> hub是线程内唯一的，greenlet是线程独立的，每个线程有各自的greenlet栈
         -> 从main greenlet切换到普通greenlet之后，main greenlet是停止执行(阻塞)的。greenlet是安排合理的'{串行}'，从而看起来像是并行
         -> 由hub决定运行哪个greenlet
-        -> 切换到main greenlet是指首先切换到hub.wait，然后在hub.wait中切换到hub，hub运行loop, loop监听到greenlet感兴趣的事件(IO完成, 定时器结束)后, 由hub.switch切换到发生事件的那个greenlet。主导整个过程的是libev的loop
-        -> gevent.spawn(func)创建一个新的Greenlet，并注册到hub的loop上(func即该greenlet的run()方法)，调用gevent.joinall或者Greenlet.join的时候开始切换到hub, 由hub.switch切换到第一个greenlet开始执行self.run()
+        -> 切换到main greenlet是指首先切换到hub.wait，然后在hub.wait中切换到hub，hub运行loop, loop监听到greenlet感兴趣的事件(内核发送的事件, 如: IO完成, 定时器结束)后, 由hub.switch切换到发生事件的那个greenlet。主导整个过程的是libev的loop
+        -> gevent.spawn(func)创建一个新的Greenlet，并将其注册到hub的loop上(func即该greenlet的run()方法)，调用gevent.joinall或者Greenlet.join的时候开始切换到hub, 由hub.switch切换到第一个greenlet开始执行self.run()
+        -> run方法是hub的核心，由run方法来启动libev的loop run方法启动了libev的loop，并且会一直阻塞，直到收到了信号
         -> gevent.joinall就是用来启动事件轮询并等待运行结果的
             |核心API
             loop.timer(seconds, ref=ref) #定时器
@@ -90,7 +121,7 @@
         > g1 = gevent.spawn(f, 5) #Greenlet对象, f本质是回调函数
         > g2 = gevent.spawn(f, 5)
         > g3 = gevent.spawn(f, 5)
-        > g1.join()
+        > g1.join() #join 就是在启动 gevent 的 gevent loop
         > g2.join()
         > g3.join()
         > #gevent.joinall([g1, g2, g3]) #会阻塞当前流程，并执行所有给定的greenlet，执行流程只会在所有greenlet执行完后才会继续向下走
@@ -105,8 +136,16 @@
     -> python里的线程是操作系统的真实线程
     -> 进程拥有一个完整的虚拟地址空间，不依赖于线程而独立存在；线程是进程的一部分，没有自己的地址空间，与进程内的其他线程一起共享分配给该进程的所有资源
     -> 每个进程都有进程控制表(PCB)，每个线程也有线程控制表(TCB)
+    -> 进程切换只能发生在内核.内核通过一个唯一的进程标示值或PID来标识每一个进程
     -> 进程至少有 5 种基本状态，它们是：新建，执行，阻塞，就绪，终止
     -> 线程有 4 个基本状态：新建，执行，阻塞，终止.存在 5 种基本操作来切换线程的状态：派生，阻塞，唤醒，调度，结束
+    -> 所有进程的祖先叫做进程0（idle进程），它是在linux的初始化阶段从无到有创建的一个内核进程，唯一使用静态分配数据结构的进程（所有其他进程的数据结构都是动态分配），所以这些静态分配的数据结构也顺其自然的变成链表的头
+    ->  Linux创建进程分解到两个单独的函数中去执行：fork()和exec()。首先，fork()通过拷贝当前进程创建一个子进程，子进程与父进程的区别仅仅在于PID、PPID和某些资源和统计量。exec()函数负责读取可执行文件并载入地址空间开始运行. 进程终止的一般方式是调用exit()系统调用，即可能显式地调用，也可能隐式的从某个主函数返回；当进程接收到它既不能处理也不能忽略的信号或异常时，还可能被动终结。不管如何，在内核都是通过do_exit完成工作
+    -> 内核经常需要在后台执行一些操作（如刷磁盘，空闲页回收等），这种任务可以交给内核线程。内核线程有以下特点
+         1.没有独立的地址空间，所有内核线程共享地址空间
+         2.只运行在内核态，从不切换到用户空间
+         3.只能使用大于PAGE_OFFSET的线性地址空间
+         4.可以被调度，可以被抢占
 
     |进程卡死(hanging挂起)原因: IO操作或并发过高, 一般是卡在某个系统调用上
         1.read很大的数据流, 等待对方输入
@@ -162,7 +201,7 @@
 
         |缺点 -> 多进程之间通信成本高，切换开销大
 
-    |自旋锁 -> 使用一个无意义的循环, 不断尝试获取锁，直到成功
+    |自旋锁 -> 使用一个while True循环, 不断尝试获取锁，直到成功
 
     |多进程
         > #多进程利用多核(4核CPU环境)

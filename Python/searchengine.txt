@@ -9,10 +9,40 @@
         result = jieba.cut(txt, cut_all=True) #全模式
         result = jieba.cut_for_search(txt) #搜索引擎模式
 
+        |词性
+            n -> 名词, v -> 动词
+            import jieba.posseg
+            [(x.word, x.flag) for x in jieba.posseg.cut(sentence) if x.startswith('n')]
+
         |并行分词
             |原理 -> 将目标文本按行分隔后，把各行文本分配到多个 Python 进程并行分词，然后归并结果，从而获得分词速度的可观提升.基于python自带的multiprocessing模块,暂不支持Windows
-            jieba.enable_parallel(4) # 开启并行分词模式，参数为并行进程数
+            jieba.enable_parallel(100) # 开启并行分词模式，参数为并行进程数
+            words = [x for x in jieba.cut(text) if len(x) >= 2]
             jieba.disable_parallel() # 关闭并行分词模式
+
+        |关键词提取
+            import jieba.analyse
+            #基于TF-IDF算法
+            jieba.analyse.extract_tags(sentence, topK=20, withWeight=False, allowPOS=('ns', 'n', 'vn', 'v'))
+
+            #基于TextRank算法
+            jieba.analyse.textrank(sentence, topK=20, withWeight=False, allowPOS=('ns', 'n', 'vn', 'v'))
+
+            |TF-IDF
+                |词频(term frequency, TF) -> 某一个给定的词语在该文件中出现的次数。这个数字通常会被归一化（分子一般小于分母区别于IDF），以防止它偏向长的文件。（同一个词语在长文件里可能会比短文件有更高的词频，而不管该词语重要与否）
+                |逆向文件频率 (inverse document frequency, IDF) -> 一个词语普遍重要性的度量。某一特定词语的IDF，可以由总文件数目除以包含该词语之文件的数目，再将得到的商取对数得到
+
+                -> 某一特定文件内的高词语频率，以及该词语在整个文件集合中的低文件频率，可以产生出高权重的TF-IDF。因此，TF-IDF倾向于过滤掉常见的词语，保留重要的词语
+
+                -> 综上TF－IDF的主要思想是：如果某个词或短语在一篇文章中出现的频率TF高，并且在其他文章中很少出现，则认为此词或者短语具有很好的类别区分能力，适合用来分类。TF－IDF实际上是：TF * IDF，TF为词频，IDF反文档频率
+
+            |TextRank
+                -> 类似于PageRank的思想，将文本中的语法单元视作图中的节点，如果两个语法单元存在一定语法关系（例如共现），则这两个语法单元在图中就会有一条边相互连接，通过一定的迭代次数，最终不同的节点会有不同的权重，权重高的语法单元可以作为关键词
+                -> 节点的权重不仅依赖于它的入度结点，还依赖于这些入度结点的权重，入度结点越多，入度结点的权重越大，说明这个结点的权重越高
+
+            -> 基于TFIDF和TextRank的关键词提取算法的效果和分词效果关系很大。如果不添加词汇“深度学习”，分词时会将“深度学习”划分为“深度”和“学习”，那么在用TFIDF提取关键词时，将无法出现“深度学习”这一关键词。理论上来说TextRank可以实现词汇粘合，前提是“深度”“学习”均作为关键词被提取出来了。但在这个实例中，若不添加“深度学习”，基于TextRank的关键词提取虽然均提取出了“深度”和“学习”作为关键词，却并没有将其粘合
+            -> TextRank的效果'并不优于'TFIDF
+            -> TextRank虽然考虑到了词之间的关系，但是仍然倾向于将频繁词作为关键词，而且TextRank涉及到构建词图及迭代计算，所以提取速度较慢
 
 \倒排索引
     -> 关键词: 文档列表(按词频, PageRank排序)

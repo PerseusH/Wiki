@@ -2,6 +2,11 @@
 	gcc hello.c -o hl #C -o指定输出可执行文件名,没有指定则默认输出到a.out -c为编译到目标文件但不链接
 	g hello.cpp -o hl | g++ hello.cpp -o hl #C++
 
+	gcc 是GNU Compiler Collection，原名为Gun C语言编译器，因为它原本只能处理C语言，但gcc很快地扩展，包含很多编译器（C、C++、Objective-C、Ada、Fortran、 Java），可以说gcc是GNU编译器集合
+	g++ 是C++编译器
+	cc 是 Unix系统的 C Compiler，一个是古老的 C 编译器。而 Linux 下 'cc 一般是一个符号连接，指向 gcc'；可以通过 $ ls -l /usr/bin/cc 来简单察看，该变量是 make 程序的内建变量，默认指向 gcc 。 cc 符号链接和变量存在的意义在于源码的移植性，可以方便的用 gcc 来编译老的用cc编译的Unix软件，甚至连 makefile 都不用改在，而且也便于 Linux 程序在 Unix下 编译。
+	CC 则一般是 makefile 里面的一个名字标签，即宏定义，表示采用的是什么编译器（如：CC = gcc
+
 |link
 	ld test.o  -macosx_version_min 10.13 -lc -o test_e #mac
 	ld -o test_e test.o #linux

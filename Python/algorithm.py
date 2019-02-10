@@ -297,64 +297,64 @@ import re
 
 
 # HeapSort
-def Heap_Sort():
-    '''
-    1.建堆(升) 2.排序(降)
-    时间复杂度O(NlgN)
-    空间复杂度O(1)(就地排序)
-    '''
-    smpl = randints(1, 100)
-    logging.info('Sample: %s', smpl)
-
-    def HS(seq):
-        def down(s, icur=0, ilast=9):
-            '''
-            @s -> sequence
-            @icur -> index of current item
-            @_len -> countable length of items
-            '''
-            while icur <= (ilast - 1)//2:
-                il, ir = icur*2 + 1, icur*2 + 2
-
-                if il < ilast:
-                    if ir < ilast:
-                        if s[il] > s[ir] and s[icur] > s[ir]:
-                            s[icur], s[ir] = s[ir], s[icur]
-                            icur = ir
-                        elif s[ir] > s[il] and s[icur] > s[il]:
-                            s[icur], s[il] = s[il], s[icur]
-                            icur = il
-                        else:
-                            break
-                    elif s[icur] > s[il]:
-                        s[icur], s[il] = s[il], s[icur]
-                        icur = il
-                        break
-                    else:
-                        break
-                else:
-                    break
-
-            return seq
-
-        _len = len(seq)
-        for i in list(range(_len))[::-1]:
-            while i > 0:
-                iprt = (i - 1)//2
-                if seq[iprt] > seq[i]:
-                    seq[i], seq[iprt] = seq[iprt], seq[i]
-                    seq = down(seq, i)
-
-                i = iprt
-
-        for i in range(_len - 1):
-            seq[0], seq[_len - 1 - i] = seq[_len - 1 - i], seq[0]
-            seq = down(seq, 0, _len - 1 - i)
-
-        return seq[::-1]
-
-    result = HS(smpl)
-    logging.info(result)
+# def Heap_Sort():
+#     '''
+#     1.建堆(升) 2.排序(降)
+#     时间复杂度O(NlgN)
+#     空间复杂度O(1)(就地排序)
+#     '''
+#     smpl = randints(1, 100)
+#     logging.info('Sample: %s', smpl)
+#
+#     def HS(seq):
+#         def down(s, icur=0, ilast=9):
+#             '''
+#             @s -> sequence
+#             @icur -> index of current item
+#             @_len -> countable length of items
+#             '''
+#             while icur <= (ilast - 1)//2:
+#                 il, ir = icur*2 + 1, icur*2 + 2
+#
+#                 if il < ilast:
+#                     if ir < ilast:
+#                         if s[il] > s[ir] and s[icur] > s[ir]:
+#                             s[icur], s[ir] = s[ir], s[icur]
+#                             icur = ir
+#                         elif s[ir] > s[il] and s[icur] > s[il]:
+#                             s[icur], s[il] = s[il], s[icur]
+#                             icur = il
+#                         else:
+#                             break
+#                     elif s[icur] > s[il]:
+#                         s[icur], s[il] = s[il], s[icur]
+#                         icur = il
+#                         break
+#                     else:
+#                         break
+#                 else:
+#                     break
+#
+#             return seq
+#
+#         _len = len(seq)
+#         for i in list(range(_len))[::-1]:
+#             while i > 0:
+#                 iprt = (i - 1)//2
+#                 if seq[iprt] > seq[i]:
+#                     seq[i], seq[iprt] = seq[iprt], seq[i]
+#                     seq = down(seq, i)
+#
+#                 i = iprt
+#
+#         for i in range(_len - 1):
+#             seq[0], seq[_len - 1 - i] = seq[_len - 1 - i], seq[0]
+#             seq = down(seq, 0, _len - 1 - i)
+#
+#         return seq[::-1]
+#
+#     result = HS(smpl)
+#     logging.info(result)
 
 
 # 一个列表A=[A1，A2，…,An]，打印出来列表中所有的组合情况
@@ -396,6 +396,14 @@ def Heap_Sort():
 
 
 # RBTree
+
+
+# Bitmap
+# 每个位代表一个数据(40亿个数据大概要 40*10^8 bit = 0.5GB)
+# N / coresize = array-number, N % coresize = index-of-array
+
+
+# LRU缓存: 设计一个内存中的数据结构，也提供GET和SET方法，保存最近访问的前100条数据
 
 
 def randints(*args, length=10, sorted=0):
