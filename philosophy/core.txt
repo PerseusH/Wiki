@@ -1,12 +1,12 @@
 |目标 -> '权力' -> '清华大学-人工智能'
 	|学习顺序(知识爬升连续性) -> 应用场景 > 分类 > 特性
 	> {HeapSort} > {快排空间复杂度} > {FlaskSignal} > {哈希算法-冲突解决} > {Spider} > {页面模板} > {Spider} > {FrontEnd} > {Spider} > {分词} > {Redis-py}  > {Redis} > {MD5} > {CDN} > {系统性能} > {TrieTree}
-	> {Bitmap} > 'Linux' > Mysql > B-Tree > C-Extension > Spider-gevent-生产者消费者模型 > IndexDB
+	> {Bitmap} > 'Nginx' > Docker > Linux > Mysql > B-Tree > C-Extension > Spider-gevent-生产者消费者模型 > IndexDB
 
 |Gym -> Lift: 0-1000 -> Jog: 0H-0.25H |饮食 -> 早梨茶晚燕奶 100g蛋白质(15个蛋)/Day
 	|1925年11月12日蒋公日记 -> "太戈尔以无限与不朽为人生观之基点，又以爱与快乐为宇宙活动之意义。列宁以权力与斗争为世界革命之手段。一以唯心，一以唯物。以哲学言，则吾重精神也"
-|LastMeal(0):	  11:35
-|LastMedicine(1): 19:40
+|LastMeal(1):	  14:50
+|LastMedicine(0): 21:00
 |ISSUES
 	1.经常性的突然中断？全局性的观照焦虑？-> 广度优先的低专注度熵增行为
 	2.虚荣？虚浮的想象？对试图建立习惯的信心丧失？无法长久坚持？忘记深渊的存在？->Too many minds

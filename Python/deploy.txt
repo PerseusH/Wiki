@@ -101,7 +101,7 @@
     -> 配图演示Sentry的安装和收集错误信息的效果
     -> 使用StatsD、Graphite、Diamond和Grafana搭建Web监控,并介绍常见的运维监控工具及其主要应用场景
 
--Jenkins
+\Jenkins
     -> 一个可扩展的持续集成引擎
 
     $Jenkins_home: ~/.jenkins
@@ -123,30 +123,5 @@
         6.文件识别:Jenkins能够跟踪哪次构建生成哪些jar,哪次构建使用哪个版本的jar等
         7.插件支持:支持扩展插件,你可以开发适合自己团队使用的工具
 
--Docker
-    user: perseush | pwd:  hui_123
-    /usr/local/bin/docker #docker地址
-    /Library/Containers/com.docker.docker/Data #镜像地址
-
-    docker build -t runoob/ubuntu:v1 .#使用当前目录的Dockerfile创建镜像
-    docker run image_name[:tag] #根据镜像启动一个Container
-    docker ps -a #查看所有Containers
-    Docker Daemon #docker 的守护进程
-    docker tag my_img username/my_img #修改自建镜像的名字,否则会被hub.docker.com拒绝
-    docker login ＃ 登录到hub.docker.com
-    docker push username/my_image #将自建镜像上传到hub.docker.com
-
-    |重启一个Exited Container
-        docker start con_name | ContainerID;(&&) docker attach con_name| ContainerID
-    |把容器保存成新镜像mynewimage
-        docker commit ContainerID mynewimage
-
-    |打包／恢复 一个镜像
-        docker save -o myubt.tar myubt:latest
-        docker save myubt:latest > myubt.tar
-        docker load < my_ubt.tar
-
-    -> 无论是Mac,Windows或是Linux,你都可以在其上安装Docker Machine,使用docker-machine命令来创建和管理大量的Docker hosts.它会自动创建主机,在主机上安装Docker Engine,然后配置docker client.每个被管理的主机(“machine”)都是一个Docker 主机和一个配置过的client的组合
-
-    |docker_clean.sh: (source docker_clean.sh ImageID1 ImageID2 ImageID3)
-        -> 基本原理是用 docker save 命令保存要保留的image,然后关闭Docker,删除Docker.qcow2,再启动Docker,它会自动重建,最后用 docker load 命令恢复保留的image
+    -> jenkins plugin提示： Update information obtained: 不可用 ago；出现堆栈错误；
+        我们将/var/lib/jenkins/hudson.model.UpdateCenter.xml文件内容中的https://updates.jenkins.io/update-center.json改为http://updates.jenkins.io/update-center.json即可；即为https协议改为http协议；然后我们重启一下jenkins，插件即可正常搜索访问

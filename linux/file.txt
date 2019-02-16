@@ -60,7 +60,7 @@
     chmod ugo+rwx directory1 #设置目录的所有人(u)、群组(g)以及其他人(o)以读(r )、写(w)和执行(x)的权限
     chmod go-rwx directory1 #删除群组(g)与其他人(o)对目录的读写执行权限
     chown user1 file1 #改变一个文件的所有人属性
-    chown -R user1 directory1 #改变一个目录的所有人属性并同时改变改目录下所有文件的属性
+    chown -R user1 directory1 #改变一个目录及其子目录和目录下所有文件的归属人
     chgrp group1 file1 #改变文件的群组
     chown user1:group1 file1 #改变一个文件的所有人和群组属性
     find / -perm -u+s #罗列一个系统中所有使用了SUID控制的文件

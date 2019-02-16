@@ -1,0 +1,37 @@
+-> Docker 可以让开发者打包他们的应用以及依赖包到一个轻量级、可移植的容器中，然后发布到任何流行的 Linux 机器上，也可以实现虚拟化
+-> Docker 把应用程序及其依赖，打包在 image 文件里面。只有通过这个文件，才能生成 Docker 容器。image 文件可以看作是容器的模板。Docker 根据 image 文件生成容器的实例。同一个 image 文件，可以生成多个同时运行的容器实例。image 是二进制文件。实际开发中，一个 image 文件往往通过继承另一个 image 文件，加上一些个性化设置而生成
+-> 网络问题解决方案: http://get.daocloud.io/
+/usr/local/bin/docker #docker地址
+/Library/Containers/com.docker.docker/Data #镜像地址
+
+|CMD
+    docker search img_name #在hub上搜索相关镜像
+    docker pull img_name[:version] #下载镜像
+    docker build -t runoob/ubuntu:v1 .#使用当前目录的Dockerfile创建镜像
+    docker run --name con_name img_name[:tag] [con_cmd] #根据镜像启动一个容器，执行完毕容器停止
+    docker run --name con_name -it img_name[:tag] bash #用交互模式启动一个容器
+    docker run -p 主机端口:容器端口 img_name[:tag] #用端口映射模式启动一个容器，可内外通信
+        -> 主机访问localhost:主机端口即可
+    docker images -a #查看所有镜像
+    docker ps -a #查看所有Containers
+    docker top con_name #查看容器内运行的进程
+    docker port con_name #查看容器端口映射信息
+    Docker Daemon #docker 的守护进程
+    docker tag my_img username/my_img #修改自建镜像的名字,否则会被hub.docker.com拒绝
+    docker login #登录到hub.docker.com
+    docker push username/my_image #将自建镜像上传到hub.docker.com
+
+    docker start|restart con_name|ContainerID;(&&) docker attach          con_name|ContainerID #重启一个容器
+    docker stop con_name|ContainerID #停止一个容器
+    docker attach con_name|ContainerID #重新进入重启后的容器
+    docker commit ContainerID mynewimage #把容器保存成新镜像mynewimage
+
+    #打包／恢复 一个镜像
+    docker save -o myubt.tar myubt:latest
+    docker save myubt:latest > myubt.tar
+    docker load < my_ubt.tar
+
+-> 无论是Mac,Windows或是Linux,你都可以在其上安装Docker Machine,使用docker-machine命令来创建和管理大量的Docker hosts.它会自动创建主机,在主机上安装Docker Engine,然后配置docker client.每个被管理的主机(“machine”)都是一个Docker 主机和一个配置过的client的组合
+
+|docker_clean.sh: (source docker_clean.sh ImageID1 ImageID2 ImageID3)
+    -> 基本原理是用 docker save 命令保存要保留的image,然后关闭Docker,删除Docker.qcow2,再启动Docker,它会自动重建,最后用 docker load 命令恢复保留的image

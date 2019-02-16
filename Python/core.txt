@@ -81,27 +81,5 @@
     '{python2.x}' -> 多进程 + gevent + 消息队列
     '{python3.x}' -> asyncio
 
-\Blog
-    |modules
-        |architecture -> flask+mako
-
-        |db -> mysql
-
-        |orm -> SQLAlchemy | metaclass+mysql.connector
-
-        |login
-
-        |paging
-
-        |search engine
-            |'spider'
-            |index
-            |match
-
-        |cache -> redis
-
-        |seckill
-
-        |test -> doctest
-
-        |deploy -> fabric
+-> DevOps甚好且人才稀缺，如何短时间内成为一名合格且被众人认可的工程师呢？经验告诉我们，学习他人经验是最好的捷径，通过认证考试，获得颇具含金量的'EXIN DevOps Professional国际认证证书'，成为该权威认证的早期获得者，可提高企业及自身的行业竞争力
+-> 微服务可以独立部署和对外提供服务，微服务的业务上线和下线是动态的，当一个新的微服务上线时，用户是如何访问到这种新的服务？这就需要有一个统一的入口，新的服务可以动态的注册到这个入口上，用户每次访问时可以从这个入口拿到系统所有服务的访问地址。这个统一的系统入口并不是微服务本身的一部分，所以这种能力需要系统单独提供

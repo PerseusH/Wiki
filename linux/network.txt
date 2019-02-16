@@ -18,6 +18,7 @@
 
 |route
     ifconfig eth0 #显示一个以太网卡的配置
+    ip addr #没有ifconfig就使用这个
     ifconfig eth0 192.168.1.1 netmask 255.255.255.0 #控制IP地址
     ifconfig eth0 promisc #设置 'eth0' 成混杂模式以嗅探数据包 (sniffing)
     ifup eth0 #启用一个 'eth0' 网络设备

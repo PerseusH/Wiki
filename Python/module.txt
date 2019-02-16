@@ -221,7 +221,6 @@ timeit -> 计算代码运行的时间
     > random.shuffle(list); print(list[0]) #把列表元素随机打乱,取首元素.改变列表结构
     > random.sample(list, n) #随机取出n个列表元素,返回子列表.不改变列表结构
 
-
 \itertools -> 高效迭代器
     -> step为负数意为倒序
 
@@ -364,16 +363,41 @@ timeit -> 计算代码运行的时间
            $ python test.py -v
 
     |UnitTest
-    > import unittest
-    > class XXXTest(unittest.TestCase):
-    >     def setUp(self):
-    >         pass
-    >     def test_ok(self):
-    >         self.assertEqual(a, b) #if a == b
-    >     def test_ok1(self):
-    >         self.assertTrue(if_true) #if if_true
-    > if __name__ == '__main__':
-    >     unittest.main()
+        import unittest
+        class XXXTest(unittest.TestCase):
+            def setUp(self): pass #每个测试用例执行之前的操作
+            def tearDown(self): pass #每个测试用例执行之后的操作
+            @classmethod
+            def tearDownClass(self): # 必须使用@classmethod, 所有test运行完后运行一次
+                 print('tearDown')
+            @classmethod
+            def setUpClass(self): # 必须使用@classmethod,所有test运行前运行一次
+                print('setUp')
+            def test1(self, a, b, c): #测试用例
+                self.assertEqual(a+b, c) #if a+b == c
+            def test2(self): #测试用例
+                self.assertIs(condition, True) #if condition is True
+                self.assertEqual(a, b)     # a == b
+                self.assertNotEqual(a, b)     # a != b
+                self.assertTrue(x)     # bool(x) is True
+                self.assertFalse(x)     # bool(x) is False
+                self.assertIsNone(x)     # x is None
+                self.assertIsNotNone(x)     # x is not None
+                self.assertIn(a, b)     # a in b
+                self.assertNotIn(a, b)     # a not in b
+        if __name__ == '__main__':
+            |执行
+            1. unittest.main() #一次性执行测试所有用例
+            2. #测试套件
+               test_suite = unittest.TestSuite()#创建一个测试套件
+               test_suite.addTest(XXXTest('test1'))#添加一个测试用例
+               test_suite.addTest(unittest.makeSuite(XXXTest))#添加所有的测试用例
+
+               #生成执行用例的对象
+               import HTMLTestRunner
+               fp = open('res.html','wb')#打开一个保存测试报告的html文件
+               runner = HTMLTestRunner.HTMLTestRunner(stream=fp,title='api测试报告',description='测试情况')
+               runner.run(test_suite) #执行测试套件
 
 \Arch
     Django -> 大而全,模板引擎运算慢

@@ -1,0 +1,31 @@
+\Modules
+    |architecture -> flask+mako
+
+    |db -> mysql
+
+    |orm -> SQLAlchemy | metaclass+mysql.connector
+
+    |login
+
+    |paging
+
+    |order-payment
+
+    |search engine
+        |spider -> Scrapy
+        |index
+        |match
+
+    |cache -> redis
+
+    |high-concurrency -> Celery
+
+    |midleware -> Kafka/RabbitMQ
+
+    |seckill
+
+    |test -> doctest
+
+    |deploy -> fabric/Docker
+
+    |微服务/Servless架构 -> RESTAPI网关
