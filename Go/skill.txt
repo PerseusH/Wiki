@@ -1,0 +1,6 @@
+-> 小写变大写
+    x := "hello"
+    for _, x := range x {
+        x := x + 'A' - 'a'
+        fmt.Printf("%c", x) // "HELLO" (每次循环一个字符)
+    }

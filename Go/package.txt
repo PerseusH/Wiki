@@ -1,0 +1,58 @@
+-> 每个 Go 文件都属于且仅属于一个包
+-> 一个包可以由许多以 .go 为扩展名的源文件组成，因此'文件名和包名'一般来说都是'不同的'
+-> package main表示一个可独立执行的程序，每个 Go 应用程序都包含一个名为 main 的包
+-> 如果你打算编译包名不是为 main 的源文件，如 pack1，编译后产生的对象文件将会是 pack1.a 而不是可执行程序。*.a文件自动存放在$GOPATH/pkg文件夹下
+-> 一个包对应生成一个*.a文件，生成的文件名并不是包名+.a组成，应该是'目录名+.a'组成
+-> 每个'基层子目录'下'只能有一个包'，否则编译时会报错。子目录名称'不能以 _ 开头'
+-> go的package是以绝对路径GOPATH来寻址的，不要用相对路径来import
+    import "fmt" //"fmt"不是包名而是'路径'
+    import fm "fmt" //使用别名
+    fmt.Println(...) //这里的fmt是'包名'
+
+-> 随着golang1.11的发布，go modules是官方提倡的新的包管理和项目管理机制，可以不再需要GOPATH
+
+-> 如果你导入了一个包却没有使用它，则会在构建程序时引发错误，如 imported and not used: os，这正是遵循了 Go 的格言：“没有不必要的代码！“
+-> 指定dir/sub_dir就代表此目录下唯一的包，编译器连接器默认就会生成或使用它，不需要手动指明
+-> 包也可以作为'命名空间'使用，帮助避免命名冲突（名称冲突）：两个包中的同名变量的区别在于他们的包名，例如 pack1.Thing 和 pack2.Thing
+-> 组成包的多个文件中'不能有同名的全局变量和函数'，除了'包的初始化函数'：init()
+
+|链接器 -> 假设main包import了hello包，编译完成后，生成main.exe和hello.a。此时如果修改hello.go文件，然后'重新只编译main.go', 新的main.exe文件将'执行修改后的hello代码'
+    -> 对于标准库，即便是修改了源代码，只要不重新编译Go源码，那么链接时使用的就还是已经编译好的*.a文件
+    -> 如果对一个包进行更改或重新编译，所有引用了这个包的客户端程序都必须全部重新编译
+
+|关于golang的package的最佳实践
+    1.package is folder
+    2.package name is folder name
+    3.package path is folder path
+
+|包导入函数有三种模式
+    1.import "lib/math" math.Sin //正常模式。import [path] [pkg].[func]
+    2.import m "lib/math" m.Sin //别名模式. 用别名m指代路径lib/math下唯一的包
+    3.import . "lib/math" Sin //简便模式
+
+|包的执行顺序
+    -> 在 main 包中的 go 文件默认总是会被执行，同一个go文件的init()调用顺序是从上到下的
+    -> 同包下的不同 go 文件，按照文件名字符串'从小到大'排序顺序执行
+    -> 其他的包只有被 main 包 import 才会执行，按照 import 的先后顺序执行
+    -> 被递归 import 的包的'初始化(调用每个包的init())'顺序'与 import 顺序相反'，例如：导入顺序 main –> A –> B –> C，则初始化顺序为 C –> B –> A –> main
+    -> 一个包被其它多个包 import，但只能'被初始化一次'
+    -> main 包总是被'最后一个初始化'，因为它总是依赖别的包
+    -> 避免出现循环 import，例如：A –> B –> C –> A
+    -> 在同一个文件中，常量、变量、init()、main() '依次进行初始化'
+
+|init 和 main 函数 -> init()、main()是go中的保留函数，两个函数区别如下
+    |相同点 -> 两个函数在定义时不能有任何参数和返回值,只能由'go程序自动调用'，不可以被引用
+    |不同点 -> init可用于任意包中，能重复定义多个；main只能用于main包，且只能定义一个
+
+|GOPATH项目开发目录结构
+    |bin -> go install main 目标目录(*.exe)
+    |pkg -> go install hello|test 目标目录(*.a)
+    |src
+        |hello
+            hello1.go
+            hello2.go
+        |main
+            main.go -> import "hello" func main(){...}
+        |test
+            unittest.go
+            benchmark.go

@@ -1,3 +1,5 @@
+node.exe -> gnvm -> npm -> cd .atom/packages&&git clone -> cd pkg_dir&&npm install
+
 -挂载一个文件系统
     mount /dev/hda2 /mnt/hda2 #挂载一个叫做hda2的盘 - 确定目录 '/ mnt/hda2' 已经存在
     umount /dev/hda2 #卸载一个叫做hda2的盘 - 先从挂载点 '/ mnt/hda2' 退出

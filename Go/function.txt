@@ -1,0 +1,95 @@
+-> 在函数内可用a:=3的方式声明变量，编译器会'自动推算出变量数据类型'。'只能用在函数内'
+-> GO语言'不支持函数重载'主要是为了简单，像C语言一样不支持重载
+-> 函数在Golang中是“一等公民”,可以像普通变量一样被赋值，传递或返回(仅限匿名函数)
+-> 函数足够小时可以创建一个匿名字面函数 sub := func(a, b int) int { return a - b }
+
+|defer -> 前面加上defer的函数会被延迟执行。直到包含该函数的程序执行完毕，此函数才会被执行
+    func writeTxt(msg st){
+        file1, err := os.Create("test.txt")
+        defer file1.Close()
+
+        if err != nil {
+        // 处理错误。。。
+        }
+        // 文件操作...
+    }
+
+|多返回值
+    -> Go语言不允许使用无用的变量，因此就有了'空标识符'，即_（下划线）。空标识符多用在接收函数多返回值时，'对不需要的返回值作占位用'
+        //(int，int)代表这个函数返回两个int
+        func vals()(int,int)  {
+        	return 3,7
+        }
+
+        //如果只返回其中一个值，可以使用空白符_(匿名变量)
+    	_,c := vals()
+    	fmt.Println(c)
+
+|闭包(Closure) -> 本质是局部变量的作用域留存
+    func increment() func() int { //闭包函数声明方式，'两个func'
+        n := 0
+        return func () int {
+            n++
+            return n
+        }
+    }
+
+    //多值闭包
+    func calc(base int) (func(int) int, func(int) int) {
+    	fmt.Printf("%p\n", &base)
+    	add := func(i int) int {
+    		fmt.Printf("%p\n", &base)
+    		base += i
+    		return base
+    	}
+    	sub := func(i int) int {
+    		fmt.Printf("%p\n", &base)
+    		base -= i
+    		return base
+    	}
+    	return add, sub
+    }
+    f1, f2 := calc(100)
+    fmt.Println(f1(1), f2(2)) //变量i内存地址不变
+
+    //延迟闭包，闭包在主函数结束执行后执行
+    func main() {
+    	x, y := 1,2
+
+    	defer func(a int){ //defer+匿名函数是一个闭包
+    		fmt.Println("defer x, y = ", a, y) //y为闭包引用
+    	}(x) //x值拷贝 调用时传入参数
+
+    	x += 100
+    	y += 200
+    	fmt.Println(x, y)
+    }
+
+    //函数列表使用不当
+    func test() []func() {
+        var s []func()
+        for i := 0; i < 3; i++ {
+            s = append(s, func() {  //将多个匿名函数添加到列表
+                fmt.Println(&i, i)
+            })
+        }
+        return s    //返回匿名函数列表
+    }
+    func main() {
+        for _, f := range test() {  //执行所有匿名函数
+            f()
+        }
+    }
+    >>>
+    3
+    3
+    3
+    -> 每次 append 操作仅将匿名函数放入到列表中，但并未执行，并且引用的变量都是 i，随着 i 的改变匿名函数中的 i 也在改变，所以执行这些函数时，读取的都是变量i'最后一次的值'。解决的方法就是每次复制变量 i 然后传到匿名函数中，让闭包的环境变量不相同
+        ...
+        for i := 0; i < 3; i++ {
+            x := i
+            s = append(s, func() {  //将多个匿名函数添加到列表
+                fmt.Println(&x, x)
+            })
+        }
+        ...

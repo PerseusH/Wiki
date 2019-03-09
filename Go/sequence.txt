@@ -1,0 +1,169 @@
+-> make 只能为 slice、map或 channel 类型分配内存并初始化，同时返回一个有初始值的 slice、map 或 channel 类型引用，不是指针。内建函数 new 用来分配内存，它的第一个参数是一个类型，不是一个值，它的'返回值'是一个指向新分配类型零值的'指针'
+-> map,slice,struct和func'不支持==和!=操作'，不能直接比较。只能和nil比较，判断是否零值状态
+
+|数组 -> 数组是'值类型'. 数组长度固定，不能使用append。数组赋值是'值传递(变量复制)，深拷贝'
+    -> 数组作为函数参数是值传递(在函数内复制一个新数组)
+    var a [5]int //声明
+    var a = [5]int{1,2,3,4,5} //初始化
+
+    //如果忽略[]中的数字不设置数组大小，Go会根据元素的个数自动设置数组的大小
+    var a = [...]float32{1000.0, 2.0, 3.4, 7.0, 50.0}
+    //等价于
+    var a = [5]float32{1000.0, 2.0, 3.4, 7.0, 50.0}
+
+    for i, d := range arr {//数组遍历,不需要索引时可使用_代替i. x:=range arr获取的是索引
+        fmt.Println(i, d)
+    }
+
+|map -> '无序'键值对的集合(字典)，使用hash表实现
+    -> golang中的map并没有保证它们的value值的地址是不可变的，因为value值的地址很有可能被重新分配。在golang中，一个'容量不断增长的map'可能会导致原来map中的一些元素发生'rehashing'，使得他们被'重新分配'到新的storage location上，这样可能会导致原先得到的address变得不可用。就是所谓的map member 的 not addresable
+    //必须要'先初始化'才能给map赋值设置元素，不然会引起 panic: assign to entry in nil map
+    var m map[string]string //声明但未初始化
+    var m map[string]string = make(map[string]string) //初始化
+    //或
+    m := map[string]string{"France": "Paris", "Italy": "Rome", "Japan": "Tokyo"}
+    m1 := m //'浅拷贝'
+
+    //嵌套字典
+    var m map[string]string = make(map[string]map[string]int) //1
+    type newmap map[string]int //2
+    var m map[string]string = make(map[string]newmap)
+    submap := make(map[string]int)
+    submap["k1"] = 100
+    m["kk1"] = submap
+    val, ok := m["key"] //查看key在map中是否存在. 如果存在则ok为true, 否则ok为false，val为nil
+    delete(m, "France") //删除元素
+    m = make(map[tx]ty)// Go没有为map提供'清空所有元素'的方法。唯一办法就是'重新make一个新map'。不用担心垃圾回收的效率，Go的并行垃圾回收效率比写一个清空函数高效多了
+
+    for k, v := range m {//遍历。x := range m只遍历键; _,x := range m只遍历值
+        fmt.Println(k, v)
+    }
+
+    |sync.Map -> map在'并发'(生产者消费者)情况下，'只读是线程安全的'，同时读写线程不安全
+        -> 并发读写时一般是加锁，但性能不高。Go1.9提供了一种效率较高的'并发安全'的sync.Map
+        |特性
+            1.无须初始化，直接声明即可
+            2.sync.Map'不能使用map的方式'进行取值和设置等操作，而是使用 sync.Map 的方法进行调用。Store 表示存储，Load 表示获取，Delete 表示删除
+            3.使用Range方法进行遍历，通过'回调函数'返回内部遍历出来的值。Range参数中的回调函数的返回值功能是：需要继续迭代遍历时，返回 true；终止迭代遍历时，返回false
+                import (
+                      "fmt"
+                      "sync"
+                )
+                func main() {
+                    var scene sync.Map
+                    // 将键值对保存到sync.Map
+                    scene.Store("greece", 97)
+                    scene.Store("london", 100)
+                    scene.Store("egypt", 200)
+                    // 从sync.Map中根据键取值
+                    fmt.Println(scene.Load("london"))
+                    // 根据键删除对应的键值对
+                    scene.Delete("london")
+                    // 遍历所有sync.Map中的键值对
+                    scene.Range(func(k, v interface{}) bool {
+                        fmt.Println("iterate:", k, v)
+                        return true
+                    })
+                }
+        -> sync.Map没有提供获取map数量的方法，替代方法是获取时遍历自行计算数量。sync.Map为了保证并发安全有一些性能损失，因此在'非并发'情况下，map比sync.Map性能更好
+
+|string -> 字符串就是一串固定长度的字符连接起来的字符序列。Go的字符串是由单个字节连接起来的。string底层是'通过byte数组实现的'。Go语言的字符串的字节使用'UTF-8编码'标识Unicode文本
+    -> string的指针指向的内容是不可以更改的，每更改一次字符串，就得重新分配一次内存，之前分配空间的还得由gc回收，这是导致string操作低效的根本原因。字节数组元素可随意更改，修改字符串时，可以将字符串转换为 []byte 进行修改
+    []byte("xxx") //把字符串转换为字节数组，每个字符转换为对应ASCII码，数组元素数等于字符数
+    string([]byte) //[]byte转为string
+    -> string可以直接比较，而[]byte不可以，所以[]byte不可以当map的key值
+    -> 需要大量字符串处理的时候用[]byte，性能好很多
+    -> string值'不可为nil'，所以如果你想要通过返回nil表达额外的含义，就用[]byte
+    -> '字节数组'常用作'网络编程'中数据流的读写
+
+    |'高效'的字符串拼接
+        sa := "aaa"
+        sb := "bbb"
+        var stringBuilder bytes.Buffer // 声明字节缓冲
+        stringBuilder.WriteString(sa) // 把字符串写入缓冲
+        stringBuilder.WriteString(sb)
+        fmt.Println(stringBuilder.String()) // 将缓冲以字符串形式输出
+
+    转义符     含义
+    \r	      回车符（返回行首）
+    \n	      换行符（直接跳到下一行的同列位置）
+    \t	      制表符
+    \'	      单引号
+    \"	      双引号
+    \\	      反斜杠
+
+    -> 将字符串的值以双引号书写的方式是字符串的常见表达方式，被称为字符串字面量（string literal）。这种'双引号字面量不能跨行'。如需在源码中嵌入'多行字符串'，要使用键盘左上角`字符
+        const str = ` 第一行
+        第二行
+        第三行
+        \r\n
+        `
+        fmt.Println(str)
+        -> 多行字符串一般用于'内嵌的源码, 模板和数据'等
+
+    |len(s) -> 表示字符串的 ASCII 字符个数或字节长度
+        len("你好") //6 Go字符串以UTF-8格式保存，每个中文占3字节，因此使用len()获得两个中文字对应的6字节
+        utf8.RuneCountInString("你好") //2 如果希望按原字符个数计算，需使用UTF8包的RuneCountInString
+        len([]rune("你好")) //2 特别方法
+
+    |strings.Index(str, substr) //子串正向定位索引值
+    |strings.LastIndex(str, substr) //子串反向定位索引值
+    -> 字符串截取可以通过'切片+索引值'实现
+
+    |乱码
+        arr[i] //下标访问字符串元素，获取的是ASCII字符码，非英语语言字符会显示为乱码
+        -> 用 for range遍历字符串元素获取的是Unicode字符，非英语语言字符不会显示为乱码
+
+|list -> 使用container/list包实现的'双链表'。列表能够高效地进行任意位置的元素插入和删除操作
+    -> 列表的元素可以是"任意类型".这既带来便利，也会引来一些问题。给一个列表放入了非期望类型的值，在取出值后，将 interface{} 转换为期望类型时将会发生宕机
+    import "container/list"
+    var l list.List
+    l := list.New()
+    l.PushBack("tail") //尾部插入
+    l.PushFront("head") //头部插入
+    l.Remove(element) //移除
+    //遍历
+    for i := l.Front(); i != nil; i = i.Next() {
+        fmt.Println(i.Value)
+    }
+
+|枚举 -> Go语言中没有枚举，一般用const实现
+    const (
+    _ = 1 << (10 * iota) // 1左移（10*0）位，还是1
+    KB // 1左移（10*1）位，1024
+    MB // 1左移（10*2）位，1048576
+    GB // 1左移（10*3）位，1073741824
+    TB // 1左移（10*4）位，1099511627776
+    PB // 1左移（10*5）位，11125899906842624
+    EB // 1左移（10*6）位，1152921504606846976
+    ZB // 1左移（10*7）位，1180591620717411303424
+    YB // 1左移（10*8）位，1208925819614629174706176
+  )
+  fmt.Println(KB, MB, GB, TB, PB, EB, (ZB / EB), (YB / EB))
+
+|range -> 用于 for 循环中迭代数组(array)、切片(slice)、通道(channel)或集合(map)的元素。在数组和切片中它返回元素的索引和索引对应的值，在集合中返回 key-value 对的 key 值
+    //使用range去求一个slice的和
+    nums := []int{2, 3, 4}
+    sum := 0
+    for _, num := range nums {
+        sum += num
+    }
+    fmt.Println("sum:", sum)
+
+    //在数组上使用range将传入index和值两个变量。上面例子不需要使用该元素的序号，所以使用空白符"_"省略了
+    for i, num := range nums {
+        if num == 3 {
+            fmt.Println("index:", i)
+        }
+    }
+
+    //range也可以用在map的键值对上
+    kvs := map[string]string{"a": "apple", "b": "banana"}
+    for k, v := range kvs {
+        fmt.Printf("%s -> %s\n", k, v)
+    }
+
+    //range也可以用来枚举Unicode字符串。第一个参数是字符的索引，第二个是Unicode字符值本身
+    for i, c := range "go" {
+        fmt.Println(i, c)
+    }

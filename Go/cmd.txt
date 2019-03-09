@@ -1,0 +1,29 @@
+go build test.go #在当前目录下将源文件编译为可执行文件exe
+go build -o go/bin/start.exe start.go #指定路径的编译
+go run test.go #运行源文件
+go tool compile -N -S -l test.go #查看程序汇编码
+go tool compile -m test.go #变量逃逸分析
+go run -gcflags '-m -l' test.go #变量逃逸分析
+go build main.go && ./main #编译后查看变量内存地址
+go tool pprof http://localhost:8080/debug/pprof/profile #性能监控(先安装Graphviz)
+go clean -x -i dir/pkg #清除已生成的包
+    -x 执行并打印命令
+    -i 会同时删除安装当前代码包时所产生的结果文件
+    -r 删除当前代码包的所有依赖包的目录和文件
+go env #查看编译环境
+    GOARCH="amd64"
+    GOEXE=""
+    GOHOSTARCH="amd64"
+    GOHOSTOS="darwin"
+    GOOS="darwin"
+    GOROOT="/usr/local/go"
+    GOTOOLDIR="/usr/local/go/pkg/tool/darwin_amd64"
+go install -> 编译后的main包可执行文件放在$GOPATH/bin中，其他包文件放在$GOPATH/pkg中
+    go install xxx -> xxx不是包名而是'路径'
+    -> 首先创建一个文件夹，$ mkdir $GOPATH/src/github.com/user/hello，在这个文件夹下面编辑main.go
+        package main
+        import "fmt"
+        func main() {
+            fmt.Printf("Hello, world.\n")
+        }
+    -> 现在想把hello命令编译到$GOPATH/bin目录下面，只需要 $ go install github.com/user/hello，或者cd到hello目录下面，直接运行go install

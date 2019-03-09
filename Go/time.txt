@@ -1,0 +1,86 @@
+|time -> import "time"
+	time.Now() //当前时间 >>> 2019-02-20 11:31:37.0943391 +0800 CST m=+0.012016701
+	time.Now().Unix() //当前时间戳(秒)
+	time.Now().UnixNano() / 1e3 //当前时间戳(毫秒)
+	time.Now().Format("2006-01-02 15:04:05") //格式化为字符串
+	time.Now().Format(time.UnixDate) // >>> Tue Apr 24 09:59:02 CST 2018
+	time.Parse("2016-01-02 15:04:05", "2018-04-23 12:24:51") //格式化为日期. format,value
+	time.ParseInLocation("2006-01-02 15:04:05", "2017-05-11 14:06:06", time.Local)
+	time.Date(2018, 1, 2, 15, 30, 10, 0, time.Local)
+    time.Unix(timestamp, 0) //时间戳转日期格式 func Unix(sec int64, nsec int64) Time
+
+	|其他
+	func (t Time) Date() (year int, month Month, day int)
+	func (t Time) Clock() (hour, min, sec int)
+	func (t Time) Year() int
+	func (t Time) Month() Month
+	func (t Time) Day() int
+	func (t Time) Hour() int
+	func (t Time) Minute() int
+	func (t Time) Second() int
+	func (t Time) Nanosecond() int
+	func (t Time) YearDay() int
+	func (t Time) Weekday() Weekday
+	func (t Time) ISOWeek() (year, week int)
+	func (t Time) IsZero() bool
+	func (t Time) Local() Time
+	func (t Time) Location() *Location
+	func (t Time) Zone() (name string, offset int)
+	func (t Time) Unix() int64
+	|时间段
+	func (d Duration) Hours() float64
+	func (d Duration) Minutes() float64
+	func (d Duration) Seconds() float64
+	func (d Duration) Nanoseconds() int64
+	func (d Duration) Round(m Duration) Duration         // 四舍五入
+	func (d Duration) Truncate(m Duration) Duration      // 向下取整
+	|时间运算
+	time.Sleep(time.Duration(10) * time.Second) //休眠(阻塞)
+	time.After(time.Duration(10) * time.Second) //非阻塞,可用于延迟
+
+	func (t Time) After(u Time) bool
+	func (t Time) Before(u Time) bool
+		//比较两个时间点
+		dt := time.Date(2018, 1, 10, 0, 0, 1, 100, time.Local)
+		fmt.Println(time.Now().After(dt))     // true
+		fmt.Println(time.Now().Before(dt))    // false
+
+	start := time.Now()
+	fmt.Println(time.Since(start)) //时间间隔。等价于Now().Sub(t),可用来计算业务消耗时间
+	func Until(t Time) Duration //等价于t.Sub(Now())，t与当前时间的间隔
+	fmt.Println(dt.Add(time.Duration(10) * time.Second))   // 加
+		fmt.Println(now.Date(1,1,1)) // 一年零一个月一天之后
+		fmt.Println(now.Add(time.Duration(10)*time.Minute)) // 一段时间之后
+	func (t Time) AddDate(years int, months int, days int) Time
+	func (t Time) Sub(u Time) Duration                    // 减
+		dt1 := time.Date(2018, 1, 10, 0, 0, 1, 100, time.Local)
+		dt2 := time.Date(2018, 1, 9, 23, 59, 22, 100, time.Local)
+		fmt.Println(dt1.Sub(dt2)) //不用关注时区，go会转换成时间戳进行计算
+
+		// 计算两个时间点的相差天数
+		dt1 = time.Date(dt1.Year(), dt1.Month(), dt1.Day(), 0, 0, 0, 0, time.Local)
+		dt2 = time.Date(dt2.Year(), dt2.Month(), dt2.Day(), 0, 0, 0, 0, time.Local)
+		fmt.Println(int(math.Ceil(dt1.Sub(dt2).Hours() / 24)))
+	func (t Time) Equal(u Time) bool //比较时间点时尽量使用Equal函数
+
+	|Ticker 类型包含一个 channel，有时我们会遇到每隔一段时间执行的业务(比如设置心跳时间等)，就可以用它来处理，这是一个重复的过程
+		// 无法取消
+		tick := time.Tick(1 * time.Minute)
+		for _ = range tick {
+		    // do something
+		}
+
+		// 可通过调用ticker.Stop取消
+		ticker := time.NewTicker(1 * time.Minute)
+		for _ = range ticker {
+		    // do something
+		}
+
+	|Timer类型用来代表一个单独的事件，当设置的时间过期后，发送当前时间到channel, 可通过以下两种方式创建
+		func AfterFunc(d Duration, f func()) *Timer //指定一段时间后执行的函数
+		func NewTimer(d Duration) *Timer
+		-> 以上两函数都可以使用 Reset, 这个有个需要注意的地方是使用 Reset 时需要确保 t.C 通道被释放时才能调用，以防止发生资源竞争的问题，可通过以下方式解决
+			if !t.Stop() {
+			    <-t.C
+			}
+			t.Reset(d)

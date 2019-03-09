@@ -6,7 +6,7 @@
 
 |CMD
     docker search img_name #在hub上搜索相关镜像
-    docker pull img_name[:version] #下载镜像
+    docker pull img_name[:tag] #下载镜像
     docker build -t runoob/ubuntu:v1 .#使用当前目录的Dockerfile创建镜像
     docker run --name con_name img_name[:tag] [con_cmd] #根据镜像启动一个容器，执行完毕容器停止
     docker run --name con_name -it img_name[:tag] bash #用交互模式启动一个容器
@@ -24,7 +24,9 @@
     docker start|restart con_name|ContainerID;(&&) docker attach          con_name|ContainerID #重启一个容器
     docker stop con_name|ContainerID #停止一个容器
     docker attach con_name|ContainerID #重新进入重启后的容器
+    docker container exec -it [containerID] bash #进入一个正在运行的 docker 容器。如果docker run命令运行容器的时候，没有使用-it参数，就要用这个命令进入容器
     docker commit ContainerID mynewimage #把容器保存成新镜像mynewimage
+    docker container cp [containID]:[path] . #从正在运行的容器里将文件拷贝到本机当前目录
 
     #打包／恢复 一个镜像
     docker save -o myubt.tar myubt:latest

@@ -1,0 +1,110 @@
+|锁
+    |互斥锁 -> sync.Mutex(任意两两互斥)
+        var l sync.Mutex
+        l.Lock()
+        l.unlock()
+    |读写锁 -> sync.RWMutex(读读并行，读写互斥，写写互斥), '读多写少'时，用读写锁
+        var rwLock sync.RWMutex
+        rwLock.Lock() //写锁
+        rwLock.unlock()
+        rwLock.RLock() //读锁
+        rwLock.RUnLock()
+    |sync.WaitGroup -> 主程序main在执行完毕后就退出了。要想让主程序不退出可以使用var wg sync.WaitGroup。sync.WaitGroup能够阻塞主线程的执行，直到'所有的goroutine执行完成'
+        |方法
+            1.Add(int) -> 添加或减少(负值)等待goroutine的数量
+            2.Done -> 相当于Add(-1)
+            3.Wait -> 执行阻塞，直到所有的WaitGroup数量变为0
+
+    |死锁
+        //不会发生死锁，因为main函数会在goroutine执行完成之前结束，ch <- 1不会执行
+        func main() {
+            ch := make(chan int)
+            go func() {
+               ch <- 1
+            }()
+        }
+
+        1.当一个channel中没有数据，而直接读取时，会发生死锁
+            func main() {
+                q := make(chan int, 2)
+                <-q //有缓存通道还没有数据就被读取
+            }
+            |解决方案 -> 使用select方法阻止，在default中放置默认处理方式
+                func main() {
+                    q := make(chan int, 2)
+                    select {
+                    case v := <-q:
+                        fmt.Println(v)
+                    default:
+                        fmt.Println("nothing in channel")
+                    }
+                }
+        2.如果通道没有数据要发送，select中又存在接收通道数据的语句，那么将发生死锁
+            ch := make(chan string)
+            select {
+            case <-ch:
+            }
+            |解决方案 -> 加default
+        3.空select，也会引起死锁 select {}
+        4.无缓存通道死锁
+            cha, chb := make(chan int), make(chan int)
+            go func() {
+                cha <- 1 // cha通道的数据没有被其他goroutine读取走，堵塞当前goroutine
+                chb <- 0
+            }()
+            <- chb // chb 等待数据的写
+            |解决方案
+                1.末尾加上 <- cha, 取出通道cha中的数据，释放goroutine
+                2.cha := make(chan int, n), 将cha设置为有缓存通道。这样cha可以缓存一个数据，cha就不会挂起当前goroutine了
+        5.通道缓存已满，造成死锁
+            q := make(chan int, 2)
+            q <- 1
+            q <- 2
+            q <- 3
+            |解决方案 -> 使用select方法阻止，在default中放置默认处理方式
+                q := make(chan int, 2)
+                q <- 1
+                q <- 2
+                select {
+                case q <- 3:
+                    fmt.Println("ok")
+                default:
+                    fmt.Println("wrong")
+                }
+        6.无缓存通道在同一goroutine中声明和写操作
+            ch:=make(chan int)  //这就是在main程里面发生的死锁情况
+            ch<-6   //  这里会一直阻塞
+        7.2个以上的go程中，使用多个 channel 通信。 A go 程 获取channel 1 的同时，尝试使用channel 2， 同一时刻，B go 程 获取channel 2 的同时，尝试使用channel 1
+            ch1 := make(chan int)
+            ch2 := make(chan int)
+            go func() {    //匿名子go程
+                for {
+                    select {    //这里互相等对方造成死锁
+                    case <-ch1:   //这里ch1有数据读出才会执行下一句
+                        ch2 <- 777
+                    }
+                }
+            }()
+            for {         //主go程
+                select {
+                case <-ch2 : //这里ch2有数据读出才会执行下一句
+                    ch1 <- 999
+                }
+            }
+        8.channel和读写锁、互斥锁尽量避免交叉混用。如果必须使用,推荐'条件变量'
+        -> 上述提到的死锁，是指在程序的'主线程'中发生的情况，如果上述的情况发生在'非主线程'中，读取或者写入的情况是'发生堵塞而不是死锁'。实际上，阻塞情况省去了我们加锁的步骤，反而是更加有利于代码编写，要'合理的利用阻塞'
+
+|runtime.GOMAXPROCS(CPU数量) -> 使用多核。适合于'计算密集型'、并行度比较高的情景。如果是IO密集型，CPU之间的切换会带来性能的损失
+    -> 默认情况下(即不配置最大处理器个数), go启动后会根据计算机的CPU数来创建线程. 如果有2个CPU, go程序有6个协程, 运行后创建了4个线程, 但只有2个线程为'工作线程'(即与CPU数一样)
+    |CPU数量可以有如下几种数值
+        <1：不修改任何数值
+        =1：单核心执行
+        >1：多核并发执行
+    runtime.NumCPU() //查询CPU数量
+    runtime.GOMAXPROCS(runtime.NumCPU()) //Go 1.5 版本之前，'默认单核执行'。从 Go 1.5 版本开始，'默认执行这条语句'以便让代码'使用多核'，最大效率地利用计算资源
+
+    |工作线程 -> 运行未组塞的goroutine的线程
+    -> 如果配置了最大CPU使用数N(runtime.GOMAXPROCS(N)), 则无论创建多少协程, 工作线程数<=N
+    -> go 运行后默认会开启4个线程(不全是工作线程)。go创建的线程数量与runtime.GOMAXPROCS(N) 有关, 会随协程数量增加动态增加线程(上限为配置的数量)
+    -> 当某个goroutine被block后，scheduler会'创建一个新线程'给其他ready的goroutine
+    -> 为了'最佳性能', 最大处理器使用数量应该为CPU的数量, 即runtime.GOMAXPROCS(runtime.NumCPU()), 超过这个值, 则随着协程的增加, 线程的数量也会大于CPU的数量, 这样反而在协程切换时会'需要CPU进行线程切换', 影响性能

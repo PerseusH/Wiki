@@ -1,0 +1,74 @@
+-> sort包实现了3种排序算法：插入排序,快排和堆排序.sort包会根据实际数据'自动选择'高效的排序算法. sort.Interface定义的三个方法：获取数据集合长度的Len()方法、比较两个元素大小的Less()方法和交换两个元素位置的Swap()方法，就可以顺利对数据集合进行排序
+-> 任何实现了sort.Interface(Float64Slice，IntSlice，StringSlice)的类型，均可使用该包中的方法进行排序。这些方法要求集合内列出元素的'索引为整数'
+
+func IsSorted(data Interface) bool        //判断数据'是否已排序'.包括各种可排序类型的判断
+
+func Float64s(a []float64)                //将类型为float64的slice a以升序方式进行排序
+func Float64sAreSorted(a []float64) bool  //判定是否已经进行排序
+
+func Ints(a []int)                        //以升序排列 int 切片
+func IntsAreSorted(a []int) bool　　       //判断int切片'是否已经按升序排列'
+
+func Strings(a []string)                  //Strings 以升序排列 string 切片
+func StringsAreSorted(a []string) bool    //判断 string 切片是否已经按升序排列
+
+func Sort(data Interface)                 //对data进行排序。它调用一次 data.Len 来决定排序的长度 n，调用 data.Less 和 data.Swap 的开销为O(n*log(n))。此排序为'不稳定排序',根据不同数据决定使用不同的排序方式（插入排序，堆排序，快排）.排序前先把切片转换为sort内置类型
+func Stable(data Interface)               //Stable对data进行排序，不过排序过程中，如果data中存在相等的元素，则他们原来的顺序不会改变,即如果有两个相等元素num,他们的初始index分别为i和j,并且i<j,则利用Stable对data进行排序后,i依然小于ｊ,直接利用sort进行排序则不能够保证这一点
+func Reverse(data Interface) Interface    //降序排列,排序前先把切片转换为sort内置类型
+    -> 转换三种内置Slice的 Interface.Less 方法来实现逆向排序
+	a := []int{1, 2, 5, 3, 4}
+	fmt.Println(a)        // [1 2 5 3 4]
+	sort.Sort(sort.Reverse(sort.IntSlice(a)))
+	fmt.Println(a)        // [5 4 3 2 1]
+
+func Search(n int, f func(int) bool) int
+    -> search使用二分法进行查找，Search()方法回使用“二分查找”算法来搜索某指定切片[0:n]，并返回能够使f(i)=true的最小的i（0<=i<n）值，并且会假定，如果f(i)=true，则f(i+1)=true，即对于切片[0:n]，i之前的切片元素会使f()函数返回false，i及i之后的元素会使f()函数返回true。但是，当在切片中无法找到时f(i)=true的i时（此时切片元素都不能使f()函数返回true），Search()方法会返回n（而不是返回-1）
+    -> Search 常用于在一个已排序的，可索引的数据结构中寻找索引为 i 的值 x，例如数组或切片。这种情况下，实参 f，一般是一个闭包，会捕获所要搜索的值，以及索引并排序该数据结构的方式
+    -> 为了查找某个值，而不是某一范围的值时，如果slice以升序排序，则　f func中应该使用>=,如果slice以降序排序，则应该使用<=
+        package main
+        import (
+        	"fmt"
+        	"sort"
+        )
+        func main() {
+        	a := []int{1, 2, 3, 4, 5}
+        	b := sort.Search(len(a), func(i int) bool { return a[i] >= 30 })
+        	fmt.Println(b)　　　　　　　//5，查找不到，返回a slice的长度５，而不是-1
+        	c := sort.Search(len(a), func(i int) bool { return a[i] <= 3 })
+        	fmt.Println(c)                             //0，利用二分法进行查找，返回符合条件的最左边数值的index，即为０
+        	d := sort.Search(len(a), func(i int) bool { return a[i] == 3 })
+        	fmt.Println(d)                          //2　　　
+        }
+func SearchFloat64s(a []float64, x float64) int  //在float64s切片中搜索x并返回索引如Search函数所述.返回可以插入x值的索引位置,如果x不存在,返回数组a的长度切片必须以升序排列
+func SearchInts(a []int, x int) int  //在ints切片中搜索x并返回索引如Search函数所述. 返回可以插入x值的索引位置，如果x不存在，返回数组a的长度切片必须以升序排列
+func SearchStrings(a []string, x string) int  //在strings切片中搜索x并返回索引如Search函数所述. 返回可以插入x值的索引位置，如果x不存在，返回数组a的长度切片必须以升序排列
+
+需要注意的是，以上三种search查找方法，其对应的slice必须'按升序排序'，否则会出现奇怪的结果
+
+-> golang自身实现的interface有三种，Float64Slice，IntSlice，StringSlice，如下所示
+    type Float64Slice
+        type Float64Slice []float64
+        Float64Slice 针对 []float6 实现接口的方法，以升序排列
+        func (p Float64Slice) Len() int　　　　//求长度
+        func (p Float64Slice) Less(i, j int) bool　//比大小
+        func (p Float64Slice) Search(x float64) int　//查找
+        func (p Float64Slice) Sort()　　　　　　//排序
+        func (p Float64Slice) Swap(i, j int)　　　//交换位置
+
+    type IntSlice
+        type IntSlice []int
+        IntSlice 针对 []int 实现接口的方法，以升序排列
+        func (p IntSlice) Len() int
+        func (p IntSlice) Less(i, j int) bool
+        func (p IntSlice) Search(x int) int
+        func (p IntSlice) Sort()
+        func (p IntSlice) Swap(i, j int)
+
+    type StringSlice
+        type StringSlice []string
+        StringSlice 针对 []string 实现接口的方法，以升序排列
+        func (p StringSlice) Len() int
+        func (p StringSlice) Less(i, j int) bool
+        func (p StringSlice) Search(x string) int
+        func (p StringSlice) Sort()
+        func (p StringSlice) Swap(i, j int)

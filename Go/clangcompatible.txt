@@ -1,0 +1,15 @@
+跨越case的fallthrough——兼容C语言的case设计
+在 Go 语言中 case 是一个独立的代码块，执行完毕后不会像C语言那样紧接着下一个 case 执行。但是为了兼容一些移植代码，依然加入了 fallthrough 关键字来实现这一功能，代码如下：
+var s = "hello"
+switch {
+case s == "hello":
+    fmt.Println("hello")
+    fallthrough
+case s != "world":
+    fmt.Println("world")
+}
+代码输出如下：
+hello
+world
+
+新编写的代码，不建议使用 fallthrough

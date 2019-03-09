@@ -1,0 +1,211 @@
+|环境变量
+    |GOROOT -> *\Go
+    |GOPATH -> *\GOPATH
+    |Path -> ;%GOROOT%\bin;%GOPATH%
+
+-> Go语言'不需要'在语句或者声明的末尾'加分号'，编译器会主动加分号
+-> GO语言中没有class关键字，它的'面向对象'是对C语言中'struct的扩展'。结构体像一个插线板，函数像插头，想给结构体添加什么功能直接在插线板上插入就可以了
+-> Go的包管理方式可谓简单粗暴，一切都得是源代码，一切都得在GOPATH下面
+-> Python和Java每一个文件都可以定义主函数，这就为快速测试提供了便利。Go和C、C++一样，'只能有一个main函数'，正确姿势是使用正经的测试而不是写多个main函数。即便是Java和Python，使用main函数进行测试也不是好主意
+-> Go语言以'大写字母开头'的变量、函数命名作为'公有变量（或函数）'，这被称为'导出'。也就是说外部的包只能访问以大写字母开头的变量（或函数）。以小写字母开头的是私有成员，在整个包的内部是可见并且可用的。结构体成员命名也遵循此规则
+-> Go语言中，即使是基础类型相同，'不同的类型'之间也'不能进行运算'
+-> 类型转换: [type_name](obj). '基础类型不同，不能转换'
+-> 在Go语言中，特定复合类型（切片、字典、通道、接口和函数类型）的标头值都包含一个指向底层数组的'指针'，因此通过复制来传递这些复合类型的值的副本，本质上就是在'共享底层数据结构'
+
+|跨平台编译 -> Go提供了编译链工具，可以让我们在任何一个开发平台上，编译出其他平台的可执行文件。默认情况下，都是根据我们当前的机器生成的可执行文件，比如你的是Linux 64位，就会生成Linux 64位下的可执行文件
+    -> 如果我们要生成'不同平台架构'的可执行程序，只要改变这两个环境变量就可以了，比如要生成Linux 64位的程序，命令如下
+        GOOS=linux GOARCH=amd64 go build flysnow.org/hello #前面两个赋值，是临时更改环境变量，只针对本次运行有效，不会更改我们默认的配置
+
+|空值 -> nil（'未分配内存空间'的变量值）
+
+-> Go语言中'自增自减'是语句不是表达式,并且++和--'只能放在变量后'
+      i++ | i-- // '合法'
+      j = i++ | j = i-- // 非法，自增自减不是表达式
+      ++i | --i // 非法，++和--只能放在变量后面
+
+//死循环
+for {
+    if ... { break }
+}
+
+|switch -> Go 语言的 switch不仅可以基于'常量'进行判断，还可以基于'表达式'进行'判断'
+    -> C/C++ 语言中的 switch 语句只能支持数值常量，不能对字符串、表达式等复杂情况进行处理，这么设计的主要原因是性能。C/C++ 的 switch 可以根据 case 的值作为偏移量直接跳转代码，在性能敏感代码处，这样做显然是有好处的
+    -> 到了 Go 语言的时代，语言的运行效率并不能直接决定最终的效率，IO是最主要的问题
+        //'case不需要break'
+        var a = "hello"
+        switch a {
+        case "hello":
+            fmt.Println(1)
+        case "world":
+            fmt.Println(2)
+        default:
+            fmt.Println(0)
+        }
+        //多值分支
+        var a = "mum"
+        switch a {
+        case "mum", "daddy":
+            fmt.Println("family")
+        }
+        //表达式判断
+        var r int = 11
+        switch r {
+        case r > 10 && r < 20:
+            fmt.Println(r)
+        }
+
+|数字类型
+    1.uint：uint8，uint16，uint32，uint64 -> 无符号整型, '只能表示正数'
+        |使用场景 -> 表示'地址、索引'等, 用于'位运算符'和'特定算术运算符'
+        -> uint8就是 'byte' 型，代表一个'ASCII字符码'
+            |ASCII（American Standard Code for Information Interchange，美国信息交换标准代码）
+                -> 0～31及127(共33个)是控制字符或通信专用字符（其余为可显示字符），如控制符：LF（换行）、CR（回车）、FF（换页）、DEL（删除）、BS（退格)、BEL（响铃）等；通信专用字符：SOH（文头）、EOT（文尾）、ACK（确认）等；ASCII值为8、9、10 和13 分别转换为退格、制表、换行和回车字符。它们并没有特定的图形显示，但会依不同的应用程序，而对文本显示有不同的影响
+                -> 32～126(共95个)是字符(32是空格），其中48～57为0到9十个阿拉伯数字
+                -> 65～90为26个大写英文字母，97～122号为26个小写英文字母，其余为一些标点符号、运算符号等
+    2.int：int8，int16，int32，int64
+        -> 'rune' 类型属于int32，代表一个'UTF-8字符'。处理中文等非英字符时需用rune 类型
+            -> Unicode 是为了解决传统的字符编码方案的局限而产生的，它为每种语言中的每个字符设定了统一并且唯一的二进制编码. 广义的 Unicode 指一个标准，定义字符集及编码规则，即 Unicode 字符集和 UTF-8、UTF-16 编码等
+            -> UTF-8 是编码规则，将 Unicode 中字符的 ID 以某种方式进行编码。UTF-8 的是一种变长编码规则，从 1 到 4 个字节不等。编码规则如下：
+                1. 0xxxxxx 表示文字符号 0～127，兼容 ASCII 字符集
+                2. 从 128 到 0x10ffff 表示其他字符
+    3.float：float32，float64（没有double了）
+    4.complex：complex64（实部和虚部都是float32），complex128（实部和虚部都是float64）
+
+-> Base64 编码是常见的对 8 比特字节码的编码方式之一。Base64 可以使用 64 个可打印字符来表示二进制数据，'电子邮件'就是使用这种编码
+
+|Bool -> Golang不允许将整型强制转换为布尔型,布尔型无法参与数值运算,也'无法与其他类型进行转换'
+
+|type
+    |类型别名 -> 为了解决代码重构时，类型在package之间转移时产生的问题
+        |代码重构 -> 项目中有一个包p1，其中包含了一个结构体T1。随着项目规模增大，T1也变得越来越庞大。此时，我们希望重构代码，将t1放入一个新的包p2中，同时不影响p1中用到T1的代码。这时就需要使用类型别名
+            package p2
+            type T1 struct {
+                ...
+            }
+
+            package p1
+            import "p2"
+            type T1 = p2.T1 //将T1转移到p2中以后，使用类型别名，并不会影响p1中用到T1的代码
+
+        |其他场景
+            1.优化命名 -> 如早期版本中的io.ByteBuffer改为bytes.Buffer
+            2.减少依赖大小 -> 如io.EOF曾经放在os.EOF, 为了使用EOF必须导入整个os包
+            3.解决循环依赖问题
+
+        type Nickname = int //类型别名
+        var x Nickname //别名变量，等于 var x int
+        fmt.Printf("x type: %T\n", x) >>> x type: int
+
+        import ( "time" )
+        type MyDuration = time.Duration // 定义time.Duration的别名为MyDuration
+        func (m MyDuration) EasySet(a string) { //为MyDuration添加一个函数,'编译报错'
+        } //'非本地类型'不能定义方法. time.Duration与main'不在同一个包中'，因此不能定义方法
+        |解决方法
+            1.修改为 type MyDuration time.Duration，从别名'改为类型声明'
+            2.将 MyDuration 的别名定义放在 time 包中
+
+    |类型声明 -> 使用已有类型声明新类型
+        type NewInt int // 类型定义，将NewInt定义为int类型
+        func (p NewInt) Out {//为自定义类型添加方法
+            fmt.Println(p)
+        }
+        func (p *integer) set(b integer) {//想改变p的值，需要传递指针
+            *p = b
+        }
+        var y NewInt
+        fmt.Printf("y type: %T\n", y) >>> y type: main.NewInt
+
+|结构体 -> 类的本质就是结构体. 值类型, '默认是深拷贝'
+    type Point struct{ X, Y float64 } //定义一个结构体
+    stt2 := stt1 //'深拷贝'
+    stt2 := &stt1 //'浅拷贝'，指针
+
+    //这里定义了一个函数
+    func Distance(p, q Point) float64 {
+      return math.Hypot(q.X-p.X, q.Y-p.Y)
+    }
+
+    //在函数前面加一个括号，里面放入`p Point`,那么这个函数就变成了'结构体的一个方法'
+    func (p Point) Distance(q Point) float64 {
+      return math.Hypot(q.X-p.X, q.Y-p.Y)
+    }
+
+    //方法的调用
+    p := Point{1, 2} //初始化
+    p.Distance(Point{4, 6})
+
+    //'面向对象'
+    type Car struct {
+        weight int
+        name   string
+    }
+    func (c *Car) Run() {//想修改对象需传递指针
+        c.weight = 100
+        c.name = "Volvo"
+    }
+    type Train struct {
+        Car //'使用组合代替继承'
+    }
+    -> 在结构体嵌套中，外层的结构体不仅仅是获得了内层结构体的所有成员，而且也获得了全部的方法，这是Go语言对面向对象继承特性实现
+
+|Interface -> Go语言中没有Object这样的元类型，而不包含任何数据和方法的interface{}就是元类型. interface是整个'类型系统'的基石，'多态'可以通过接口实现
+    -> 把所有的具有共性的方法定义在一起，任何其他类型'只要实现了这些方法就是实现了这个接口'
+
+    //定义一个接口
+    type Namer interface {
+      SetName(name string)
+      GetName() string
+    }
+
+    type Dog struct {
+      dogName string
+    }
+
+    func (dog Dog) Run() {
+      // ......
+    }
+
+    //实现SetName方法
+    func (dog *Dog) SetName(name string) {
+        dog.dogName = name
+    }
+
+    //实现GetName方法
+    func (dog *Dog) GetName() string {
+        return dog.dogName
+    }
+    -> 上面Dog类型定义了三个方法，其中SetName和GetName两个方法和接口Namer的'方法完全相同'，这就相当于Dog类型'实现了Namer接口'。不需要用类似class Dog: Namer显式声明实现了哪个接口
+
+    //接口嵌套 一个接口可以嵌套在另外的接口
+    type Reader interface {
+        Read()
+    }
+    type Writer interface {
+        Write()
+    }
+    type ReadWriter interface {
+        Reader
+        Writer
+    }
+
+|错误处理 -> Go语言中允许函数返回多个参数，许多函数都会返回两样东西：正确答案和错误状态。这一点跟C++、Java使用异常的机制完全不同，可以说Go语言里面根本不存在异常这种概念，因此你也不可能看见异常链
+
+|序列化 & 反序列化
+    |序列化 -> 对象序列化的最主要的用处就是在传递和保存对象的时候，保证对象的完整性和可传递性。序列化是把对象转换成有序字节流(通用格式，如为二进制、xml、json等)，以便在网络上传输或者保存在本地文件中
+    |反序列化 -> 客户端从文件中或网络上获得序列化后的对象字节流后，根据字节流中所保存的对象状态及描述信息，通过反序列化重建对象
+    -> 使用序列化主要是因为'跨平台网络传输'和'对象存储'的需求，因为'网络'上只允许'字符串或者二进制'格式，而文件需要使用二进制流格式，如果想把一个内存中的对象存储下来就必须使用序列化转换为xml（字符串）、json（字符串）或二进制（流）
+    -> 序列化就是把实体对象状态按照一定的格式写入到有序字节流，反序列化就是从有序字节流重建对象，恢复对象状态
+    |序列化的好处
+        1.'数据的持久化', 永久性保存对象，保存对象的字节序列到本地文件或者数据库中
+        2.实现远程通信, 通过序列化以字节流的形式使对象在'网络中传递和接收'
+        3.通过序列化在'进程间传递对象'
+
+    |Golang 序列化的方式
+        1.Binary
+        2.Gob
+        3.JSON
+        4.Protobuf
+
+|模板 -> https://github.com/astaxie/beego
+
+|可视化 -> go-echarts
