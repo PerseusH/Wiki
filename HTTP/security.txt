@@ -85,7 +85,9 @@
             -> @csrf_protect, 为当前函数强制设置防csrf功能, 即便没有设置全局中间件
             -> @csrf_exempt, 禁用当前函数防csrf功能, 即便设置了全局中间件
 
-|SQL注入解决 -> 使用参数查询,不要拼接SQL字符串('%s' % args).用现成的SQL封装库
+|SQL注入 -> 本质是'改变原有查询的逻辑结构'
+    "<name>' union select ..." #常用手法
+    -> 使用参数查询,不要拼接SQL字符串('%s' % args).用现成的SQL封装库
     -> 使用cur.execute+参数预编译,python会自动过滤args中的特殊字符,防止SQL注入的产生
     cur.execute('select id, name from tb where id=%s and name=%s', (id, name))
     cur.execute("insert into people values (?, ?)", (name, age))

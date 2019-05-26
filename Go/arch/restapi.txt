@@ -1,0 +1,17 @@
+-> 实现一个最简单的RESTFul服务
+    package main
+    import (
+        "net/http"
+        "fmt"
+        "html"
+        "log"
+    )
+    func main() {
+        http.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
+            fmt.Fprintln(writer, "Hello, ", html.EscapeString(request.URL.Path))
+        })
+        log.Fatal(http.ListenAndServe(":8080",nil))
+    }
+    -> 运行这段代码，然后打开浏览器访问http://localhost:8080。然后再加上路径看看http://localhost:8080/joel/mak。你会发现网页输出了如下内容
+        hello,  /joel/mak
+    -> 它输出了当前的路径。路径又称"终点"(endpoint),用来表示API的具体地址。在RESTFul架构中，每个网址代表一个个资源(resource)。为了更好的使用这些网址，我们需要有统一的路径分发功能。这里使用第三方的包(Gorila Muxpackage):"github.com/gorilla/mux"、

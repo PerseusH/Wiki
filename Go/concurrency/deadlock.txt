@@ -1,0 +1,77 @@
+//不会发生死锁，因为main函数会在goroutine执行完成之前结束，ch <- 1不会执行
+func main() {
+	ch := make(chan int)
+	go func() {
+	   ch <- 1
+	}()
+}
+
+1.当一个channel中没有数据，而直接读取时，会发生死锁
+	func main() {
+		q := make(chan int, 2)
+		<-q //有缓存通道还没有数据就被读取
+	}
+	|解决方案 -> 使用select方法阻止，在default中放置默认处理方式
+		func main() {
+			q := make(chan int, 2)
+			select {
+			case v := <-q:
+				fmt.Println(v)
+			default:
+				fmt.Println("nothing in channel")
+			}
+		}
+2.如果通道没有数据要发送，select中又存在接收通道数据的语句，那么将发生死锁
+	ch := make(chan string)
+	select {
+	case <-ch:
+	}
+	|解决方案 -> 加default
+3.空select，也会引起死锁 select {}
+4.无缓存通道死锁
+	cha, chb := make(chan int), make(chan int)
+	go func() {
+		cha <- 1 // cha通道的数据没有被其他goroutine读取走，堵塞当前goroutine
+		chb <- 0
+	}()
+	<- chb // chb 等待数据的写
+	|解决方案
+		1.末尾加上 <- cha, 取出通道cha中的数据，释放goroutine
+		2.cha := make(chan int, n), 将cha设置为有缓存通道。这样cha可以缓存一个数据，cha就不会挂起当前goroutine了
+5.通道缓存已满，造成死锁
+	q := make(chan int, 2)
+	q <- 1
+	q <- 2
+	q <- 3
+	|解决方案 -> 使用select方法阻止，在default中放置默认处理方式
+		q := make(chan int, 2)
+		q <- 1
+		q <- 2
+		select {
+		case q <- 3:
+			fmt.Println("ok")
+		default:
+			fmt.Println("wrong")
+		}
+6.无缓存通道在同一goroutine中声明和写操作
+	ch:=make(chan int)  //这就是在main程里面发生的死锁情况
+	ch<-6   //  这里会一直阻塞
+7.2个以上的go程中，使用多个 channel 通信。 A go 程 获取channel 1 的同时，尝试使用channel 2， 同一时刻，B go 程 获取channel 2 的同时，尝试使用channel 1
+	ch1 := make(chan int)
+	ch2 := make(chan int)
+	go func() {    //匿名子go程
+		for {
+			select {    //这里互相等对方造成死锁
+			case <-ch1:   //这里ch1有数据读出才会执行下一句
+				ch2 <- 777
+			}
+		}
+	}()
+	for {         //主go程
+		select {
+		case <-ch2 : //这里ch2有数据读出才会执行下一句
+			ch1 <- 999
+		}
+	}
+8.channel和读写锁、互斥锁尽量避免交叉混用。如果必须使用,推荐'条件变量'
+-> 上述提到的死锁，是指在程序的'主线程'中发生的情况，如果上述的情况发生在'非主线程'中，读取或者写入的情况是'发生堵塞而不是死锁'。实际上，阻塞情况省去了我们加锁的步骤，反而是更加有利于代码编写，要'合理的利用阻塞'

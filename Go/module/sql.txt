@@ -1,0 +1,66 @@
+import (
+    "database/sql"
+    _"github.com/go-sql-driver/mysql" //"_"引入后面的包名而不是直接使用包的函数和变量
+)
+
+//在每一个err后添加判断句
+if err != nil {
+    log.Println(err)
+}
+
+//连接数据库
+db, err := sql.open("mysql", "username:password@tcp(127.0.0.1:3306)/dbname?charset=utf8") //执行open()时，不会去获得数据库连接有效性，当执行数据库操作时才会连接
+err = db.Ping() //在open()执行之后测试连接有效性(是否成功)
+
+//查询
+var field1 string
+var field2 int
+rows, err := db.Query("SELECT field1,field2 FROM test WHERE field1=?", v1)
+defer rows.Close()
+for rows.Next() {
+    err := rows.Scan(&field1, &field2)
+    if err != nil {
+        log.Println(err)
+    }
+}
+err = rows.Err()
+if err != nil {
+    log.Println(err)
+}
+
+//查询单条数据, 没记录时返回err
+var field1 string
+err := db.QueryRow("SELECT field1 FROM test WHERE field1=?", v1).Scan(&field1)
+if field1.Valid {
+    //use field1.String
+} else {
+    //field1 is nil
+}
+
+//插入数据
+res, err := db.Exec("INSERT INTO test(field1, field2) VALUES(?, ?)", v1, v2)
+id, err := res.LastInsertId() //获取新插入的id
+
+//更新数据
+res, err := db.Exec("UPDATE test SET v1=? WHERE v2=?", v1, v2)
+
+//删除数据
+res, err := db.Exec("DELETE FROM test WHERE v1=?", v1)
+
+//获取增删改受影响行数
+rows, err := res.RowsAffected()
+
+//预备表达式，用来优化SQL查询，提高性能，减少SQL注入风险(过滤引号等特殊字符)
+stmt, err := db.Prepare("UPDATE test SET v1=? WHERE id=?")
+_, err = stmt.Exec(v1, v2)
+
+//事物
+tx := db.Begin() //开启一个事务, 通过Rollback()或Commit()关闭事务
+tx.Rollback()
+tx.Commit()
+
+//连接池, database/sql中有一个基本的连接池，用户没有很大的控制权，仅能设置参数
+db.SetMaxIdleConns(n) //设置最大空闲连接
+db.SetMaxOpenConns(n) //设置最大连接数
+
+defer db.Close() //关闭数据库连接

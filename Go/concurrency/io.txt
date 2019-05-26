@@ -1,0 +1,149 @@
+-> 尽管 Go 本身有大量的特性来支持并发，但并'不保证并发的数据安全'，用户需自己保证变量等数据以原子操作更新。goroutine 和 channel 是进行原子操作的好方法，或使用 "sync" 包中的锁
+
+|锁
+    |互斥锁 -> sync.Mutex(任意两两互斥)
+        var l sync.Mutex
+        l.Lock()
+        l.unlock()
+    |读写锁 -> sync.RWMutex(读读并行，读写互斥，写写互斥), '读多写少'时，用读写锁
+        var rwLock sync.RWMutex
+        rwLock.Lock() //写锁
+        rwLock.unlock()
+        rwLock.RLock() //读锁
+        rwLock.RUnLock()
+    |sync.WaitGroup -> 主程序main自己执行完毕后就退出了。sync.WaitGroup能够阻塞主线程的执行，直到'所有监听的goroutine执行完成'，主程序才退出
+        |方法
+            1.Add(int) -> 监听。添加或减少(负值)等待goroutine的数量
+            2.Done -> 相当于Add(-1)
+            3.Wait -> 执行阻塞，直到所有的WaitGroup数量变为0，表示'所有任务已经完成'
+
+        var wg sync.WaitGroup
+        for i := 0; i < 5; i++ {
+            wg.Add(1)
+            go func() {//匿名goroutine
+                fmt.Println(i)
+                wg.Done()
+            }()
+        }
+        wg.Wait()
+    |条件等待 -> Cond条件变量是'线程间共享'的一种机制，主要包括两个动作
+        1.一个/或多个线程等待条件变量的条件成立而挂起：wait，在 Wait 之前应当手动为 c.L 上锁，Wait 结束后手动解锁。为避免虚假唤醒，需要将 Wait 放到一个条件判断循环中。
+        2.另一个线程使条件成立（给出条件成立信号）
+            Signal：唤醒一个等待线程；
+            Broadcast：唤醒所有等待线程
+        -> 为了防止竞争，条件变量的使用总是和一个'互斥锁'结合在一起
+        func NewCond(l Locker) *Cond：创建一个条件等待
+        func (c *Cond) Broadcast()：唤醒所有等待者
+        func (c *Cond) Signal()：唤醒一个等待者
+        func (c *Cond) Wait()：解锁 c.L 并进入等待状态，在被唤醒时会自动重新锁定 c.L
+
+        condition := false // 条件
+        var mu sync.Mutex
+        cond := sync.NewCond(&mu)
+        // 唤醒者
+        go func() {
+            time.Sleep(...)
+            mu.Lock()
+            condition = true // 更改条件
+            cond.Signal()    // 发送通知：条件已经满足
+            mu.Unlock()
+        }()
+        // 等待者
+        go func() {
+            mu.Lock()
+            // 检查条件是否满足，避免虚假通知，同时避免 Signal 提前于 Wait 执行
+            for !condition {
+                cond.Wait() // 等待时 mu 处于解锁状态，唤醒时重新锁定。
+            }
+            ...
+            mu.Unlock()
+        }
+    |单次执行 -> Once 的作用是'多次调用但只执行一次'。Once 只有一个方法Do()，向 Do 传入一个函数，这个函数在第一次执行 Once.Do() 的时候会被调用，以后再执行 Once.Do() 将没有任何动作，即使传入了其它的函数，也不会被执行，如果要执行其它函数，需要重新创建一个 Once 对象
+        -> Once可以安全的在多个goroutine中并行使用     
+        func (o *Once) Do(f func())
+
+
+|原子操作(atomic) -> syns/atomic包。原子操作在执行过程中不能被打断,是'并发安全的'。也就是说，针对某个值的原子操作在被进行的过程当中，CPU绝不会再去进行其它的针对该值的操作。原子操作仅会由一个'独立的CPU指令'代表和完成
+    -> 用原子操作来替换mutex锁的主要原因是，原子操作由'底层硬件'支持，而锁则由操作系统提供的API实现。若实现相同的功能，'原子操作效率更高'
+    -> 当多线程并发运行的程序竞争访问和修改同一块资源(变量)时，会发生'竞态问题'(并发安全)
+        go run -race main.go //开启运行时（runtime）对竞态问题的分析
+        -> 输出信息如下
+            ==================
+            WARNING: DATA RACE
+            Write at 0x000000f52f40 by goroutine 7:
+              sync/atomic.AddInt64()
+                  C:/Go/src/runtime/race_amd64.s:276 +0xb
+              main.GenID()
+                  racedetect.go:17 +0x4a
+
+            Previous read at 0x000000f52f40 by goroutine 6: //竞态位置，第18行
+              main.GenID()
+                  racedetect.go:18 +0x5a
+
+            Goroutine 7 (running) created at:
+              main.main()
+                  racedetect.go:25 +0x5a
+
+            Goroutine 6 (finished) created at:
+              main.main()
+                  racedetect.go:25 +0x5a
+            ==================
+            10
+            Found 1 data race(s)
+            exit status 66
+    -> Go语言提供的原子操作都是非侵入式的。它们由标准库代码包sync/atomic中的众多函数代表。我们可以通过调用这些函数对几种简单的类型的值进行原子操作。这些类型包括'int32、int64、uint32、uint64、uintptr和unsafe.Pointer类型'，共6个。这些函数提供的原子操作共有5种，即：增或减、比较并交换(CAS)、导出、导入和交换。它们分别提供了不同的功能，且适用的场景也有所区别
+        1.增减 -> 函数名称都以Add为前缀，后跟针对的具体类型的名称
+            -> 对元素的原子增加或减少，其函数定义如下，函数接收两个参数，分别是需要修改的变量的地址和修改的差值，函数会直接在传递的地址上进行修改操作，此外函数会返回修改之后的新值
+            -> 无需把新值再赋给原变量,因为它的值已经在函数返回之前被原子的修改了
+            atomic.AddUint32(&sum, 1)
+            atomic.AddInt64(&i64, -3)
+            atomic.AddUint32(&ui32,NN&math.MaxUint32)//NN代表一个负整数,针对无符号整数
+            atomic.AddUint32(addr *uint32, delta uint32) uint32
+            atomic.AddUint64(addr *uint64, delta uint64) uint64
+            atomic.AddInt32(addr *int32, delta int32) int32
+            atomic.AddInt64(addr *int64, delta int64) int64
+            atomic.AddUintptr(addr *uintptr, delta uintptr) uintptr
+            -> 不存在atomic.AddPointer函数，因为unsafe.Pointer类型间不能加减
+        2.比较并交换(CAS) -> 以“CompareAndSwap”为前缀的若干个函数
+            -> 常用的原子操作，首先判断当前变量的值和旧值是否相等（也就是变量值是否被其他线程所修改），如果'相等'则用新值'替换'掉原来的值，否则就不进行替换操作
+            func CompareAndSwapInt32(addr *int32, old, new int32) (swapped bool)
+            atomic.CompareAndSwapUint32(&sum, 100, sum+1)
+            -> 除了CompareAndSwapInt32之外，还有CompareAndSwapInt64、CompareAndSwapPointer、CompareAndSwapUint32、CompareAndSwapUint64 和CompareAndSwapUintptr函数。这些函数的结果声明列表与CompareAndSwapInt32完全一致
+            -> 与锁相比，CAS操作有明显的不同。它总是'假设被操作值未曾被改变'（即与旧值相等），并一旦确认这个假设的真实性就立即进行值替换。而使用锁则是更加谨慎的做法。我们总是先假设会有并发的操作要修改被操作值，并使用锁将相关操作放入临界区中加以保护。我们可以说，使用'锁的做法趋于悲观'，而'CAS操作'的做法则'更加乐观'
+            -> CAS操作的'优势'是，可以在不形成临界区和创建互斥量的情况下完成'并发安全的值更新'。这可以大大的'减少同步对程序性能的损耗'。当然，CAS操作也有'劣势'。在被操作值被频繁变更的情况下，CAS操作并'不那么容易成功'。有些时候，我们可能不得不利用for循环以进行多次尝试
+                func addValue(delta int32) {//不断尝试原子更新value的值，直到操作成功为止
+                	for { //这种做法与'自旋锁'的自旋行为相似
+                        v := value
+                        if atomic.CompareAndSwapInt32(&value, v, (v + delta)) {
+                            break
+                        }
+                    }
+                }
+            -> CAS操作虽然不会让某个Goroutine阻塞在某条语句上，但是仍可能会使流程的执行暂时停滞。不过，这种停滞的时间大都极其短暂
+            -> 需要并发安全的更新一些类型(具体讲是前文所述的6个类型)的值时,总是应'优先选择CAS操作'
+        3.原子导出&导入值 -> Load和Store操作对应于'变量的原子性读写'，许多变量的读写无法在一个时钟周期内完成，而此时执行可能会被调度到其他线程，无法保证'并发安全'
+            v := value //为变量v赋值。但其中'读取value值'的操作并'不是并发安全的'。在该读取操作被进行的过程中，其它的对此值的读写操作是可以被同时进行的。它们并不会受到任何限制
+            v := atomic.LoadInt32(&value) //读取value值是并发安全(线程安全)的，但'对v的赋值操作依然不是并发安全的'。读取value值时，当前的任何CPU都不会进行其它的针对此值的读写操作。这样的约束受到底层硬件支持
+            //导出。函数参数为需要读取的变量地址，返回值为'读取的值'
+            atomic.LoadUint32(addr *uint32) uint32
+            atomic.LoadUint64(addr *uint64) uint64
+            atomic.LoadInt32(addr *int32) int32
+            atomic.LoadInt64(addr *int64) int64
+            atomic.LoadUintptr(addr *uintptr) uintptr
+            atomic.LoadPointer(addr *unsafe.Pointer) unsafe.Pointer
+            //导入。赋予变量新值，而不管它原来是什么值。与导出操作相对应
+            -> 原子的值导入操作'总会成功'，因为它'不关心被操作值的旧值'是什么。显然这与CAS操作有明显的区别
+            atomic.StoreUint32(addr *uint32, val uint32)
+            atomic.StoreUint64(addr *uint64, val uint64)
+            atomic.StoreInt32(addr *int32, val int32)
+            atomic.StoreInt64(addr *int64, val int64)
+            atomic.StoreUintptr(addr *uintptr, val uintptr)
+            atomic.StorePointer(addr *unsafe.Pointer, val unsafe.Pointer)
+        4.原子交换值 -> 赋予变量新值，同时返回变量的旧值.以“Swap”为前缀
+            -> 与CAS操作不同，原子交换操作'不关心被操作值的旧值'。它会'直接设置新值'。但它又比原子载入操作多做了一步。作为交换，它会返回被操作值的旧值。此类操作比CAS操作的约束更少，同时又比原子载入操作的功能更强
+            atomic.SwapUint32(addr *uint32,  new uint32) old uint32
+            atomic.SwapUint64(addr *uint64,  new uint64) old uint64
+            atomic.SwapInt32(addr *int32,  new int32) old int32
+            atomic.SwapInt64(addr *int64,  new int64) old int64
+            atomic.SwapUintptr(addr *uintptr,  new uintptr) old uintptr
+            atomic.SwapPointer(addr *unsafe.Pointer,  new unsafe.Pointer) old unsafe.Pointer

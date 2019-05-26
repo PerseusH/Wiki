@@ -1,0 +1,232 @@
+-> 在函数内可用a:=3简短声明变量，编译器会'自动推算出变量数据类型'。'只能用在函数内'，否则会报错
+-> GO语言'不支持函数重载'主要是为了简单，像C语言一样不支持重载
+-> 函数在Go中是一等公民,可以像普通变量一样被'赋值，传递或返回(仅限匿名函数)',支持匿名函数和闭包
+-> 函数足够小时可以创建一个匿名字面函数 sub := func(a, b int) int { return a - b }
+    //即时调用的匿名函数
+    func(data int) {
+        fmt.Println("hello", data)
+    }(100)
+
+    //匿名函数用作'回调函数'
+    func TrimFunc(s string, f func(rune) bool) string {
+        return TrimRightFunc(TrimLeftFunc(s, f), f)
+    }
+
+|defer -> 前面加上defer的语句会被延迟执行。直到包含该语句的函数执行完毕，此语句才会被执行
+    -> 在 defer 归属的函数即将返回时，多个defer语句按它们的'逆序'进行执行，先被defer的语句最后被执行，最后被 defer 的语句，最先被执行
+        defer fmt.Println(1)// 将defer放入延迟调用栈
+        defer fmt.Println(2)
+        defer fmt.Println(3)// 最后一个放入, 位于栈顶, 最先调用
+        >>> 3 / 2 / 1
+
+    //使用延迟执行语句在函数退出时释放资源
+    func writeTxt(msg st){
+        file1, err := os.Create("test.txt")
+        defer file1.Close()
+
+        if err != nil {
+        // 处理错误。。。
+        }
+        // 文件操作...
+    }
+
+    //使用defer在函数最后解锁
+    valueByKeyGuard.Lock()
+    defer valueByKeyGuard.Unlock()
+
+|多返回值
+    -> Go语言不允许使用无用的变量，因此就有了'空标识符'，即_（下划线）。空标识符多用在接收函数多返回值时，'对不需要的返回值作占位用'
+        //(int，int)代表这个函数返回两个int
+        func vals()(int,int)  {
+        	return 3,7
+            //纯类型的返回值对于代码可读性不是很友好，特别是在同类型的返回值出现时，无法区分每个返回参数的意义
+        }
+
+        //给返回值命名
+        func vals()(id, age int) {//增强了可读性
+            id = 3
+            age = 7
+        	return //无需显示返回变量名
+        }
+
+        func vals() (a, b int) {
+            a = 1
+            return a, 2
+        }
+
+        //同一种类型返回值和命名返回值两种形式只能二选一，混用时将会发生编译错误
+            func namedRetValues() (a, b int, int)
+
+        //如果只返回其中一个值，可以使用空白符_(匿名变量)
+    	_,c := vals()
+    	fmt.Println(c)
+
+|闭包(Closure) -> 本质是局部变量的作用域留存
+    func increment() func() int { //闭包函数声明方式，'两个func'
+        n := 0
+        return func () int {
+            n++
+            return n
+        }
+    }
+
+    //多值闭包
+    func calc(base int) (func(int) int, func(int) int) {
+    	fmt.Printf("%p\n", &base)
+    	add := func(i int) int {
+    		fmt.Printf("%p\n", &base)
+    		base += i
+    		return base
+    	}
+    	sub := func(i int) int {
+    		fmt.Printf("%p\n", &base)
+    		base -= i
+    		return base
+    	}
+    	return add, sub
+    }
+    f1, f2 := calc(100)
+    fmt.Println(f1(1), f2(2)) //变量i内存地址不变
+
+    //延迟闭包，闭包在主函数结束执行后执行
+    func main() {
+    	x, y := 1,2
+
+    	defer func(a int){ //defer+匿名函数是一个闭包
+    		fmt.Println("defer x, y = ", a, y) //y为闭包引用
+    	}(x) //x值拷贝 调用时传入参数
+
+    	x += 100
+    	y += 200
+    	fmt.Println(x, y)
+    }
+
+    //函数列表使用不当
+    func test() []func() {
+        var s []func()
+        for i := 0; i < 3; i++ {
+            s = append(s, func() {  //将多个匿名函数添加到列表
+                fmt.Println(&i, i)
+            })
+        }
+        return s    //返回匿名函数列表
+    }
+    func main() {
+        for _, f := range test() {  //执行所有匿名函数
+            f()
+        }
+    }
+    >>>
+    3
+    3
+    3
+    -> 每次 append 操作仅将匿名函数放入到列表中，但并未执行，并且引用的变量都是 i，随着 i 的改变匿名函数中的 i 也在改变，所以执行这些函数时，读取的都是变量i'最后一次的值'。解决的方法就是每次复制变量 i 然后传到匿名函数中，让闭包的环境变量不相同
+        ...
+        for i := 0; i < 3; i++ {
+            x := i
+            s = append(s, func() {  //将多个匿名函数添加到列表
+                fmt.Println(&x, x)
+            })
+        }
+        ...
+
+|可变参数函数 -> 参数数量不固定的函数
+    func 函数名(固定参数列表, v...T)(返回参数列表){
+        ...
+    }
+    1.可变参数一般被放在参数列表末尾，前面是固定参数列表，当没有固定参数时，所有参数都是可变参数
+    2.v为可变参数变量，类型为[]T，也就是拥有多个T元素的 T 类型切片，v和T之间由...即3个点组成
+    3.T 为可变参数的类型，'当T为interface{}时，传入的可以是任意类型'
+        func Println(a ...interface{}) (n int, err error) {
+            return Fprintln(os.Stdout, a...)
+        }
+        //遍历可变参数列表
+        func joinStrings(slist ...string) string {
+            var b bytes.Buffer// 定义一个字节缓冲, 快速地连接字符串
+            for _, s := range slist {// 遍历可变参数列表slist, 类型为[]string
+                b.WriteString(s)// 将遍历出的字符串连续写入字节数组
+            }
+            return b.String()// 将连接好的字节数组转换为字符串并输出
+        }
+        //在可变参数函数中向另一同类函数传参
+        func xxx(a...[]T) {
+            yyy(a...) //可变参数使用...进行传递与切片间使用 append 连接是同一个特性
+        }
+
+|字符串的链式处理——操作与数据分离的设计技巧
+    import (
+        "strings"
+        "fmt"
+        )
+    // 字符串处理函数，传入字符串切片和处理链
+    func StringProccess(list []string, chain []func(string) string) {
+        // 遍历每一个字符串
+        for index, str := range list {
+            // 第一个需要处理的字符串
+            result := str
+            // 遍历每一个处理链
+            for _, proc := range chain {
+                // 输入一个字符串进行处理，返回数据作为下一个处理链的输入。
+                result = proc(result)
+            }
+            // 将结果放回切片
+            list[index] = result
+        }
+    }
+    // 自定义的移除前缀的处理函数
+    func removePrefix(str string) string {
+        return strings.TrimPrefix(str, "go")
+    }
+    func main() {
+        // 待处理的字符串列表
+        list := []string{
+            "go scanner",
+            "go parser",
+            "go compiler",
+            "go printer",
+            "go formater",
+        }
+        // 处理函数链
+        chain := []func(string) string{
+            removePrefix,
+            strings.TrimSpace,
+            strings.ToUpper,
+        }
+        // 处理字符串
+        StringProccess(list, chain)
+        // 输出处理好的字符串
+        for _, str := range list {
+            fmt.Println(str)
+        }
+    }
+
+|使用匿名函数实现操作封装 -> 将匿名函数作为 map 的键值，通过命令行参数动态调用匿名函数
+    import (
+        "flag"
+        "fmt"
+    )
+    var skillParam = flag.String("skill", "", "skill to perform")
+    func main() {
+        flag.Parse()
+        var skill = map[string]func(){
+            "fire": func() {
+                fmt.Println("chicken fire")
+            },
+            "run": func() {
+                fmt.Println("soldier run")
+            },
+            "fly": func() {
+                fmt.Println("angel fly")
+            },
+        }
+        if f, ok := skill[*skillParam]; ok {
+            f()
+        } else {
+            fmt.Println("skill not found")
+        }
+    }
+
+    $  go run main.go --skill=fly //传参
+    angel fly
+    $  go run main.go --skill=run
+    soldier run

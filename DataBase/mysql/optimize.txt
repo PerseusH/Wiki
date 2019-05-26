@@ -92,8 +92,8 @@
         -> 当MySQL无法只依赖索引完成DISTINCT或无法使用索引时，就不得不使用临时表来进行相应的操作
         |distinct+order by -> mysql中distinct的执行顺序高于order by。distinct执行时会对查询的记录进行去重，产生一个临时表(无法只使用索引完成或无法使用索引时). order by执行时对查询的临时表进行排序，产生新的临时表. 一共产生'两个临时表', 尽量避免distinct+order by
 
-    |Order By
-        -> MySQL查询最多'只能使用一个索引'.若WHERE条件已经占用了索引,Order By就不能使用了
+    |Order By -> MySQL查询最多'只能使用一个索引'.若WHERE条件已占用了索引,OrderBy就不能使用
+        select ... order by n # 使用查询的第n个字段进行排序
         -> ORDER BY满足以下情况，会使用Index排序('否则使用filesort'):
             1.ORDER BY的列满足最左前缀原则(...order by a, b, c)
             2.Where子句与Order BY子句全部列的组合满足最左前缀原则(...where a b order by c)

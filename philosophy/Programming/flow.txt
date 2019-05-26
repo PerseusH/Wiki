@@ -1,0 +1,15 @@
+|Celery
+|Middleware -> RabbitMQ
+|Jenkins
+|Docker
+|Git
+|Security -> Https/SSL, Cookie, Encryption(MD5)
+|Linux
+|Log
+|CDN
+|打包
+|MicroService
+|内存占用
+|IO
+|数据可视化
+|数据分析

@@ -1,6 +1,10 @@
 -> make 只能为 slice、map或 channel 类型分配内存并初始化，同时返回一个有初始值的 slice、map 或 channel 类型引用，不是指针。内建函数 new 用来分配内存，它的第一个参数是一个类型，不是一个值，它的'返回值'是一个指向新分配类型零值的'指针'
 -> map,slice,struct和func'不支持==和!=操作'，不能直接比较。只能和nil比较，判断是否零值状态
 
+-> 允许对未实例化的slice添加元素，但'对未实例化的map添加元素'会造成运行时'panic宕机'
+    var m map[string]int
+    m["one"] = 1		// error: panic: assignment to entry in nil map
+
 |数组 -> 数组是'值类型'. 数组长度固定，不能使用append。数组赋值是'值传递(变量复制)，深拷贝'
     -> 数组作为函数参数是值传递(在函数内复制一个新数组)
     var a [5]int //声明
@@ -24,6 +28,10 @@
     m := map[string]string{"France": "Paris", "Italy": "Rome", "Japan": "Tokyo"}
     m1 := m //'浅拷贝'
 
+    //在创建 map 类型的变量时可以指定容量，但不能像 slice 一样使用 cap() 来检测分配空间的大小
+    m := make(map[string]int, 99) //指定map容量
+	println(cap(m)) 	//'error: invalid argument m for cap'
+
     //嵌套字典
     var m map[string]string = make(map[string]map[string]int) //1
     type newmap map[string]int //2
@@ -32,6 +40,7 @@
     submap["k1"] = 100
     m["kk1"] = submap
     val, ok := m["key"] //查看key在map中是否存在. 如果存在则ok为true, 否则ok为false，val为nil
+        -> Go字典访问不存在的key会返回'字典值数据类型的零值'，比如 nil、'' 、false 和 0，取值操作总有值返回，故不能通过取出来的值来判断 key 是不是在 map 中
     delete(m, "France") //删除元素
     m = make(map[tx]ty)// Go没有为map提供'清空所有元素'的方法。唯一办法就是'重新make一个新map'。不用担心垃圾回收的效率，Go的并行垃圾回收效率比写一个清空函数高效多了
 
@@ -45,6 +54,11 @@
             1.无须初始化，直接声明即可
             2.sync.Map'不能使用map的方式'进行取值和设置等操作，而是使用 sync.Map 的方法进行调用。Store 表示存储，Load 表示获取，Delete 表示删除
             3.使用Range方法进行遍历，通过'回调函数'返回内部遍历出来的值。Range参数中的回调函数的返回值功能是：需要继续迭代遍历时，返回 true；终止迭代遍历时，返回false
+            func (m *Map) Delete(key interface{})
+            func (m *Map) Load(key interface{}) (value interface{}, ok bool)
+            func (m *Map) LoadOrStore(key, value interface{}) (actual interface{}, loaded bool)：如果Key存在，则返回对应的值；否则添加value，并返回
+            func (m *Map) Range(f func(key, value interface{}) bool)：枚举map元素并执行func，若返回false，则停止枚举；
+            func (m *Map) Store(key, value interface{})
                 import (
                       "fmt"
                       "sync"
@@ -66,15 +80,33 @@
                     })
                 }
         -> sync.Map没有提供获取map数量的方法，替代方法是获取时遍历自行计算数量。sync.Map为了保证并发安全有一些性能损失，因此在'非并发'情况下，map比sync.Map性能更好
+        -> sync.map针对相对稳定的key（读多、写少情况）做了优化，若是'频繁的读写'则使用'内置map与RWMutex'更好
 
 |string -> 字符串就是一串固定长度的字符连接起来的字符序列。Go的字符串是由单个字节连接起来的。string底层是'通过byte数组实现的'。Go语言的字符串的字节使用'UTF-8编码'标识Unicode文本
-    -> string的指针指向的内容是不可以更改的，每更改一次字符串，就得重新分配一次内存，之前分配空间的还得由gc回收，这是导致string操作低效的根本原因。字节数组元素可随意更改，修改字符串时，可以将字符串转换为 []byte 进行修改
     []byte("xxx") //把字符串转换为字节数组，每个字符转换为对应ASCII码，数组元素数等于字符数
     string([]byte) //[]byte转为string
     -> string可以直接比较，而[]byte不可以，所以[]byte不可以当map的key值
     -> 需要大量字符串处理的时候用[]byte，性能好很多
     -> string值'不可为nil'，所以如果你想要通过返回nil表达额外的含义，就用[]byte
     -> '字节数组'常用作'网络编程'中数据流的读写
+
+    -> Go 在 string 与 byte slice 相互转换上优化了两点，'避免了额外的内存分配'
+        1.在map[string]中查找key时，使用了对应的[]byte，避免做m[string(key)]的内存分配
+        2.for range迭代string时转换为[]byte的迭代：for i,v := range []byte(str){...}
+
+    -> string的指针指向的内容是'不可更改'的(修改字符串元素会报错)，每更改一次字符串，就得重新分配一次内存，之前分配空间的还得由gc回收，这是导致string操作低效的根本原因。字节数组元素可随意更改，修改字符串时，可以将'纯ASCII字符串'转换为 []byte 进行修改
+        x := "text"
+        xBytes := []byte(x)
+        xBytes[0] = 'X'
+        x = string(xBytes)
+        fmt.Println(x)	// Xext
+    -> []byte并不是'更新Unicode字符串'的正确方式，因为一个 UTF8 编码的字符可能会占多个字节，比如汉字就需要 3~4 个字节来存储，此时更新其中的一个字节是错误的
+    -> 更新字符串的正确方式：将 string 转为 rune slice（此时 1 个 rune 可能占多个 byte），直接更新 rune 中的字符
+    	x := "text"
+    	xRunes := []rune(x)
+    	xRunes[0] = '我'
+    	x = string(xRunes)
+    	fmt.Println(x)	// 我ext
 
     |'高效'的字符串拼接
         sa := "aaa"
@@ -103,16 +135,13 @@
 
     |len(s) -> 表示字符串的 ASCII 字符个数或字节长度
         len("你好") //6 Go字符串以UTF-8格式保存，每个中文占3字节，因此使用len()获得两个中文字对应的6字节
-        utf8.RuneCountInString("你好") //2 如果希望按原字符个数计算，需使用UTF8包的RuneCountInString
+        utf8.RuneCountInString("你好") //2 如果希望按'原字符个数'计算，需使用UTF8包的RuneCountInString
         len([]rune("你好")) //2 特别方法
 
-    |strings.Index(str, substr) //子串正向定位索引值
-    |strings.LastIndex(str, substr) //子串反向定位索引值
-    -> 字符串截取可以通过'切片+索引值'实现
-
     |乱码
-        arr[i] //下标访问字符串元素，获取的是ASCII字符码，非英语语言字符会显示为乱码
+        arr[i] //下标访问字符串元素，获取的是ASCII字符码(整数)，非英语语言字符会显示为乱码
         -> 用 for range遍历字符串元素获取的是Unicode字符，非英语语言字符不会显示为乱码
+            -> for range 迭代会尝试将 string 翻译为 UTF8 文本，对任何无效的码点都直接使用 0XFFFD rune（�）UNicode 替代字符来表示。如果 string 中有任何非 UTF8 的数据，应将 string 保存为 byte slice 再进行操作
 
 |list -> 使用container/list包实现的'双链表'。列表能够高效地进行任意位置的元素插入和删除操作
     -> 列表的元素可以是"任意类型".这既带来便利，也会引来一些问题。给一个列表放入了非期望类型的值，在取出值后，将 interface{} 转换为期望类型时将会发生宕机
@@ -141,7 +170,11 @@
   )
   fmt.Println(KB, MB, GB, TB, PB, EB, (ZB / EB), (YB / EB))
 
-|range -> 用于 for 循环中迭代数组(array)、切片(slice)、通道(channel)或集合(map)的元素。在数组和切片中它返回元素的索引和索引对应的值，在集合中返回 key-value 对的 key 值
+|range -> 用于 for 循环中迭代数组、切片、字符串、通道或字典的元素
+    1.数组、切片、字符串返回索引和值
+    2.map 返回键和值
+    3.通道（channel）只返回通道内的值
+
     //使用range去求一个slice的和
     nums := []int{2, 3, 4}
     sum := 0
@@ -166,4 +199,16 @@
     //range也可以用来枚举Unicode字符串。第一个参数是字符的索引，第二个是Unicode字符值本身
     for i, c := range "go" {
         fmt.Println(i, c)
+    }
+
+    //遍历通道
+    c := make(chan int)
+    go func() {
+        c <- 1
+        c <- 2
+        c <- 3
+        close(c)
+    }()
+    for v := range c {
+        fmt.Println(v)
     }

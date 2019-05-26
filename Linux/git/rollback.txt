@@ -1,0 +1,29 @@
+git log                   #查看提交记录
+git log <file>            #查看该文件每次提交记录
+git log -p -2             #查看最近两次详细修改内容的diff
+git log -p <file>         #查看每次详细修改内容的diff
+git log --stat            #查看提交统计信息
+git log --graph           #查看分支合并图
+git log --all --grep='xxx'#在commit log中查找相关内容
+git reflog                #查看命令历史记录
+
+git checkout <file>|.     #撤销工作区(所有)修改
+git add <file>|.          #将工作区(所有)修改提交到本地暂存区并跟踪
+git reset <file>|.        #将暂存区(所有)修改回退到工作区
+git reset HEAD~3          #回退至三个commit之前，之后的两个提交会被删除，直接push报错
+                          #应该用git push -f更新远程仓库
+git reset HEAD b          #git add .将修改过的文件a、b加到暂存区后,撤回b,保留a
+git reset --hard          #恢复最近一次提交过的状态，即放弃上次提交后的所有本次修改
+git reset --hard <cid>    #彻底回退到某个commit版本，包括暂存区和工作区
+git reset --soft <cid>    #只回退commit信息，暂存区和工作区内容不变
+
+git revert <cid>          #用新提交将本地代码回滚到cid之前一个提交(cid及之后提交撤销)
+                          #直接revert会产生冲突，处理完成再push会更新远程仓库
+                          #根据某个历史提交生成新提交实现回滚，中间的提交不会删除
+git revert <$id>          #恢复某次提交的状态，恢复动作本身也创建了一次提交对象
+git revert HEAD           #恢复最后一次提交的状态
+
+-> reset是删除commit，HEAD会后退，revert是生成新的commit，HEAD会前进
+    -> 'reset既可回到过去，又能回到未来'
+    -> reset后可根据reflog再回到被删除的某个提交版本， 此提交之前的已删除提交都会恢复
+-> 在未来的分支合并时，reset恢复的提交依然会出现在历史分支中，revert的新提交则不会

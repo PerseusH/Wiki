@@ -1,0 +1,158 @@
+|环境变量
+    |GOROOT -> *\Go
+    |GOPATH -> *\GOPATH
+    |Path -> ;%GOROOT%\bin;%GOPATH%
+
+-> Go语言时代，语言运行效率并不能直接决定最终的效率，IO效率是最主要的问题。因此Go中的语法设计尽量以使用方便为主
+-> Go语言'不需要'在语句或者声明的末尾'加分号'，编译器会主动加分号
+-> GO语言中没有class关键字，它的'面向对象'是对C语言中'struct的扩展'。结构体像一个插线板，函数像插头，想给结构体添加什么功能直接在插线板上插入就可以了
+-> Go的包管理方式可谓简单粗暴，一切都得是源代码，一切都得在GOPATH下面
+-> Python和Java每一个文件都可以定义主函数，这就为快速测试提供了便利。Go和C、C++一样，'只能有一个main函数'，正确姿势是使用正经的测试而不是写多个main函数。即便是Java和Python，使用main函数进行测试也不是好主意
+-> Go语言以'首字母大写'的变量、接口、函数命名作为'公有变量（或函数）'，这被称为'导出'。也就是说外部的包只能访问以大写字母开头的变量（或函数）。以小写字母开头的是私有成员，在整个包的内部是可见并且可用的。结构体成员命名也遵循此规则
+-> Go语言中，即使是基础类型相同，'不同的类型'之间也'不能进行运算'
+-> 类型转换: [type_name](obj). '基础类型不同，不能转换'
+-> 在Go语言中，特定复合类型（切片、字典、通道、接口和函数类型）的标头值都包含一个指向底层数组的'指针'，因此通过复制来传递这些复合类型的值的副本，本质上就是在'共享底层数据结构'
+
+|跨平台编译 -> Go提供了编译链工具，可以让我们在任何一个开发平台上，编译出其他平台的可执行文件。默认情况下，都是根据我们当前的机器生成的可执行文件，比如你的是Linux 64位，就会生成Linux 64位下的可执行文件
+    -> 如果我们要生成'不同平台架构'的可执行程序，只要改变这两个环境变量就可以了，比如要生成Linux 64位的程序，命令如下
+        GOOS=linux GOARCH=amd64 go build flysnow.org/hello #前面两个赋值，是临时更改环境变量，只针对本次运行有效，不会更改我们默认的配置
+
+|空值 -> nil（'未分配内存空间'的变量值）
+
+-> Go语言中'自增自减'是语句不是表达式,并且++和--'只能放在变量后'
+      i++ | i-- // '合法'
+      j = i++ | j = i-- // 非法，自增自减不是表达式
+      ++i | --i // 非法，++和--只能放在变量后面
+
+|位运算
+    var a uint8 = 2
+    var b uint8 = 2
+    a = ^a //按位取反
+    a = a^b //异或
+    a = a&b //与
+    a = a|b //或
+
+|运算符优先级
+    Precedence        Operator
+        5             *  /  %  <<  >>  &  &^
+        4             +  -  |  ^
+        3             ==  !=  <  <=  >  >=
+        2             && //且
+        1             || //或
+
+//死循环
+for {
+    if ... { break }
+}
+
+|跳转
+    |标签 -> 某行第一个以冒号:结尾的单词, 作用是锚点标记. 标签的名称是大小写敏感的，为了提升可读性，一般使用全部大写字母。标签要求必须定义在'for、switch 和 select' 的代码块上
+        func xxx() {
+            ...
+            LABEL:
+            ...
+        }
+    |break -> 无条件地转移到指定标签行，表示退出标签对应的代码块，'不继续执行标签下面的代码'
+        -> 单独的break表示退出当前循环
+        Loop:
+        for j:=0;j<3;j++{
+            fmt.Println(j)
+            for a:=0;a<5;a++{
+                fmt.Println(a)
+                if a>3{
+                    break Loop //跳出多层循环
+                }
+            }
+        }
+        //在没有使用loop标签的时候break只是跳出了第一层for循环
+        //使用标签后'跳出到指定的标签','break只能跳出到之前'，如果将Loop标签放在后边则会报错
+        //break标签只能用于for循环，跳出后不再执行标签对应的for循环
+
+    |goto -> 无条件地转移到指定标签行，'继续执行标签下面的代码'，能够立即从'多层循环'中退出来，通常与if条件语句配合使用
+        -> 使用标签和 goto 语句是'不被鼓励'的：它们会很快导致非常糟糕的程序设计，而且总有更加可读的替代方案来实现相同的需求
+        func xxx() {
+            ...
+            LABEL:
+                ...
+                    goto LABEL
+                ...
+        }
+
+    |continue -> 在 continue 语句后添加标签时，表示继续执行标签对应的'外层循环'
+
+|switch -> Go 语言的 switch不仅可以基于'常量'进行判断，还可以基于'表达式'进行'判断'
+    -> C/C++ 语言中的 switch 语句只能支持数值常量，不能对字符串、表达式等复杂情况进行处理，这么设计的主要原因是性能。C/C++ 的 switch 可以根据 case 的值作为偏移量直接跳转代码，在性能敏感代码处，这样做显然是有好处的
+    -> 到了 Go 语言的时代，语言的运行效率并不能直接决定最终的效率，IO是最主要的问题
+        //'case不需要break'
+        var a = "hello"
+        switch a {
+        case "hello":
+            fmt.Println(1)
+        case "world":
+            fmt.Println(2)
+        default:
+            fmt.Println(0)
+        }
+        //多值分支
+        var a = "mum"
+        switch a {
+        case "mum", "daddy":
+            fmt.Println("family")
+        }
+        //表达式判断
+        var r int = 11
+        switch r {
+        case r > 10 && r < 20:
+            fmt.Println(r)
+        }
+        //使用 fallthrough 来强制执行下一个 case 代码块
+        m := "y"
+    	switch m {
+    	case 'x':
+    		fmt.Println("XXX")
+    	case 'y':
+    		fallthrough
+    	case 'e':
+    		fmt.Print("EEE") //会强制执行
+    	default:
+    		fmt.Println("Default")
+    	}
+        >>> EEE
+
+|类型断言 -> 使用在'接口值'上的操作，对象必须是接口类型值，或interface{}(element)
+    v,ok := element.(InterfaceType) //断言失败不会产生运行时错误, 而是(类型零值, false)
+    v := element.(InterfaceType) //类型对则只取对象值,错则'发生panic中断程序,不建议使用'
+        v: 对象值; ok: 类型判断是否正确
+    -> 如果断言的操作对象是一个'nil接口值'，那么不论被断言的类型T是什么这个断言'都会失败'
+    //一般采用switch断言
+    switch value := element.(type) { //type只能用在switch里. '没有接收参数只判断类型'
+	case string:
+		fmt.Printf("html[%d] is a string and its value is %s\n", value)
+	case []byte:
+		fmt.Printf("html[%d] is a []byte and its value is %s\n", string(value))
+	case int:
+		fmt.Printf("invalid type\n")
+	default:
+		fmt.Printf("unknown type\n")
+	}
+
+|数字类型
+    1.uint：uint8，uint16，uint32，uint64 -> 无符号整型, '只能表示正数'
+        |使用场景 -> 表示'地址、索引'等, 用于'位运算符'和'特定算术运算符'
+        -> uint8就是 'byte' 型，代表一个'ASCII字符码'，表示字节，字符
+            |ASCII（American Standard Code for Information Interchange，美国信息交换标准代码）
+                -> 0～31及127(共33个)是控制字符或通信专用字符（其余为可显示字符），如控制符：LF（换行）、CR（回车）、FF（换页）、DEL（删除）、BS（退格)、BEL（响铃）等；通信专用字符：SOH（文头）、EOT（文尾）、ACK（确认）等；ASCII值为8、9、10 和13 分别转换为退格、制表、换行和回车字符。它们并没有特定的图形显示，但会依不同的应用程序，而对文本显示有不同的影响
+                -> 32～126(共95个)是字符(32是空格），其中48～57为0到9十个阿拉伯数字
+                -> 65～90为26个大写英文字母，97～122号为26个小写英文字母，其余为一些标点符号、运算符号等
+    2.int：int8，int16，int32，int64
+        -> 'rune' 类型属于int32，代表一个'UTF-8字符'。处理中文等非英字符时需用rune 类型
+            -> Unicode 是为了解决传统的字符编码方案的局限而产生的，它为每种语言中的每个字符设定了统一并且唯一的二进制编码. 广义的 Unicode 指一个标准，定义字符集及编码规则，即 Unicode 字符集和 UTF-8、UTF-16 编码等
+            -> UTF-8 是编码规则，将 Unicode 中字符的 ID 以某种方式进行编码。UTF-8 的是一种变长编码规则，从 1 到 4 个字节不等。编码规则如下：
+                1. 0xxxxxx 表示文字符号 0～127，兼容 ASCII 字符集
+                2. 从 128 到 0x10ffff 表示其他字符
+    3.float：float32，float64（没有double了）
+    4.complex：complex64（实部和虚部都是float32），complex128（实部和虚部都是float64）
+
+-> Base64 编码是常见的对 8 比特字节码的编码方式之一。Base64 可以使用 64 个可打印字符来表示二进制数据，'电子邮件'就是使用这种编码
+
+|Bool -> Golang不允许将整型强制转换为布尔型,布尔型无法参与数值运算,也'无法与其他类型进行转换'

@@ -1,0 +1,109 @@
+-> 支持反射的语言可以在程序编译期将变量的反射信息，如字段名称、类型信息、结构体信息等整合到可执行文件中，并给程序提供接口访问反射信息，这样就可以在程序运行期获取类型的反射信息，并且有能力修改它们
+-> Go 程序的反射系统无法获取到一个可执行文件空间中或者是一个包中的所有类型信息，需要配合使用标准库中对应的词法、语法解析器和抽象语法树（AST）对源码进行扫描后获得这些信息
+
+import (
+    "reflect"
+    "fmt"
+)
+1. s := reflect.TypeOf(v).String()
+2. s := fmt.Sprintf("%T", v) //fmt.Sprintf(...)里最终调用的还是reflect.TypeOf()
+
+ty = reflect.TypeOf(ins)
+fmt.Println(ty.Name(), ty.Kind()) //Name: 直接类型; Kind: 根本类型，如:Cat Struct
+typeOfPointer.Elem() //对指针变量获取反射对象时,获取这个指针指向的元素类型,等效于 *ptr
+
+-> 任意值通过 reflect.TypeOf() 获得反射对象信息后，如果它的类型是'结构体'，可以通过反射值对象（reflect.Type）的 NumField() 和 Field() 方法获得结构体成员的详细信息
+    |'结构体成员访问'的方法列表
+    方法	                      说明
+    Field(i int) StructField   根据索引返回对应字段信息.当对象不是结构体或索引超界时发生宕机
+    NumField() int	返回结构体成员字段数量。当类型不是结构体或索引超界时发生宕机
+    FieldByName(name string) (StructField, bool)	根据给定字符串返回字符串对应的结构体字段的信息。没有找到时 bool 返回 false，当类型不是结构体或索引超界时发生宕机
+    FieldByIndex(index []int) StructField	多层成员访问时，根据 []int 提供的每个结构体的字段索引，返回字段的信息。没有找到时返回零值。当类型不是结构体或索引超界时发生宕机
+    FieldByNameFunc( match func(string) bool) (StructField,bool)	根据匹配函数匹配需要的字段。当值不是结构体或索引超界时发生宕机
+
+    typeOfCat := reflect.TypeOf(ins)  //typeOfCat.Field(n)获取的是'字段类型'
+    valueOfCat := reflect.ValueOf(ins) //valueOfCat.Field(n)获取的是'字段值'
+    // 遍历结构体所有成员
+    type S struct {
+    	int
+    	name string `Tag:xxx` //':前后不可有空格'
+            //reflect.TypeOf(ins).Field(1).Tag -> `Tag: xxx`,type:reflect.StructTag
+            //reflect.TypeOf(ins).Field(1).Name -> "name"
+            //reflect.TypeOf(ins).Field(1).Type -> "string"
+            //reflect.TypeOf(ins).Field(1).Index -> 1
+    	ok bool
+	}
+    for i := 0; i < typeOfCat.NumField(); i++ {
+        fieldType := typeOfCat.Field(i) // 获取每个成员的结构体字段类型
+        // 输出成员名和tag。结构体tag是'结构体字段的额外信息标签'
+        fmt.Printf("name: %v  tag: '%v'\n", fieldType.Name, fieldType.Tag)
+    }
+    // 通过字段名, 找到字段类型信息
+    if catType, ok := typeOfCat.FieldByName("Type"); ok {
+        // 从tag中取出需要的tag
+        fmt.Println(catType.Tag.Get("json"), catType.Tag.Get("id"))
+    }
+    -> Tag 在结构体字段后方书写的格式: `key1:"value1" key2:"value2"`
+    -> 使用 reflect.ValueOf(ins) 获取变量的值
+        -> 反射值对象reflect.ValueOf(ins)有以下方法
+            reflect.ValueOf(ins).IsNil() //常被用于判断'指针是否为空'
+            reflect.ValueOf(ins).IsValid() //常被用于判定'返回值是否有效'
+            reflect.ValueOf((*int)(nil)).Elem().IsValid() // *int类型空指针
+            reflect.ValueOf(ins).FieldByName("").IsValid()
+            reflect.ValueOf(ins).MethodByName("").IsValid()
+            reflect.ValueOf(ins).MapIndex(reflect.ValueOf(3)).IsValid()
+
+|通过反射修改变量的值
+    反射值对象的判定及获取元素的方法
+    方法名	          备注
+    Elem() Value	获取指针对象指向的元素值，类似于语言层*操作。当值类型不是指针或接口时发生宕机，空指针时返回 nil 的 Value
+    Addr() Value	对可寻址的值返回其地址，类似于语言层&操作。当值不可寻址时发生宕机
+    CanAddr() bool	表示值是否可寻址
+    CanSet() bool	返回值能否被修改。要求值可寻址且是导出的字段
+
+    反射值对象修改值的方法
+    //Set(x Value)	//将值设置为传入的反射值对象的值
+    Setlnt(x int64)	使用 int64 设置值。当值的类型不是 int、int8、int16、 int32、int64 时会发生宕机
+    SetUint(x uint64)	使用 uint64 设置值。当值的类型不是 uint、uint8、uint16、uint32、uint64 时会发生宕机
+    SetFloat(x float64)	使用 float64 设置值。当值的类型不是 float32、float64 时会发生宕机
+    SetBool(x bool)	使用 bool 设置值。当值的类型不是 bod 时会发生宕机
+    SetBytes(x []byte)	设置字节数组 []bytes值。当值的类型不是 []byte 时会发生宕机
+    SetString(x string)	设置字符串值。当值的类型不是 string 时会发生宕机
+    -> 以上方法，在 reflect.ValueOf(ins) 的 CanSet 返回 false 仍然修改值时会发生宕机
+
+    -> 值可修改条件之一：'可被寻址',即变量必须能被修改(切片，map，结构体)
+    -> 值可修改条件之二：'被导出',字段名首字母大写
+
+|通过反射信息创建实例
+    var a int
+    typeOfA := reflect.TypeOf(a) // 取变量a的反射类型对象
+    aIns := reflect.New(typeOfA) // 根据反射类型对象创建类型实例
+    fmt.Println(aIns.Type(), aIns.Kind()) // 输出Value的类型和种类
+
+|通过反射调用函数 -> 如果反射值对象（reflect.Value）中值的类型为函数时，可以通过 reflect.Value 调用该函数。使用反射调用函数时，需要将参数使用反射值对象的切片 []reflect.Value 构造后传入 Call() 方法中，调用完成时，函数的返回值通过 []reflect.Value 返回
+    func add(a, b int) int { // 普通函数
+        return a + b
+    }
+    func main() {
+        funcValue := reflect.ValueOf(add) // 将函数包装为反射值对象
+        // 构造函数参数, 传入两个整型值
+        paramList := []reflect.Value{reflect.ValueOf(10), reflect.ValueOf(20)}
+        retList := funcValue.Call(paramList) // 反射调用函数
+        fmt.Println(retList[0].Int()) // 获取第一个返回值, 取整数值
+    }
+    -> 反射调用函数的过程需要构造大量的 reflect.Value 和中间变量，对函数参数值进行逐一检查，还需要将调用参数复制到调用函数的参数内存中。调用完毕后，还需要将返回值转换为 reflect.Value，用户还需要从中取出调用值。因此，反射调用函数的性能问题尤为突出，'不建议大量使用反射函数调用'
+
+|效率 -> 大量使用反射会降低效率
+    -> 随着结构体字段数量和相对位置的变化，FieldByName() 方法会比较严重的降低效率
+    -> 反射函数调用的参数构造过程非常复杂，构建很多对象会造成很大的内存回收负担。Call() 方法内部就更为复杂，需要将参数列表的每个值从 reflect.Value 类型转换为内存。调用完毕后，还要将函数返回值重新转换为 reflect.Value 类型返回。因此，'反射调用函数的性能堪忧'
+    -> 使用反射的'结构体成员赋值'，比原生赋值多消耗 13 倍的性能
+    -> 反射查找结构体成员且反射赋值，操作耗时 91.6 纳秒，扣除反射结构体成员赋值的 4.42 纳秒还富余，性能大概是原生的 272 倍。这个测试结果与代码分析结果很接近。SetInt 的性能可以接受，但 FieldByName() 的性能就非常低
+    -> 反射函数调用，性能差到爆棚，操作耗时比原生多消耗 494 倍
+
+    1.能使用原生代码时，尽量避免反射操作
+    2.'提前缓冲反射值对象'，对性能有很大的帮助
+    3.避免反射函数调用，实在需要调用时，先提前缓冲函数参数列表，并且尽量少地使用返回值
+
+|控制反转IOC & 依赖注入DI
+
+|sqlmock -> gorm单元测试工具

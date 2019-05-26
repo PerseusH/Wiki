@@ -1,0 +1,5 @@
+|Mysql -> 字段类型，索引，表扫描，碎片整理，Explain, BTree/B+Tree
+|Redis
+|Mongo
+|列存储
+|序数据

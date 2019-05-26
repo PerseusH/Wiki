@@ -1,7 +1,31 @@
 -> 变量是数据'内存地址的别名'
 -> 支持动态初始化，编译器会自动推导变量类型
 var m = map[string]string{"孔飞力": "叫魂", "唐诺": "世间的名字", "费孝通": "乡土中国"}
--> 已声明变量如果未被使用，'编译时会报错'
+-> 已声明变量如果未被使用(赋值也不算被使用)，'编译时会报错'
+-> 不能用简短声明方式来单独为一个'变量重复声明'，:= 左侧至少有一个新变量，才允许多变量的重复声明
+    one := 0
+	one, two := 1, 2
+
+//'报错',声明时不指定类型，编译器无法推断出变量的具体类型
+var x = nil
+x := nil
+//'编译通过'
+var x interface{} = nil
+x := interface{}(nil)
+-> 'string,int,bool,数组,结构体'等类型'不能用nil初始化'。'切片,map,接口可以使用nil初始化'
+-> '接口在底层的实现'有两个部分：'type 和 data'。'显式地'将 nil 赋值给接口时，接口的 type 和 data 都将为 nil。此时，接口与 nil 值判断是'相等的'。但如果将一个带有类型的 nil 赋值给接口时，只有 data 为 nil，而 type 不为 nil，此时，接口与 nil 判断将不相等
+    func GetStringer() fmt.Stringer {
+        var s *MyImplement = nil // 赋nil
+        return s // 返回变量
+    }
+    -> 为了避免这类误判的问题，可以在函数返回时，发现带有 nil 的指针时'直接返回 nil'
+    func GetStringer() fmt.Stringer {
+        var s *MyImplement = nil
+        if s == nil {
+            return nil
+        }
+        return s
+    }
 
 -> 如果声明变量时，没有显式初始化，则被'隐式初始化'为变量类型的零值
     |不同类型的零值
@@ -10,13 +34,17 @@ var m = map[string]string{"孔飞力": "叫魂", "唐诺": "世间的名字", "�
         布尔          false
         接口或引用类型  nil
 
--> 获取变量类型
-    import (
-        "reflect"
-        "fmt"
-    )
-    1. s := reflect.TypeOf(v).String()
-    2. s := fmt.Sprintf("%T", v) //fmt.Sprintf(...)里最终调用的还是reflect.TypeOf()
+-> 以小写字母开头的字段成员是无法被外部直接访问的，所以 struct 在进行 json、xml、gob 等格式的 encode 操作时，这些私有字段会被忽略，导出时得到零值
+	in := MyData{1, "two"}
+	fmt.Printf("%#v\n", in)	// main.MyData{One:1, two:"two"}
+
+	encoded, _ := json.Marshal(in)
+	fmt.Println(string(encoded))	// {"One":1}	// 私有字段 two 被忽略了
+
+	var out MyData
+	json.Unmarshal(encoded, &out)
+	fmt.Printf("%#v\n", out) 	// main.MyData{One:1, two:""}
+
 
 -> 字面量就是指这个量本身，比如字面量3也就是指3. 再比如"ABC"就是string类型的字面量
 

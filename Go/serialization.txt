@@ -1,0 +1,145 @@
+|序列化 -> 对象序列化的最主要的用处就是在传递和保存对象的时候，保证对象的完整性和可传递性。序列化是把对象转换成有序字节流(通用格式，如为二进制、xml、json等)，以便在网络上传输或者保存在本地文件中
+|反序列化 -> 客户端从文件中或网络上获得序列化后的对象字节流后，根据字节流中所保存的对象状态及描述信息，通过反序列化重建对象
+-> 使用序列化主要是因为'跨平台网络传输'和'对象存储'的需求，因为'网络'上只允许'字符串或者二进制'格式，而文件需要使用二进制流格式，如果想把一个内存中的对象存储下来就必须使用序列化转换为xml（字符串）、json（字符串）或二进制（流）
+-> 网络传输上面类似数据时，记得要考虑'粘包问题'
+-> 序列化就是把实体对象状态按照一定的格式写入到有序字节流，反序列化就是从有序字节流重建对象，恢复对象状态
+|序列化的好处
+    1.'数据的持久化', 永久性保存对象，保存对象的字节序列到本地文件或者数据库中
+    2.实现远程通信, 通过序列化以字节流的形式使对象在'网络中传递和接收'
+    3.通过序列化在'进程间传递对象'
+
+|Golang 序列化的方式
+    方式	      优点                  缺点
+    binary	   '性能高'	           不支持不确定大小类型 int、slice、string
+    gob	       支持多种类型	         '性能低于json'
+    json	   支持多种类型	         '性能低于 binary 和 protobuf'
+    protobuf   支持多种类型,'性能最高'  需单独存放结构，如果结构变动需重新生成.pb.go文件
+
+    1.Binary -> encoding/binary包实现了简单的数字（'固定长度'的数字类型或者只包含定长值的结构体或数组）与字节序列的转换以及变长值的编解码.如果字段中有不确定大小的类型，如int，slice，string 等，则会报错
+        func Write(w io.Writer, order ByteOrder, data interface{}) error
+        -> 序列化，将数据转换成byte字节流，order指定字节序
+        func Read(r io.Reader, order ByteOrder, data interface{}) error
+        -> 反序列化，将字节流转换成原始数据
+        |order
+            binary.BigEndian（大端模式）：内存的低地址存放着数据高位
+            binary.LittleEndian(小端模式)：内存的低地址存放着数据地位
+
+        import (
+        	"bytes"
+        	"encoding/binary"
+        	"fmt"
+        	"log"
+        )
+        func main(){
+        	//序列化
+        	var dataA uint64=6010
+        	var buffer bytes.Buffer
+        	err1 := binary.Write(&buffer, binary.BigEndian, &dataA)
+        	if err1!=nil{
+        		log.Panic(err1)
+        	}
+        	byteA:=buffer.Bytes()
+        	fmt.Println("序列化后：",byteA)
+
+        	//反序列化
+        	var dataB uint64
+        	var byteB []byte=byteA
+        	err2:=binary.Read(bytes.NewReader(byteB),binary.BigEndian,&dataB)
+        	if err2!=nil{
+        		log.Panic(err2)
+        	}
+        	fmt.Println("反序列化后：",dataB)
+        }
+    2.Gob -> 针对 binary 不能直接使用 string 和 slice 问题，可以使用 gob
+        import (
+        "encoding/gob"
+        "bytes"
+        "fmt"
+        "log"
+        )
+        type Message2 struct {
+            Id   uint64
+            Size uint64
+            Data string
+        }
+
+        func GobEncodeDecode() {
+            m1 := Message2{2, 1024, "gob"}
+            var buf bytes.Buffer
+
+            enc := gob.NewEncoder(&buf)
+            dec := gob.NewDecoder(&buf)
+
+            if err := enc.Encode(m1); err != nil {
+                log.Fatal("encode error:", err)
+            }
+
+            var m2 Message2
+            if err := dec.Decode(&m2); err != nil {
+                log.Fatal("decode error:", err)
+            }
+        }
+    3.JSON
+        import (
+        "encoding/json"
+        "fmt"
+        )
+        type Change struct {
+            Mid     int
+            Actions []string
+        }
+        type Change_slice struct {
+            ChgArr []Change
+        }
+        func main() {
+            // 对象序列化为json字符串
+            var c1, c2 Change
+            var msg Change_slice
+            c1.Mid = 1
+            c1.Actions = []string{"view", "add"}
+            c2.Mid = 2
+            c2.Actions = []string{"delete", "add", "update"}
+            msg.ChgArr = []Change{c1, c2}
+            fmt.Println(msg)
+            b, er := json.Marshal(msg) //.
+            if er == nil {
+            fmt.Println(string(b))
+            }
+
+            // json字符串反序列化为对象
+            var str string = `{"ChgArr":[{"Mid":1,"Actions":["view","add"]},{"Mid":2,"Actions":["delete","add","update"]}]}`
+            var msgs Change_slice
+            err := json.Unmarshal([]byte(str), &msgs) //.
+            if err != nil {
+            fmt.Println("Can't decode json message", err)
+            } else {
+            fmt.Println(msgs)
+            }
+        }
+    4.Protobuf
+        syntax = "proto2";
+        package example;
+
+        message Message {
+            required uint64 id = 1;
+            required uint64 size = 2;
+            required string data = 3;
+        }
+        func ProtoEncodeDecode() {
+            m1 := &example.Message{
+                Id:   proto.Uint64(4),
+                Size: proto.Uint64(1024),
+                Data: proto.String("proto"),
+            }
+
+            buf, err := proto.Marshal(m1)
+            if err != nil {
+                log.Fatal("proto marshal error:", err)
+            }
+
+            var m2 example.Message
+            if err = proto.Unmarshal(buf, &m2); err != nil {
+                log.Fatal("proto unmarshal error:", err)
+            }
+            fmt.Println(m2.GetId(), m2.GetSize(), m2.GetData())
+        }

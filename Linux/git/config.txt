@@ -1,0 +1,26 @@
+\初始化配置(用户的git配置文件~/.gitconfig)
+    git config --global user.name "USERNAME"    #配置姓名
+    git config --global user.email email        #配置email
+    git config -l                               #列举所有配置
+    git config --global credential.helper 'cache --timeout=3600' #修改缓存时间
+    git config --global credential.helper cache #配置到缓存 默认15分钟
+    git config --global color.ui true
+    git config --global alias.co checkout
+    git config --global alias.ci commit
+    git config --global alias.st status
+    git config --global alias.br branch
+    git config --global core.editor "mate -w"   #设置Editor使用textmate
+
+\github(acfdc768bd59823972b74f3f5391f702720b6b89)
+    -> repo -> settings(last part) -> delete #删除repo
+    -> github-pages只能建立在master/master-docs/gh-pages之上
+
+cat ~/.gitconfig #本地git配置(用户名，email，秘钥，命令简写)
+    [user]
+        name = PerseusH
+        email = 584148102@qq.com
+    [credential]
+        helper = osxkeychain
+    [alias]
+        co = checkout
+cat .git/config  #本地仓库配置

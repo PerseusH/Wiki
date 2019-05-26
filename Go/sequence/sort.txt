@@ -12,7 +12,7 @@ func IntsAreSorted(a []int) bool　　       //判断int切片'是否已经按�
 func Strings(a []string)                  //Strings 以升序排列 string 切片
 func StringsAreSorted(a []string) bool    //判断 string 切片是否已经按升序排列
 
-func Sort(data Interface)                 //对data进行排序。它调用一次 data.Len 来决定排序的长度 n，调用 data.Less 和 data.Swap 的开销为O(n*log(n))。此排序为'不稳定排序',根据不同数据决定使用不同的排序方式（插入排序，堆排序，快排）.排序前先把切片转换为sort内置类型
+func Sort(data Interface)                 //对data进行排序。它调用一次 data.Len 来决定排序的长度 n，调用 data.Less 和 data.Swap 的开销为O(n*log(n))。此排序为'不稳定排序',根据不同数据决定使用不同的排序方式（插入排序，堆排序，快排）.'排序前先把切片转换为sort内置类型'
 func Stable(data Interface)               //Stable对data进行排序，不过排序过程中，如果data中存在相等的元素，则他们原来的顺序不会改变,即如果有两个相等元素num,他们的初始index分别为i和j,并且i<j,则利用Stable对data进行排序后,i依然小于ｊ,直接利用sort进行排序则不能够保证这一点
 func Reverse(data Interface) Interface    //降序排列,排序前先把切片转换为sort内置类型
     -> 转换三种内置Slice的 Interface.Less 方法来实现逆向排序
@@ -72,3 +72,57 @@ func SearchStrings(a []string, x string) int  //在strings切片中搜索x并返
         func (p StringSlice) Search(x string) int
         func (p StringSlice) Sort()
         func (p StringSlice) Swap(i, j int)
+
+//自定义类型排序
+import (
+    "fmt"
+    "sort"
+)
+// 将[]string定义为MyStringList类型
+type MyStringList []string
+// 实现sort.Interface接口的获取元素数量方法
+func (m MyStringList) Len() int {
+    return len(m)
+}
+// 实现sort.Interface接口的比较元素方法
+func (m MyStringList) Less(i, j int) bool {
+    return m[i] < m[j]
+}
+// 实现sort.Interface接口的交换元素方法
+func (m MyStringList) Swap(i, j int) {
+    m[i], m[j] = m[j], m[i]
+}
+func main() {
+    // 准备一个内容被打乱顺序的字符串切片
+    names := MyStringList{
+        "3. Triple Kill",
+        "5. Penta Kill",
+        "2. Double Kill",
+        "4. Quadra Kill",
+        "1. First Blood",
+    }
+    // 使用sort包进行排序
+    sort.Sort(names)
+    // 遍历打印结果
+    for _, v := range names {
+            fmt.Printf("%s\n", v)
+    }
+}
+
+//对结构体序列排序，关键在于Less的内容会比较复杂，Len和Swap没有特别之处
+func (s Heros) Less(i, j int) bool {
+    if s[i].Kind != s[j].Kind { // 如果英雄的分类不一致时, 优先对分类进行排序
+        return s[i].Kind < s[j].Kind
+    }
+    return s[i].Name < s[j].Name // 默认按英雄名字字符升序排列
+}
+
+//Go 1.8在sort包中提供了sort.Slice()对复杂类型进行更为简便的排序。sort.Slice只要求传入需要排序的数据，以及一个排序时对元素的'回调函数'，类型为 func(i,j int)bool，sort.Slice定义如下
+    func Slice(slice interface{}, less func(i, j int) bool)
+
+    sort.Slice(heros, func(i, j int) bool {
+            if heros[i].Kind != heros[j].Kind {
+                return heros[i].Kind < heros[j].Kind
+            }
+            return heros[i].Name < heros[j].Name
+        })

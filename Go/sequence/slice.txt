@@ -13,6 +13,7 @@ slice = slice[0:0] //把切片的开始和结束位置都设为0时，'生成的
     -> 修改函数内切片元素值，原切片也相应改变
     -> 如果在函数内，append操作'超过了原切片的容量'，将会'新建底层数组'，此时再修改函数内切片，不会影响原切片. append不超过容量，函数内切片依然和原切片共享底层数组
         -> 容量的扩展规律按容量的 2 倍数扩充，例如 1、2、4、8、16...
+        -> 使用append时,需使用预分配空间的方式声明定义切片变量,以避免append扩容'多次分配空间'
 
 1.可以声明一个'未指定大小的数组'来定义切片. 一个切片在未初始化之前默认为nil，长度为0
     var slc []int //slc == nil, 未分配内存
@@ -42,13 +43,14 @@ var slc []int = make([]int, 0) //cap(slc) >>> 0
 len(slc) //获取切片长度
 cap(slc) //测量切片最长可以达到多少(切片容量)。len(slc)结果并不总是等于cap
 slc = append(slc, 2,3,4) //向已声明(不需初始化)切片添加元素
+    -> nil slice可通多append来获得底层数组的扩容，调用mallocgc申请内存，从而添加元素
 copy(slc1, slc2) //拷贝slc2的内容到slc1. '深拷贝',拷贝前需初始化申请空间
 
 //这个函数使用任意数目的int作为参数
 func sum(nums ...int){
 	fmt.Println(nums,"")
 	total := 0
-	for _, num := range nums{
+	for _, num := range nums{ //for x := range nums x获取的是索引值
 		total += num
 	}
 	fmt.Println(total)

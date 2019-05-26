@@ -1,0 +1,12 @@
+|生产者消费者模式 -> 消息队列
+|多态 -> 接口
+|解耦
+|领域驱动设计
+|工厂模式
+|单例模式
+|反射 -> 元类型，orm
+|内存管理 -> 变量内存，闭包，GC，内存泄漏
+|Task -> Process, Thread, Coroutine/Goroutine，Lock
+|Test
+|RestAPI
+|Template

@@ -1,0 +1,118 @@
+-> Go语言中没有Object这样的元类型，而不包含任何数据和方法的interface{}就是'元类型'. interface是整个'类型系统'的基石，'多态'可以通过接口实现
+-> 把所有的具有共性的方法定义在一起，任何其他类型'只要实现了这些方法就是实现了这个接口'
+-> 当一个接口中有多个方法时，只有这些'方法都被实现'了，'接口才能被正确编译并使用'
+-> '非侵入式接口设计'是 Go 语言设计师经过多年的大项目经验总结出来的设计之道。只有让接口和实现者真正解耦，编译速度才能真正提高
+-> 在被导出(首字母大写)的结构体或接口中，如果它们的字段或方法首字母大写，外部可访问这些字段和方法
+
+|interface{}&泛型？？？
+
+|空接口 -> 空接口的内部实现保存了对象的类型和指针。用空接口保存数据比直接用数据对应类型保存'稍慢'
+    -> 保存有类型不同的值的空接口进行比较时，Go会'优先比较值的类型'。类型不同，比较结果也不相同
+    var i interface{} = x //x可以是'任意类型的值'，等于i := interface{}(x)
+    var b int = i //编译报错
+    var b int = i.(int) //编译通过，并且 b 可以获得 i 变量保存的值
+
+    空接口保存类型的可比较性
+    类  型	    说  明
+    map	          宕机错误，不可比较
+    切片（[]T）	   宕机错误，不可比较
+    通道（channel）可比较，必须由同一个 make 生成，也就是同一个通道才会是 true，否则为 false
+    数组（[容量]T） 可比较，编译期知道两个数组是否一致
+    结构体	        可比较，可以逐个比较结构体的值
+    函数	         可比较
+
+//定义一个接口
+type Namer interface {
+  SetName(name string)
+  GetName() string //方法 类型
+}
+
+type Dog struct {
+  dogName string
+}
+
+func (dog Dog) Run() {
+  // ......
+}
+
+//实现SetName方法
+func (dog *Dog) SetName(name string) {
+    dog.dogName = name
+}
+
+//实现GetName方法
+func (dog *Dog) GetName() string {
+    return dog.dogName
+}
+-> 上面Dog类型定义了三个方法，其中SetName和GetName两个方法和接口Namer的'方法完全相同'，这就相当于Dog类型'实现了Namer接口'。不需要用类似class Dog: Namer显式声明实现了哪个接口
+
+//接口嵌套 一个接口可以嵌套在另外的接口
+type Reader interface {
+    Read()
+}
+type Writer interface {
+    Write()
+}
+type ReadWriter interface {
+    Reader
+    Writer
+}
+
+// 函数体实现接口
+type Invoker interface {
+    Call(interface{})// 需要实现一个Call方法
+}
+type FuncCaller func(interface{})
+func (f FuncCaller) Call(p interface{}) {// 实现Invoker的Call
+    f(p)// 调用f()函数本体
+}
+
+var invoker Invoker// 声明接口变量
+invoker = FuncCaller(func(v interface{}) {//将匿名函数转为FuncCaller型,赋值给接口
+    fmt.Println("from function", v)
+})
+invoker.Call("hello")// 使用接口调用FuncCaller.Call, 内部会调用函数本体。"多态实现"
+
+//HTTP包中函数体实现接口的例子。HTTP 包中包含有 Handler 接口定义
+type Handler interface {//用于定义每个 HTTP 的请求和响应的处理过程。
+    ServeHTTP(ResponseWriter, *Request)
+}
+//使用处理函数实现接口
+type HandlerFunc func(ResponseWriter, *Request)
+func (f HandlerFunc) ServeHTTP(w ResponseWriter, r *Request) {
+    f(w, r)
+}
+//要使用闭包实现默认的 HTTP 请求处理，可以使用 http.HandleFunc() 函数
+func HandleFunc(pattern string, handler func(ResponseWriter, *Request)) {
+    DefaultServeMux.HandleFunc(pattern, handler)
+}
+//而 DefaultServeMux 是 ServeMux 结构，拥有 HandleFunc() 方法
+func (mux *ServeMux) HandleFunc(pattern string, handler func
+(ResponseWriter, *Request)) {
+    mux.Handle(pattern, HandlerFunc(handler))
+}
+-> 上面代码将外部传入的函数 handler() 转为 HandlerFunc 类型，HandlerFunc 类型实现了 Handler 的 ServeHTTP 方法，底层可以同时使用各种类型来实现 Handler 接口进行处理
+
+|接口嵌套组合
+    type Writer interface {
+        Write(p []byte) (n int, err error)
+    }
+    type Closer interface {
+        Close() error
+    }
+    type WriteCloser interface { //WriteCloser 同时拥有了 Writer 和 Closer 的特性
+        Writer
+        Closer
+    }
+
+    //实现
+    func (d *device) Write(p []byte) (n int, err error) {
+        return 0, nil
+    }
+    func (d *device) Close() error {
+        return nil
+    }
+    // 声明写入关闭器, 并赋予device的实例
+    var wc io.WriteCloser = new(device)
+    wc.Write(nil)
+    wc.Close()

@@ -7,7 +7,7 @@
     |格式占位符
         普通占位符
         占位符     说明                           举例                   输出
-        %v      相应值的默认格式。           Printf("%v", people)   {zhangsan}，
+        %v      相应值的'默认格式'           Printf("%v", people)   {zhangsan}，
         %+v     打印结构体时，会添加字段名     Printf("%+v", people)  {Name:zhangsan}
         %#v     相应值的Go语法表示            Printf("#v", people)   main.Human{Name:"zhangsan"}
         %T      输出变量的实际类型            Printf("%T", people)   main.Human
@@ -62,3 +62,22 @@
 |runtime
 
 |math
+
+|flag
+
+|regexp
+
+|http
+
+|net
+
+|errors
+
+|strings
+    strings.Index(str, substr) //子串正向定位索引值
+    strings.LastIndex(str, substr) //子串反向定位索引值
+    -> 字符串截取可以通过'切片+索引值'实现
+
+|log
+    log.Fatal("Fatal level log: log entry")		// 输出信息后，程序终止执行(宕机)
+    log.Panic("Panic level log: log entry")		// 输出信息后，程序终止执行(宕机)

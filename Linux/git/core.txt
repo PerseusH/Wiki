@@ -1,0 +1,89 @@
+-> 冲突的本质是本地commit和远程拉取的commit间的冲突
+
+\Start
+    git init #初始化一个本地仓库(add .git dir,删除本级.git,本级文件／目录权限收归上级.git)
+    git clone git@xbc.me:wordpress.git #Clone远程仓库
+    |暂存区 -> 是个简单的文件，放在.git目录中(index)
+    |HEAD -> 当前分支的指针.指示当前位置
+    |origin -> clone完成后git为本地仓库设置的远程仓库的默认别名
+    |upstream -> fetch的上游目标仓库
+    -> Forking工作流需要2个远程别名 —— 一个指向正式仓库，另一个指向开发者自己的服务端仓库。别名的名字可以任意命名，常见的约定是使用origin作为远程克隆的仓库的别名（这个别名会在运行git clone自动创建），upstream（上游）作为正式仓库的别名
+
+\远程仓库管理
+    git remote add origin git@github:robbin/robbin.git #添加远程版本库origin
+    git remote set-url origin git@github:robbin/robbin.git #修改远程仓库地址
+    git remote set-head origin master #设置远程仓库的HEAD指向master分支
+
+    |设置本地分支跟踪远程分支
+    git branch --set-upstream-to=origin/remote local #new
+    git branch --set-upstream local origin/remote #old
+
+    git remote rm <repository> #删除远程仓库
+    git remote -v #查看远程服务器地址和仓库名称
+    git remote show origin #查看远程服务器仓库状态
+    git clone --bare robbin_site robbin_site.git  #用带版本的项目创建纯版本仓库
+    scp -r my_project.git git@git.csdn.net:~      #将纯仓库上传到服务器上
+    mkdir robbin_site.git&&cd robbin_site.git&&git --bare init #在服务器创建纯仓库
+
+\提交修改
+    git add .                 #添加当前修改的文件到暂存区
+    git add -u                #自动追踪文件，包括你已经手动删除的，状态为Deleted的文件
+    git commit –[a]m "xxx"    #提交到本地库. -am = git add . + git commit -m 'xxx'
+    git commit <file>|.       #提交到本地库. 需在文件中写注释
+    git commit --a            #git add + git rm + git commit
+    git commit --amend        #修改最近的commit注释，同时将暂存区新的改动提交至该commit
+                              #会更改上次的提交，并生成新的hash值
+    git push origin master    #推送到远程服务器
+    git cherry-pick <cmt_id>  #把已经提交的commit从一个分支添加到另一个分支
+
+    -> 忘记提交某些修改，下面的三条命令只会得到'一个提交'
+    git commit –m "xxx" && git add readme_forgotten && git commit --amend
+
+\Tag
+    -> 指向某个commit的指针,commit的别名.用作release note或标记发布的版本号
+    git tag                   #查看当前分支下所有标签信息
+    git tag -a <tag> [-m <comment>] <commitid> #给指定commit打标签
+    git tag -d <tag>          #删除本地标签
+    git push origin :<tag>    #删除远程标签(必须先删除本地标签)
+    git show <tag>            #查看标签下某版本信息
+    git checkout tag          #切换到标签
+    git push origin <tag>     #发布标签到远程(必须先创建本地标签)
+    git push origin --tags    #发布全部标签到远程
+
+
+\查看、添加、提交、删除、找回，重置修改文件
+    git status                #查看文件状态
+    git status --ignored      #查看忽略的文件
+    git help <checkoutmmand>  #显示checkoutmmand的help
+    git show $<cid>           #显示某次提交的内容
+    git blame <file-name>     #查看代码是谁写的
+
+    git rm <file>             #从当前跟踪列表移除文件，并完全删除
+    git rm –cached <file>     #仅在暂存区删除，保留文件在当前目录，不再跟踪
+    git mv <file> <file1>     #重命名文件
+
+    git stash                 #暂存所有未提交修改到堆栈(工作区和暂存区的uncommitted内容)
+                              #最近的修改索引为0，先进后出
+    git stash list            #列出所有暂存内容
+    git stash show <idx> [-p] #查看指定stash与当前工作区的差异, -p为显示详细信息
+    git stash drop <idx>      #删除指定索引的暂存内容
+    git stash clear           #清除所有暂存内容
+    git stash pop             #恢复最新暂存内容。可恢复到任意指定分支，并从堆栈中弹出该内容
+    git stash apply <idx>     #恢复暂存内容, 不会从堆栈中删除
+                              #apply可将堆栈中的内容多次应用到工作区，适用于多个分支场景
+    git stash save            #等于git stash
+    git stash branch          #从最新的stash创建分支
+
+\git diff
+    git diff <file>                  #比较当前文件和暂存区文件差异
+    git diff <$id1> <$id2>           #比较两次提交之间的差异
+    git diff <branch1>..<branch2> #在两个分支之间比较
+    git diff --staged                #比较暂存区和版本库差异
+    git diff --cached                #比较暂存区和版本库差异
+    git diff --stat                  #仅仅比较统计信息
+    -> Mac上可以使用tig代替diff和log，brew install tig
+
+\Git补丁管理(方便在多台机器上开发同步时用)
+    git diff > ../sync.patch         #生成补丁
+    git apply ../sync.patch          #打补丁
+    git apply --check ../sync.patch  #测试补丁能否成功

@@ -1,0 +1,225 @@
+-> 通道是一个队列，遵循先入先出的规则，保证收发数据的顺序。如果说goroutine是Go并发的执行体，那么通道就是他们之间的连接。通道是让一个goroutine发送特定的值到另外一个goroutine的'通信机制'。操作符 <- 用于指定通道的方向，发送或接收。如果未指定方向，则为双向通道
+-> 在任何时候，'同时只能有一个 goroutine 访问通道'进行发送和获取数据
+-> 通道内部的实现依然使用了'各种锁'，因此优雅代码的代价是性能
+var ch chan int //声明一个通道
+ch := make(chan int, capacity) //声明一个通道，使用chan关键字，通道在使用前必须先创建, capacity为缓存区大小，默认为0，即阻塞通道
+    c1:=make(chan int)        //无缓冲，cap为0
+    c2:=make(chan int, n)      //有缓冲，cap为n
+
+-> 通道有两种，有缓存和无缓存.有缓存通道只要缓存还没满，就不会阻塞；无缓存通道一开始就是阻塞的
+-> 有缓冲通道在发送时无需等待接收方接收即可完成发送过程，并且不会发生阻塞，只有当存储空间满时才会发生阻塞。如果有缓冲通道中有数据，接收时将不会发生阻塞，直到通道中没有数据可读时，通道将会再度阻塞
+ch <- value    //将一个数据value写入至channel，'释放被阻塞goroutine'
+    -> '无缓冲通道上的每次写操作都会被阻塞'，直到有其他goroutine从这个channel中读取数据，此时值才传送完成，两个goroutine都继续执行
+    -> '有缓存通道'上的写操作在'缓存已满'时才会阻塞gouroutine
+value := <-ch  //从channel中读取数据，'释放被阻塞goroutine'. '通道为空会导致阻塞'，直到channel中被写入数据(读取到数据)为止
+    <- ch //等待其他goroutine的写操作.执行该语句会'发生阻塞,直到读取到数据',但接收到的数据会被忽略. 表式只会向通道写数据.这个方式是通过通道在goroutine间阻塞收发实现'并发同步'
+    -> '无缓冲通道上的每次读操作都会被阻塞'，直到有其他goroutine向这个channel中写入数据
+    -> '有缓存通道'上的读操作在'没有数据'时才会阻塞gouroutine
+data, ok := <-ch //从通道接收数据，'语句不会阻塞'
+    data：接收到的数据。未读到数据时，data为通道类型零值
+    ok：是否接收到数据
+    -> '非阻塞通道'接收方法可能造成高的 CPU 占用，因此使用非常少。如果需要实现接收超时检测，可以配合 select 和计时器 channel 进行
+close(ch)      // 关闭channel. 关闭后的channel'可读不可写'
+    -> 通道关闭后,即便通道'没有数据',在获取时也'不会发生阻塞'，但此时取出数据会失败(0 false)
+    -> 向已关闭的channel'写数据'则会'报错宕机': panic: send on closed channel
+    -> 如果channel关闭，那么它的接收和发送goroutine队列必然空了，但它的'缓冲数组'可能还没有空
+
+-> 在一个值为 nil(未初始化)的 channel 上发送和接收数据将永久阻塞(死锁)
+    -> 利用这个死锁的特性，可以用在 select 中动态的打开和关闭 case 语句块
+        inCh := make(chan int)
+    	outCh := make(chan int)
+
+    	go func() {
+    		var in <-chan int = inCh
+    		var out chan<- int
+    		var val int
+    		for {
+    			select {
+    			case out <- val:
+    				println("--------")
+    				out = nil
+    				in = inCh
+    			case val = <-in:
+    				println("++++++++++")
+    				out = outCh
+    				in = nil
+    			}
+    		}
+    	}()
+    	go func() {
+    		for r := range outCh {
+    			fmt.Println("Result: ", r)
+    		}
+    	}()
+    	time.Sleep(0)
+    	inCh <- 1
+    	inCh <- 2
+    	time.Sleep(3 * time.Second)
+
+// 创建一个'空接口通道'，可以传输任何类型的数据
+ch := make(chan interface{})
+// 将0放入通道中
+ch <- 0
+// 将hello字符串放入通道中
+ch <- "hello"
+
+//通道数据遍历
+for data := range ch {
+...
+}
+
+|select(多路复用) -> 与epoll/poll/select功能类似，监听IO操作，IO发生时触发相应函数(回调)
+    -> 可以同时响应多个通道的操作,每个case对应一个通道的读写过程
+    1.如果有多个case都可以运行，select会'随机选出一个执行'，其他不会执行
+        ch := make (chan int, 1)
+        ch<-1
+        select {
+        case <-ch:
+            fmt.Println("case1")
+        case <-ch:
+            fmt.Println("case2")
+        }
+    2.case后面必须是channel操作，否则报错
+    3.select中的default子句'总是可运行'的。所以'没有default'的select'才会阻塞'
+        ch := make (chan int, 1)
+        // ch<-1   <= 注意这里备注了。
+        select {
+        case <-ch: //通道没有数据可读取，排除这个case
+            fmt.Println("case1")
+        default:
+            fmt.Println("default") //执行此句
+        }
+
+    |select 多路复用中可以接收的样式
+        操   作	  语句示例
+        接收任意数据	case <- ch;
+        接收变量	 case d :=  <- ch;
+        发送数据	 case ch <- 100;
+
+    |应用场景
+        1.timeout 机制(超时判断)
+            ch := make (chan int)
+            select {
+            case <-ch:
+            case <-time.After(time.Second * 1): //After代表多少时间后执行输出
+                fmt.Println("超时啦!")
+            }
+        2.判断channel是否阻塞(或者说channel是否已经满了)
+            ch := make (chan int, 1)  // 注意这里给的容量是1
+            ch <- 1
+            select {
+            case ch <- 2:
+            default:
+                fmt.Println("通道channel已经满啦，塞不下东西了!")
+            }
+        3.退出机制
+            go func() {
+                DONE:
+                for {
+                    time.Sleep(1*time.Second)
+                    fmt.Println(time.Now().Unix())
+                    i++
+
+                    select {
+                    case m := <-ch:
+                        println(m)
+                        break DONE // 跳出 select 和 for 循环
+                        //退出循环一定要用break+具体标记，或者goto也可以。否则不是真的退出
+                        goto DONE // 跳出 select 和 for 循环
+                    default:
+                    }
+                }
+            }()
+
+|管道 -> 通道可以用来连接goroutine，这样一个的输出是另一个输入
+    var echo chan string
+    var receive chan string
+    // 定义goroutine 1
+    func Echo() {
+        time.Sleep(1*time.Second)
+        echo <- "咖啡色的羊驼"
+    }
+    // 定义goroutine 2
+    func Receive() {
+        temp := <- echo // 阻塞等待echo的通道的返回
+        receive <- temp
+    }
+    func main() {
+        echo = make(chan string)
+        receive = make(chan string)
+        go Echo()
+        go Receive()
+        getStr := <-receive   // 接收goroutine 2的返回
+        fmt.Println(getStr)
+    }
+
+|单向通道 -> 只发送或是只接收的通道。当程序则够复杂的时候，为了代码可读性更高，拆分成一个一个的小函数是需要的。此时go提供了单向通道的类型，来实现函数之间channel的传递
+    ch := make(chan int)
+    var chSendOnly chan<- int = ch //声明一个只能发送的通道类型, 并赋值为ch
+    var chRecvOnly <-chan int = ch //声明一个只能接收的通道类型, 并赋值为ch
+
+    // 定义goroutine 1
+    func Echo(out chan<- string) {   // 定义输出通道类型
+        time.Sleep(1*time.Second)
+        out <- "xxx"
+        close(out)
+    }
+    // 定义goroutine 2
+    func Receive(out chan<- string, in <-chan string) { // 定义输出通道类型和输入类型
+        temp := <-in // 阻塞等待echo的通道的返回
+        out <- temp
+        close(out)
+    }
+    func main() {
+        echo := make(chan string)
+        receive := make(chan string)
+        go Echo(echo)
+        go Receive(receive, echo)
+        getStr := <-receive   // 接收goroutine 2的返回
+        fmt.Println(getStr)
+    }
+
+    //timer的Timer类型定义
+    type Timer struct {
+        C <-chan Time
+        r runtimeTimer
+    }
+    -> C 通道的类型就是一种只能接收的单向通道。如果此处不进行通道方向约束，一旦外部向通道发送数据，将会造成其他使用到计时器的地方逻辑产生混乱。因此，单向通道有利于代码接口的严谨性
+
+package main
+import (
+	"fmt"
+	"sync"
+)
+func test(s []int, c chan int, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for _, v := range s {
+		ret := <- c
+		fmt.Println(ret)
+		c <- v // 把 sum 发送到通道 c
+	}
+}
+func main() {
+	s := []int{7, 2, 8, -9, 4, 0}
+	c := make(chan int, 1)
+	done := make(chan bool)
+	defer close(c)
+	var wg sync.WaitGroup
+	c <- 0
+	go func() { //goroutine1
+		done <- true //无缓存通道写操作，goroutine1阻塞
+		fmt.Println("done!")
+	}()
+
+	fmt.Println("Channel begins:")
+	go test(s[:len(s)/2], c, &wg) //goroutine2，必须传入'wg的地址指针'
+	wg.Add(1)
+	go test(s[len(s)/2:], c, &wg) //goroutine3
+	wg.Add(1)
+
+	<- done //读取通道数据，释放被阻塞的goroutine, 执行剩余语句
+	wg.Wait()
+	ret := <-c
+	fmt.Println(ret)
+	fmt.Println("Channel ends")
+}

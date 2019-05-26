@@ -1,12 +1,17 @@
 -> 每个 Go 文件都属于且仅属于一个包
 -> 一个包可以由许多以 .go 为扩展名的源文件组成，因此'文件名和包名'一般来说都是'不同的'
--> package main表示一个可独立执行的程序，每个 Go 应用程序都包含一个名为 main 的包
+-> package main表示一个可独立执行的程序，每个 Go 应用程序都包含一个名为 main 的包。编译源码没有 main 包时，将无法编译输出可执行的文件
 -> 如果你打算编译包名不是为 main 的源文件，如 pack1，编译后产生的对象文件将会是 pack1.a 而不是可执行程序。*.a文件自动存放在$GOPATH/pkg文件夹下
 -> 一个包对应生成一个*.a文件，生成的文件名并不是包名+.a组成，应该是'目录名+.a'组成
 -> 每个'基层子目录'下'只能有一个包'，否则编译时会报错。子目录名称'不能以 _ 开头'
 -> go的package是以绝对路径GOPATH来寻址的，不要用相对路径来import
+-> 如果你 import 一个包，但包中的变量、函数、接口和结构体一个都'没有用到'的话，将'编译失败'
+-> 导入包会触发 init() 函数调用
     import "fmt" //"fmt"不是包名而是'路径'
-    import fm "fmt" //使用别名
+    import (
+        fm "fmt" //使用别名
+        "io"
+    )
     fmt.Println(...) //这里的fmt是'包名'
 
 -> 随着golang1.11的发布，go modules是官方提倡的新的包管理和项目管理机制，可以不再需要GOPATH
@@ -39,6 +44,8 @@
     -> main 包总是被'最后一个初始化'，因为它总是依赖别的包
     -> 避免出现循环 import，例如：A –> B –> C –> A
     -> 在同一个文件中，常量、变量、init()、main() '依次进行初始化'
+    -> init()的调用顺序为 main() 中引用的包，以深度优先顺序初始化
+    -> 同一个包中的多个 init() 函数的调用顺序不可预期
 
 |init 和 main 函数 -> init()、main()是go中的保留函数，两个函数区别如下
     |相同点 -> 两个函数在定义时不能有任何参数和返回值,只能由'go程序自动调用'，不可以被引用
@@ -48,11 +55,12 @@
     |bin -> go install main 目标目录(*.exe)
     |pkg -> go install hello|test 目标目录(*.a)
     |src
-        |hello
-            hello1.go
-            hello2.go
-        |main
-            main.go -> import "hello" func main(){...}
-        |test
-            unittest.go
-            benchmark.go
+        |project
+            |hello
+                hello1.go
+                hello2.go
+            |main
+                main.go -> import "project/hello" func main(){...} //必须为路径
+            |test
+                unittest.go
+                benchmark.go

@@ -1,6 +1,188 @@
--> 小写变大写
+|小写变大写
     x := "hello"
     for _, x := range x {
         x := x + 'A' - 'a'
         fmt.Printf("%c", x) // "HELLO" (每次循环一个字符)
     }
+
+|更高效地使用goroutine
+    -> 在 Go 语言中，开发者习惯将并发内容与 goroutine 一一对应地创建 goroutine。开发者很少会考虑 goroutine 在什么时候能退出和控制 goroutine 生命期，这就会造成 goroutine 失控的情况
+    // 一段耗时的计算函数
+    func consumer(ch chan int) {
+        // 无限获取数据的循环
+        for {
+            // 从通道获取数据
+            data := <-ch
+            // 打印数据
+            fmt.Println(data)
+        }
+    }
+    func main() {
+        // 创建一个传递数据用的通道
+        ch := make(chan int)
+        for {
+            // 空变量, 什么也不做
+            var dummy string
+            // 获取输入, 模拟进程持续运行
+            fmt.Scan(&dummy)
+            // 启动并发执行consumer()函数
+            go consumer(ch)
+            // 输出现在的goroutine数量
+            fmt.Println("goroutines:", runtime.NumGoroutine())
+        }
+    }
+    -> 这个程序实际在模拟一个进程根据需要创建 goroutine 的情况。运行后，问题已经被暴露出来：随着输入的字符串越来越多，goroutine 将会无限制地被创建，但并不会结束。这种情况如果发生在生产环境中，将会造成内存大量分配，最终使进程崩溃。现实的情况也许比这段代码更加隐蔽：也许你设置了一个退出的条件，但是条件永远不会被满足或者触发
+    -> 为了避免这种情况，在这个例子中，需要为 consumer() 函数添加合理的退出条件
+        func consumer(ch chan int) {
+            // 无限获取数据的循环
+            for {
+                // 从通道获取数据
+                data := <-ch
+                if data == 0 { //退出条件
+                    break
+                }
+                // 打印数据
+                fmt.Println(data)
+            }
+            fmt.Println("goroutine exit")
+        }
+
+|避免在不必要的地方使用通道 -> 为了保证两个goroutine的并发安全，通道也需要做一些锁操作，因此通道其实并不比锁高效. 使用'等待组替代通道'简化同步
+    1) 套接字接收部分。 套接字在连接后，就需要不停地接收数据
+    // 套接字接收过程
+    func socketRecv(conn net.Conn, exitChan chan string) {
+    // 创建一个接收的缓冲
+        buff := make([]byte, 1024)
+        // 不停地接收数据
+        for {
+            // 从套接字中读取数据
+            _, err := conn.Read(buff)
+            // 需要结束接收, 退出循环
+            if err != nil {
+                break
+            }
+        }
+        // 函数已经结束, 发送通知
+        exitChan <- "recv exit"
+    }
+    2) 连接、关闭、同步 goroutine 主流程部分. 下面代码中尝试使用套接字的 TCP 协议连接一个网址，连接上后，进行数据接收，等待一段时间后主动关闭套接字，等待套接字所在的 goroutine 自然结束
+    func main() {
+        // 连接一个地址
+        conn, err := net.Dial("tcp", "www.163.com:80")
+        // 发生错误时打印错误退出
+        if err != nil {
+            fmt.Println(err)
+            return
+        }
+        // 创建退出通道
+        exit := make(chan string)
+        // 并发执行套接字接收
+        go socketRecv(conn, exit)
+        // 在接收时, 等待1秒
+        time.Sleep(time.Second)
+        // 主动关闭套接字
+        conn.Close()
+        // 等待goroutine退出完毕
+        fmt.Println(<-exit)
+    }
+    -> 在这个例子中，goroutine退出使用通道通知，这种做法可以解决问题，但实际上'通道中的数据并没有完全使用'
+    3) 优化：使用'等待组替代通道'简化同步
+    -> 通道的内部实现代码在 Go 语言开发包的 src/runtime/chan.go 中，经过分析后大概了解到通道也是用常见的互斥量等进行同步。因此通道虽然是一个语言级特性，但也不是被神化的特性，通道的运行和使用都要比传统互斥量、等待组（sync.WaitGroup）有一定的消耗
+    -> 所以在这个例子中，更建议使用等待组来实现同步
+    // 套接字接收过程
+    func socketRecv(conn net.Conn, wg *sync.WaitGroup) {
+        // 创建一个接收的缓冲
+        buff := make([]byte, 1024)
+        // 不停地接收数据
+        for {
+            // 从套接字中读取数据
+            _, err := conn.Read(buff)
+            // 需要结束接收, 退出循环
+            if err != nil {
+                break
+            }
+        }
+        // 函数已经结束, 发送通知
+        wg.Done()
+    }
+    func main() {
+        // 连接一个地址
+        conn, err := net.Dial("tcp", "www.163.com:80")
+        // 发生错误时打印错误退出
+        if err != nil {
+            fmt.Println(err)
+            return
+        }
+        // 退出通道
+        var wg sync.WaitGroup
+        // 添加一个任务
+        wg.Add(1)
+        // 并发执行接收套接字
+        go socketRecv(conn, &wg)
+        // 在接收时, 等待1秒
+        time.Sleep(time.Second)
+        // 主动关闭套接字
+        conn.Close()
+        // 等待goroutine退出完毕
+        wg.Wait()
+        fmt.Println("recv done")
+    }
+
+|利用map特性的多键索引及查询
+    // 人员档案
+    type Profile struct {
+        Name    string   // 名字
+        Age     int      // 年龄
+        Married bool     // 已婚
+    }
+    func main() {
+        list := []*Profile{
+            {Name: "张三", Age: 30, Married: true},
+            {Name: "李四", Age: 21},
+            {Name: "王麻子", Age: 21},
+        }
+        buildIndex(list)
+        queryData("张三", 30)
+    }
+    1) 构建索引
+    // 查询键
+    type queryKey struct {
+        Name string
+        Age  int
+    }
+    // 创建查询键到数据的映射
+    var mapper = make(map[queryKey]*Profile)
+    //map 类型即便修改为下面的格式，也一样可以获得同样的结果
+    var mapper = make(map[interface{}]*Profile)
+    // 构建查询索引
+    func buildIndex(list []*Profile) {
+        // 遍历所有数据
+        for _, profile := range list {
+            // 构建查询键
+            key := queryKey{
+                Name: profile.Name,
+                Age:  profile.Age,
+            }
+            // 保存查询键
+            mapper[key] = profile
+        }
+    }
+    2) 查询逻辑
+    // 根据条件查询数据
+    func queryData(name string, age int) {
+        // 根据查询条件构建查询键
+        key := queryKey{name, age}
+        // 根据键值查询数据
+        result, ok := mapper[key]
+        // 找到数据打印出来
+        if ok {
+            fmt.Println(result)
+        } else {
+            fmt.Println("no found")
+        }
+    }
+    -> 聪明的程序员都会利用Go语言的特性进行快速的多键索引查询
+    -> '代码量大大减少'的关键是：Go 语言的底层会为 map 的键'自动构建哈希值'。能够构建哈希值的类型必须是'非动态类型、非指针、函数、闭包'
+        非动态类型：可用数组，不能用切片
+        非指针：每个指针数值都不同，失去哈希意义
+        函数、闭包不能作为 map 的键

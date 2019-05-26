@@ -18,6 +18,7 @@
 
     mysql> show variables like 'xxx%'; #查看参数'xxxabc'
     mysql> select version(); #查看Mysql服务器上的版本
+    mysql> select database(); #获取当前数据库名
     mysql> show engins; #查看存储引擎
     mysql> explain select ... #query性能分析
 

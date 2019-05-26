@@ -1,13 +1,17 @@
-|subject -> Dimension-Philosophy-Wiki, Keywords-Database-AI
+|subject -> Dimension-Philosophy-Wiki-认知科学-微博Spider,Keywords-Database-AI
+    -> 行为哲学，语言的数学意义，发明语词表，语词统计，语词分析
 
 \Modules
     |architecture -> flask+mako
 
     |db -> mysql
+        |table
+            |item -> id, title, content, parent, tag, subject, seqnum, extra
+            |user -> id, username, password, adddate, level
 
     |orm -> SQLAlchemy | metaclass+mysql.connector
 
-    |login -> 单点登录
+    |admin-login -> 单点登录
 
     |paging
 

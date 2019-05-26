@@ -27,3 +27,46 @@ go install -> 编译后的main包可执行文件放在$GOPATH/bin中，其他包
             fmt.Printf("Hello, world.\n")
         }
     -> 现在想把hello命令编译到$GOPATH/bin目录下面，只需要 $ go install github.com/user/hello，或者cd到hello目录下面，直接运行go install
+
+|Go语言性能分析. go pprof可帮助开发者快速分析及定位各种性能问题，如CPU消耗、内存分配及阻塞分析
+    $ yum install graphiviz //安装第三方图形化显式分析数据工具（Graphviz）
+    $ go get github.com/pkg/profile //安装第三方性能分析来分析代码包
+    -> 基准测试代码cpu.go
+        package main
+        import (
+            "github.com/pkg/profile"
+            "time"
+        )
+        func joinSlice() []string {
+            var arr []string
+            for i := 0; i < 100000; i++ {
+             // 故意造成多次的切片添加(append)操作, 由于每次操作可能会有内存重新分配和移动, 性能较低
+                arr = append(arr, "arr")
+            }
+            return arr
+        }
+        func main() {
+            // 开始性能分析, 返回一个停止接口
+            stopper := profile.Start(profile.CPUProfile, profile.ProfilePath("."))
+            // 在main()结束时停止性能分析
+            defer stopper.Stop()
+            // 分析的核心逻辑
+            joinSlice()
+            // 让程序至少运行1秒
+            time.Sleep(time.Second)
+        }
+    -> 性能分析需要可执行配合才能生成分析结果，因此使用命令行对程序进行编译，代码如下
+        $ go build -o cpu cpu.go
+        $ ./cpu
+        $ go tool pprof --pdf cpu cpu.pprof > cpu.pdf
+        -> 查看分析结果cpu.pdf,发现joinSlice 函数耗费了 50% 的 CPU 时间，存在性能瓶颈
+
+        //改进代码
+        func joinSlice() []string {
+            const count = 100000
+            var arr []string = make([]string, count) //将切片'预分配'count个空间，避免之前使用 append() 函数的'多次分配空间'
+            for i := 0; i < count; i++ {
+                arr[i] = "arr"
+            }
+            return arr
+        }

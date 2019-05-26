@@ -1,0 +1,192 @@
+|结构体 -> 类的本质就是结构体. 值类型, '默认是深拷贝'。使用new或&构造的实例是类型的指针
+    |成员变量也被称为“字段”。字段有以下特性
+        1.字段拥有自己的类型和值
+        2.字段名必须唯一
+        3.字段的类型也可以是结构体，甚至是字段所在结构体的类型
+    -> 结构体的定义只是一种内存布局的描述，只有当结构体'实例化'时，才会真正地'分配内存'。因此必须在定义结构体并实例化后才能使用结构体的字段
+    -> 实例化就是根据结构体定义的格式创建一份与格式一致的内存区域，结构体实例与实例间的内存是完全独立的
+    type Point struct{ //定义一个结构体
+        X,
+        Y float64 `Tag:xxx` //字段描述，reflect.TypeOf(Point{}).Field(1).Tag
+            //':前后不可有空格'
+    }
+    type Color struct {
+        R, G, B byte //同类型的变量也可以写在一行
+    }
+
+    insStruct.name, err := xxx //'报错'，struct 的字段'不能使用 := 操作'
+
+    //构造函数
+    func ConstructorName(value typename) *TypeStruct {
+        return &TypeStruct{
+            Field: value,
+            ...
+        }
+    }
+    //子类构造函数
+    func SubConstructorName(value typename) *SubTypeStruct {
+        sub := &SubTypeStruct{} //子类实例化时，其中的'父类也会一并被实例化'
+        sub.Field = value
+        return sub
+    }
+
+    //结构体实例化。实例化后字段的默认值是字段类型的零值，如：int 0，string ""，bool false，指针 nil 等
+    var ins TypeStruct
+    ins.field1 = 1; ins.field2 = 2
+
+    //结构体实例化返回指针. 取地址&实例化是最广泛的实例化方式。可以使用函数封装上面的初始化过程
+    ins := new(TypeStruct) //等于 ins := &TypeStruct{}
+    ins.field1 = 1; ins.field2 = 2
+
+    stt2 := stt1 //'深拷贝'
+    stt2 := &stt1 //'浅拷贝'，指针
+
+    //这里定义了一个函数
+    func Distance(p, q Point) float64 {
+      return math.Hypot(q.X-p.X, q.Y-p.Y)
+    }
+
+    //在函数前面加一个括号，里面放入`p Point`(接收器),那么这个函数就变成了'结构体的一个方法'
+    func (p Point) Distance(q Point) float64 { //'非指针接收器',字段修改后对原结构体无效
+      return math.Hypot(q.X-p.X, q.Y-p.Y)
+    }
+
+    //字典式初始化
+    type People struct {
+        name  string
+        child *People //结构体成员只能包含结构体的指针变量，包含'非指针变量'会引起'编译错误'
+    }
+    relation := &People{
+        name: "爷爷",
+        child: &People{
+            name: "爸爸",
+            child: &People{
+                    name: "我",
+            },
+        },
+    }
+
+    //方法的调用
+    p := Point{1, 2} //多值列表初始化。每个初始值的填充顺序必须与字段在结构体中的声明顺序一致
+    p.Distance(Point{4, 6})
+
+    //'面向对象'
+    type Car struct {
+        weight int
+        name   string
+    }
+    func (c *Car) Run() {//想修改原对象字段需传递指针，即'指针接收器'
+        c.weight = 100
+        c.name = "Volvo"
+    }
+    type Train struct {
+        Car //'使用组合代替继承'
+    }
+    -> 在结构体嵌套中，外层的结构体不仅仅是获得了内层结构体的所有成员，而且也获得了全部的方法，这是Go语言对面向对象继承特性实现
+    -> '小对象'由于值复制时的速度较快，所以适合使用'非指针接收器'。'大对象'因为复制性能较低，适合使用'指针接收器'，在接收器和参数间传递时不进行复制，只是传递指针
+
+    |匿名字段类型内嵌 -> 结构体允许其成员字段在声明时没有字段名而只有类型
+        -> 类型内嵌其实仍然拥有自己的字段名，只是'字段名就是其类型名'而已，结构体要求字段名称必须唯一，因此一个结构体中'同类型的匿名字段只能有一个'
+        type Data struct {
+            int
+            float32
+        }
+        ins := &Data{
+            int:     10,
+            float32: 3.14
+        }
+        -> 结构体实例化后，如果匿名的字段类型为结构体，那么可以使用'实例直接访问匿名结构体里的所有成员'，这种方式被称为'结构体内嵌', golang的'继承机制'就是基于结构体内嵌实现的
+            type SubTypeStruct struct {//类继承
+                TypeStruct  // 嵌入父类, 使用类型的'组合'实现继承
+            }
+            //结构体初始化时，将结构体内嵌的类型作为字段名像普通结构体一样进行初始化
+            c := Car{
+                // 初始化轮子
+                Wheel: Wheel{
+                    Size: 18,
+                },
+                // 初始化引擎
+                Engine: Engine{
+                    Type:  "1.4T",
+                    Power: 143,
+                },
+            }
+            //内嵌结构体字段仍然可以使用详细的字段进行一层层访问, 也可直接访问
+            var ins SubTypeStruct
+            ins.TypeStruct.x = 1
+            ins.x = 1
+            ins.TypeStruct.y = 1
+            ins.y = 1
+            -> 不同内嵌结构体含有'同名变量'时，用外层结构体实例直接访问会'因为歧义报错'，分层访问则不会报错
+
+    |匿名结构体 -> 没有类型名称，无须通过type关键字定义就可以直接使用
+        -> 匿名结构体在使用时需要重新定义，造成'大量重复的代码'，因此开发中'较少使用'
+        ins := struct { //匿名结构体的初始化写法由结构体定义和键值对初始化两部分组成
+            // 匿名结构体字段定义
+            字段1 字段类型1
+            字段2 字段类型2
+            …
+        }{
+            // 字典式初始化
+            字段1: 字段1的值,
+            字段2: 字段2的值,
+            …
+        }
+
+        //使用匿名结构体的方式定义和初始化一个消息结构
+        func printMsgType(msg *struct { // 打印消息类型, 传入匿名结构体
+            id   int
+            data string
+        }) {
+            fmt.Printf("%T\n", msg) // 使用动词%T打印msg的类型
+        }
+        func main() {
+            msg := &struct { // 实例化一个匿名结构体
+                id   int
+                data string
+            }{  // 值初始化部分
+                1024,
+                "hello",
+            }
+            printMsgType(msg)
+        }
+
+|type
+    |类型别名 -> 为了解决代码重构时，类型在package之间转移时产生的问题
+    |代码重构 -> 项目中有一个包p1，其中包含了一个结构体T1。随着项目规模增大，T1也变得越来越庞大。此时，我们希望重构代码，将t1放入一个新的包p2中，同时不影响p1中用到T1的代码。这时就需要使用类型别名
+        package p2
+        type T1 struct {
+        ...
+        }
+
+        package p1
+        import "p2"
+        type T1 = p2.T1 //将T1转移到p2中以后，使用类型别名，并不会影响p1中用到T1的代码
+
+    |其他场景
+        1.优化命名 -> 如早期版本中的io.ByteBuffer改为bytes.Buffer
+        2.减少依赖大小 -> 如io.EOF曾经放在os.EOF, 为了使用EOF必须导入整个os包
+        3.解决循环依赖问题
+
+    type Nickname = int //类型别名
+    var x Nickname //别名变量，等于 var x int
+    fmt.Printf("x type: %T\n", x) >>> x type: int
+
+    import ( "time" )
+    type MyDuration = time.Duration // 定义time.Duration的别名为MyDuration
+    func (m MyDuration) EasySet(a string) { //为MyDuration添加一个函数,'编译报错'
+    } //'非本地类型'不能定义方法. time.Duration与main'不在同一个包中'，因此不能定义方法
+    |解决方法
+        1.修改为 type MyDuration time.Duration，从别名'改为类型声明'
+        2.将 MyDuration 的别名定义放在 time 包中
+
+    |类型声明 -> 使用已有类型声明新类型
+        type NewInt int // 类型定义，将NewInt定义为int类型
+        func (p NewInt) Out {//为自定义类型添加方法
+        fmt.Println(p)
+        }
+        func (p *integer) set(b integer) {//想改变p的值，需要传递指针
+        *p = b
+        }
+        var y NewInt
+        fmt.Printf("y type: %T\n", y) >>> y type: main.NewInt
