@@ -4,9 +4,13 @@
 - LastMedicine(1): 15:20
 
 ```mermaid
-graph LR;
-​	 A –> B;
-	C{XXX};
+
+graph TD;
+    A-->B;
+    A-->C;
+    B-->D;
+    C-->D;
+
 \```
 
 # '真正稳固的经验 -> 知识，语言，工具'
