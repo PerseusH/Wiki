@@ -4,12 +4,15 @@
 - LastMedicine(1): 15:20
 
 ```flow
-st=>start: Start:>https://www.zybuluo.com
-io=>inputoutput: verification
-op=>operation: Your Operation
+st=>start: 开始
+e=>end: 结束
+op=>operation: 操作
+sub1=>subroutine: 子程序
 cond=>condition: Yes or No?
-sub=>subroutine: Your Subroutine
-e=>end
+io=>inputoutput: 输入/输出
+st->op->cond
+cond(yes)->io->e
+cond(no)->sub1(right)->op
 ```
 
 # '真正稳固的经验 -> 知识，语言，工具'
