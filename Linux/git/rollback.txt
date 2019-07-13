@@ -16,6 +16,7 @@ git reset HEAD b          #git add .将修改过的文件a、b加到暂存区后
 git reset --hard          #恢复最近一次提交过的状态，即放弃上次提交后的所有本次修改
 git reset --hard <cid>    #彻底回退到某个commit版本，包括暂存区和工作区
 git reset --soft <cid>    #只回退commit信息，暂存区和工作区内容不变
+git reset [--mixed] ...   #默认方式，回退到暂存区，工作区内容不变
 
 git revert <cid>          #用新提交将本地代码回滚到cid之前一个提交(cid及之后提交撤销)
                           #直接revert会产生冲突，处理完成再push会更新远程仓库
@@ -26,4 +27,5 @@ git revert HEAD           #恢复最后一次提交的状态
 -> reset是删除commit，HEAD会后退，revert是生成新的commit，HEAD会前进
     -> 'reset既可回到过去，又能回到未来'
     -> reset后可根据reflog再回到被删除的某个提交版本， 此提交之前的已删除提交都会恢复
+-> reset不会产生新的commit，revert则会生成新提交
 -> 在未来的分支合并时，reset恢复的提交依然会出现在历史分支中，revert的新提交则不会

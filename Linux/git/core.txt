@@ -5,7 +5,7 @@
     git clone git@xbc.me:wordpress.git #Clone远程仓库
     |暂存区 -> 是个简单的文件，放在.git目录中(index)
     |HEAD -> 当前分支的指针.指示当前位置
-    |origin -> clone完成后git为本地仓库设置的远程仓库的默认别名
+    |origin -> clone完成后git为本地仓库设置的远程仓库地址的默认别名
     |upstream -> fetch的上游目标仓库
     -> Forking工作流需要2个远程别名 —— 一个指向正式仓库，另一个指向开发者自己的服务端仓库。别名的名字可以任意命名，常见的约定是使用origin作为远程克隆的仓库的别名（这个别名会在运行git clone自动创建），upstream（上游）作为正式仓库的别名
 
@@ -29,6 +29,7 @@
     git add .                 #添加当前修改的文件到暂存区
     git add -u                #自动追踪文件，包括你已经手动删除的，状态为Deleted的文件
     git commit –[a]m "xxx"    #提交到本地库. -am = git add . + git commit -m 'xxx'
+                              #只能适用于提交修改过的文件，新文件只能用分解操作
     git commit <file>|.       #提交到本地库. 需在文件中写注释
     git commit --a            #git add + git rm + git commit
     git commit --amend        #修改最近的commit注释，同时将暂存区新的改动提交至该commit
@@ -39,9 +40,12 @@
     -> 忘记提交某些修改，下面的三条命令只会得到'一个提交'
     git commit –m "xxx" && git add readme_forgotten && git commit --amend
 
+    |提交注释规范 -> 第一行为issue id(井号+id)，第二行为详情描述
+
 \Tag
     -> 指向某个commit的指针,commit的别名.用作release note或标记发布的版本号
     git tag                   #查看当前分支下所有标签信息
+    git tag -a <tag> [-m <comment>] master #给master分支打标签
     git tag -a <tag> [-m <comment>] <commitid> #给指定commit打标签
     git tag -d <tag>          #删除本地标签
     git push origin :<tag>    #删除远程标签(必须先删除本地标签)
