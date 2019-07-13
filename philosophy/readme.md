@@ -3,17 +3,9 @@
 - LastMeal(0):	  02:25
 - LastMedicine(1): 15:20
 
-```flow
-st=>start: 开始
-e=>end: 结束
-op=>operation: 操作
-sub1=>subroutine: 子程序
-cond=>condition: Yes or No?
-io=>inputoutput: 输入/输出
-st->op->cond
-cond(yes)->io->e
-cond(no)->sub1(right)->op
-```
+graph LR
+​	 A –> B
+	C{XXX}
 
 # '真正稳固的经验 -> 知识，语言，工具'
 	-> 知识向下是随身的死亡，向上是宏大的无知。'客体化即死亡与无知的状态'
