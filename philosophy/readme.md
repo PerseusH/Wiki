@@ -2,12 +2,15 @@
 - Gym -> Lift: 0-200
 - LastMeal(0):	  02:25
 - LastMedicine(1): 15:20
+
+```
 st=>start: Start:>https://www.zybuluo.com
 io=>inputoutput: verification
 op=>operation: Your Operation
 cond=>condition: Yes or No?
 sub=>subroutine: Your Subroutine
 e=>end
+```
 
 st->io->op->cond
 cond(yes)->e
