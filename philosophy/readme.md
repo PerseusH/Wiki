@@ -3,7 +3,7 @@
 - LastMeal(0):	  02:25
 - LastMedicine(1): 15:20
 
-```
+```flow
 st=>start: Start:>https://www.zybuluo.com
 io=>inputoutput: verification
 op=>operation: Your Operation
