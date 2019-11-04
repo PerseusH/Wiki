@@ -1,7 +1,20 @@
+数据(**mysql**, redis, mongodb)，服务(**linux**, nginx, microservice, docker, restful-api)，网络(**tcp**, http, https, security)
+
 -> 写程序时永远不要把性能作为第一优先级，因为你并不想（在写程序时）一直猜测性能。写正确的代码才是你第一优先级。这意味着，我们首先要关注的是'完整性、可读性和简单性'。一旦有了可以运行的程序，才需要确定程序是否足够快。假如程序不够快，那么使用语言提供的工具来查找和解决性能问题
 -> '谱系'即综合背景，是'知识学习的关键'。谱系包括宏观谱系和微观谱系。谱系是剖面的实在
     1.算法谱系
     2.工具谱系
+
+|PV(page view) -> 浏览量,用户每打开一个页面就被记录1次.用户多次打开同一页面,浏览量值累计
+|UV(user view) -> 访客量,一天之内的独立访客数(以Cookie为依据).一天内同一访客多次访问只算1次
+|日活 -> 每日活跃用户数
+
+### 灰度发布
+
+- 灰度发布（又名金丝雀发布）是指在黑与白之间，能够平滑过渡的一种发布方式。在其上可以进行A/B testing，即让一部分用户继续用产品特性A，一部分用户开始用产品特性B，如果用户对B没有什么反对意见，那么逐步扩大范围，把所有用户都迁移到B上面来。灰度发布可以保证整体系统的稳定，在初始灰度的时候就可以发现、调整问题，以保证其影响度
+- 灰度发布开始到结束期间的这一段时间，称为灰度期
+- 作用：及早获得用户的意见反馈，完善产品功能，提升产品质量 让用户参与产品测试，加强与用户互动 降低产品升级所影响的用户范围
+- 有时候我不希望让所有的流量都一次性的到达程序的新版本，因为那个新版本也许并没有测试地很充分。灰度发布允许你直接只导入指定量的流量到新的版本，API 网关就可以帮你来做这件事情。你可以配置10%的请求到新的版本，然后一旦你确保了新版本没有bug，你可以把流量切换到100%
 
 \性能(针对高并发)
     1.python
@@ -75,15 +88,15 @@
 	-> Debug(iPython, PDB/iPDB)
 	-> Tools(Linux&Vim&SSH, Git, Atom)
 	-> DataStructure(String, Array, Queue, Stack, Tree, list, Hash)
-
+	
 	FrontEnd(RESTful,DOM&H5,JS&ES6,CSS&LESS&SASS,React&Redux&Webpack&Node&Gulp)
-    Network(ProcessMsg,Socket,MultipleThread,Coroutine,Gevent,Asyncio,RabbitMQ)
-
+	Network(ProcessMsg,Socket,MultipleThread,Coroutine,Gevent,Asyncio,RabbitMQ)
+	
 	|**Data
 	-> Storage(BigData, Mysql, Redis, MongoDB)
 		-> 使用pymongo，并用Mongoengine重构文件托管服务的模型
 		-> MongoDB索引、高可用和分片的经验
-
+	
 	Python(Flask, Celery, Django, Tornado, Mako)
 	WebServer(Nginx, Gunicorn, UWsgi)
 
@@ -104,7 +117,7 @@
 
     |第三方C语言包内存泄漏
     |进程卡死怎么定位
-
+    
     |flask g变量
     |flask 路由
     |WSGI的组成部分

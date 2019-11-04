@@ -1,3 +1,12 @@
+### Ubuntu
+
+```
+chsh -s /bin/zsh #把默认的Shell改成zsh，注意：不要使用sudo
+安装mysql
+	1. sudo apt-get install mysql-server
+	2. apt-get isntall mysql-client
+ 	3. sudo apt-get install libmysqlclient-dev
+```
 \Mac CMD
     Finder -> Go -> /etc/hosts #hosts
     Atom -> opt+cmd+i #es6 console

@@ -7,21 +7,22 @@
     sudo /etc/init.d/mysql start|stop|restart #Ubuntu
     mysql.server [start|stop|restart|status]
     sudo cat /usr/local/mysql/data/mysqld.local.err #查看错误日志
+    /etc/mysql/mysql.conf.d/mysqld.cnf #Ubuntu下配置文件路径
 
     -> 解决Can 't connect to local MySQL server through socket '/tmp/mysql.sock '
         -> mysql -uroot -h 127.0.0.1 -proot
     -> 解决Error!MySQL server PID file could not be found!
         -> 修改my.cnf: 在mysqld下增加pid-file=/usr/local/mysql/data/mysqld.local.pid
-
+    
     mysqlslap -a -c 100 -uroot -proot #压力测试工具, -c 100为并发连接数
     -> MySQL服务器允许的最大连接数16384
-
+    
     mysql> show variables like 'xxx%'; #查看参数'xxxabc'
     mysql> select version(); #查看Mysql服务器上的版本
     mysql> select database(); #获取当前数据库名
     mysql> show engins; #查看存储引擎
     mysql> explain select ... #query性能分析
-
+    
     mysql> set profiling=1|on; #query性能分析
     mysql> show profiles; #查看profiling结果, 主要显示每个query的执行时长和query语句号码
     mysql> show profile cpu, block io for query 问题query号码; #查看指定sql的CPU,IO开销
@@ -35,14 +36,14 @@
         PAGE FAULTS：显示页面错误相关开销信息
         SOURCE ： 显示和Source_function ,Source_file,Source_line 相关的开销信息
         SWAPS：显示交换次数相关的开销信息
-
+    
         |日常开发需要注意的结论(profiling结果中的'status'字段)：
         1.converting HEAP to MyISAM ： 查询结果太大，内存都不够用了，往磁盘上搬了；
         2.creating tmp table ：创建临时表，拷贝数据到临时表，然后再删除；
         3.copying to tmp table on disk ：把内存中临时表复制到磁盘，危险！！！
         5.locked
         -> 以上四个中若出现一个或多个，表示'sql语句必须优化'
-
+    
     mysql> show index form table; #查看表中索引信息
         Table:索引所在的表名
         Non_unique:非唯一的索引，可以看到primary key 是0，因为必须是唯一的
@@ -105,48 +106,48 @@
          (2)它只能检测比较简单的查询开销，对于包含子查询和union的查询是测试不出来的
          (3)当我们执行查询的时候，MySQL会自动生成一个执行计划，也就是query plan，而且通常有很多种不同的实现方式，它会选择最低的那一个，而这个cost值就是开销最低的那一个
          (4)它对于比较我们的开销是非常有用的，特别是我们有好几种查询方式可选的时候
-
+    
     |TransactionIsolation
     mysql> select @@tx_isolation; #查看当前会话隔离级别
     mysql> select @@global.tx_isolation; #查看系统当前隔离级别
     mysql> set session transaction isolatin level repeatable read; #设置当前会话隔离级别
     mysql> set global transaction isolation level repeatable read; #设置系统当前隔离级别
     mysql> set autocommit=off 或者 start transaction #命令行，开始事务时
-
+    
     -> 在MySQL内部，in转换成or操作，not in转换成and操作
     mysql> select * from players where name regexp '^ba'; #正则
-
+    
     mysql> select * from player where leagueno=null; #error……报错
     mysql> select * from player where leagueno <=> null;
     或
     mysql> select * from player where leagueno is null;
     <=> -> 安全的等于运算符, 和=类似，在操作数相等时返回True，不同之处在于即使操作的值为NULL也可以正确比较
-
+    
     |查看mysql服务器支持的字符集
     mysql> show character set;
     mysql> select * from information_schema.character_sets;
     mysql> select character_set_name, default_collate_name, description, maxlen from information_schema.character_sets;
-
+    
     |查看字符集的排序(校对)规则
     mysql> show collation;
     mysql> show collation like 'utf8';
-
+    
     |函数 -> COUNT SUM AVG MAX MIN, a % b <=> mod(a, b)
-
+    
     |DDL -> 全面数据定义语言（Data Define Language）
         -> 主要DDL动词: CREATE, DROP, ALTER, TRUNCATE, RENAME
         1.使用DDL时，必须在动词后跟上数据库对象名词(TABLE、VIEW、INDEX、SCHEMA、TRIGGER等)
         2.MySQL的DDL语言创建数据库，如CREATE DATABASE、DROP DATABASE（在Oracle中没有）
-
+    
     -> 反引号(``)是为了区分MYSQL的'{保留字与普通字符}'而引入的符号.
         mysql> SELECT `limit` FROM `test` WHERE select='字段值'
-
+    
     |查询分页
         #取前5条数据
         select * from table_name limit 0,5 | select * from table_name limit 5
         #查询第11到第15条数据
         select * from table_name limit 10,5
-
+    
         limit关键字的用法：LIMIT [offset,] rows
         offset指定要返回的第一行的偏移量，rows指定返回行的最大数目。初始行的偏移量是0(不是1)
 
@@ -169,5 +170,5 @@
 		2.当 used > rss 时，表示 Redis 的部分内存被操作系统换出到交换空间了，在这种情况下，操作可能会产生明显的延迟
 		当 Redis 释放内存时，分配器可能会，也可能不会，将内存返还给操作系统。
 		如果 Redis 释放了内存，却没有将内存返还给操作系统，那么 used_memory 的值可能和操作系统显示的 Redis 内存占用并不一致。查看 used_memory_peak 的值可以验证这种情况是否发生
-
+	
 	redis-cli> GETSET key value #将key值设为value并返回key的旧值(old value).当key存在但不是字符串类型时，返回一个错误

@@ -1,6 +1,3 @@
-|PV(page view) -> 浏览量,用户每打开一个页面就被记录1次.用户多次打开同一页面,浏览量值累计
-|UV(user view) -> 访客量,一天之内的独立访客数(以Cookie为依据).一天内同一访客多次访问只算1次
-|日活 -> 每日活跃用户数
 |URL = Protocol + ://Host[:Port] + /Path + ?Args
 
 \Network Layer
@@ -14,12 +11,12 @@
         |DNS服务器 -> 一般由ISP(网络服务提供商)或独立DNS服务提供
         |NS记录 -> Name Server记录, 返回保存下一级域名信息的服务器地址, 即哪些服务器负责管理所查域名的DNS记录
         |A记录 -> 所查域名的IP Address记录
-
+    
         |根域名 -> 每个域名实际上后面都有.root, 浏览器中使用的都是简写. 如www.xxx.com.root
         |顶级域名 -> 根域名下的.com, .net, .org等
         |次级域名 -> 用户注册的域名段. 如google, facebook, sina
         |三级域名 -> 主机名host, 用户在自己的域里面为服务器分配的名称，用户可以任意分配 如www
-
+    
         -> DNS服务器根据域名的层级进行分级递归查询
             1.从DNS服务器中获取根域名服务器的NS记录和A记录(.)
             2.从根域名服务器查到顶级域名服务器的NS记录和A记录(.com.)
@@ -35,7 +32,7 @@
     -> 通过cookie, session解决http无状态的问题
 
     |HTTP2.0 -> 下一代HTTP协议。是由互联网工程任务组（IETF）的Hypertext Transfer Protocol Bis (httpbis)工作小组进行开发。是自1999年http1.1发布后的首个更新。HTTP 2.0在2013年8月进行首次合作共事性测试。在开放互联网上HTTP2.0将只用于https网址，而 http网址将继续使用HTTP1.x，目的是在互联网上增加使用加密技术(默认)，以提供强有力的保护去遏制主动攻击
-
+    
     |请求报文包括三部分
         1.请求行 -> 包含请求方法,URI,HTTP版本协议
             POST 　/index.php　HTTP/1.1
@@ -50,14 +47,14 @@
             |Cookie -> 这是最重要的请求头信息之一
             |Content-Length -> 表示请求消息正文的长度
             |Authorization -> 授权信息，通常出现在对服务器发送的WWW-Authenticate的应答中
-
+    
             |Accept -> 代表发送端（客户端）希望接受的数据类型，这种内容类型用MIME类型来表示。借助内容协商机制, 服务器可以从诸多备选项中选择一项进行应用，并使用Content-Type应答头通知客户端它的选择。浏览器会基于请求的上下文来为这个请求头设置合适的值，比如获取一个CSS层叠样式表时值与获取图片、视频或脚本文件时的值是不同的
                 |指令
                 <MIME_type>/<MIME_subtype> #单一精确的 MIME 类型, 例如text/html.
                 <MIME_type>/* #一类 MIME 类型, 但是没有指明子类。 image/* 可以用来指代 image/png, image/svg, image/gif 以及任何其他的图片类型。
                 */* #任意类型的 MIME 类型
                 ;q= (q因子权重) #值代表优先顺序，用相对质量价值表示，又称作权重
-
+    
                 |示例
                 Accept: text/html
                 Accept: image/*
@@ -67,14 +64,14 @@
                 -> 服务器向浏览器返回经gzip编码的HTML页面。可减少5到10倍的下载时间
             |Accept-Language -> 通知服务器端可以发送的语言. 如zh-CN,zh;q=0.8
         3.请求内容实体
-
+    
     |响应报文包含三部分
         1.状态行 -> 包含HTTP版本,状态码,状态码原因短语
             HTTP/1.1 200 OK
         2.响应首部字段
             |CONTENT_TYPE -> 属于实体头
         3.响应内容实体
-
+    
     |优化 -> 负载均衡, Cache, 加速应用
 
 \HTTP1.1
@@ -91,19 +88,19 @@
         Range: bytes=-N 下载最后N字节内容
 
         |响应头 -> Content-Range: bytes [FirstBytePos]-[LastBytePos]/[EntityLength]
-
+    
         -> 请求下载整个文件:
         GET /test.rar HTTP/1.1
         Connection: close
         Host: 116.1.219.219
         Range: bytes=0-801 #一般请求下载整个文件是bytes=0- 或不用这个头
-
+    
         -> 正常回应:
         HTTP/1.1 200 OK
         Content-Length: 801
         Content-Type: application/octet-stream
         Content-Range: bytes 0-800/801 #801:文件总大小
-
+    
         -> 断点续传，如果返回文件的一部分，则使用206状态码；如果返回整个文件，则使用200响应码
         HTTP/1.1 200 OK（不使用断点续传）| HTTP/1.1 206 Partial Content（使用断点续传）
 
@@ -136,19 +133,19 @@
     |Last-Modified -> 获取某文件的最后修改日期作为缓存更新标识
         > response.headers["Last-Modified"] = last_modified_time
         > request.headers["If-Modified-Since"]
-
+    
     |Etag -> 用唯一标识保证文件的完整性,每次文件有更新该值就会变化(比Last-modified更敏感)
         -> Etag 主要为了解决 Last-Modified 无法解决的一些问题
             1.一些文件也许会周期性的更改，但是他的内容并不改变(仅仅改变的修改时间)，这个时候我们并不希望客户端认为这个文件被修改了，而重新GET
             2.某些文件修改非常频繁，比如在秒以下的时间内进行修改，(比方说1s内修改了N次)，If-Modified-Since能检查到的粒度是s级的，这种修改无法判断(或者说UNIX记录MTIME只能精确到秒)
             3.某些服务器不能精确的得到文件的最后修改时间
-
+    
         > response.headers["Etag"] = hash(data)
         > request.headers["If-None-Match"]
-
+    
     |Expires: Tue, 20 Mar 2007 04:00:25 GMT
     |Max-age -> 使用秒来计量缓存最大生存期
-
+    
     Cache-control:public -> 缓存的版本可以被代理服务器或者其他中间服务器识别
     Cache-Control:public, max-age=31536000 -> 缓存静态资源, 对于应用程序中不会改变的文件，你通常可以在发送响应头前添加积极缓存。这包括例如由应用程序提供的静态文件，例如图像，CSS文件和JavaScript文件
     Cache-control:private -> 这个文件对不同的用户是不同的。只有用户自己的浏览器能够进行缓存，公共的代理服务器不允许缓存

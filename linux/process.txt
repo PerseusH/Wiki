@@ -12,15 +12,33 @@ working process | master #主进程
     fg #将后台任务恢复到前台运行
     bg #激活后台被挂起的任务
 
+cat /proc/$pid/stack #查看内核调用栈信息，只有内核编译时打开CONFIG_STACKTRACE编译选项，才会生成这个文件
+
+cat /proc/$pid/status #查看进程状态
+
+/proc/$pid/task #进程包含的**线程**，子目录名是线程的ID
+
+/proc/$pid/fd/ #这个目录包含了进程打开的每一个文件的信息, 实际上是指向真正的文件的符号连接，数字代表文件描述符
+
+/proc/$pid/limits #该文件存储了进程的软限制，硬限制等信息。可以查看该进程允许打开的最大描述字个数
+
+/proc/[pid]/syscall 显示当前进程正在执行的系统调用。举例如下：
+
+​	$ cat /proc/2406/syscall 202 0xab3730 0x0 0x0 0x0 0x0 0x0 0x7ffff7f6ec68 0x455bb3
+
+​	第一个值是系统调用号（202代表poll），后面跟着 6 个系统调用的参数值（位于寄存器中），最后两个值依次是堆栈指针和指令计数器的值。如果当前进程虽然阻塞，但阻塞函数并不是系统调用，则系统调用号的值为 -1，后面只有堆栈指针和指令计数器的值。如果进程没有阻塞，则这个文件只有一个 running 的字符串
+
+/proc/[pid]/wchan 显示当进程**睡眠或等待**时，kernel当前运行的函数
+
 |strace -> 追踪进程的系统调用(mac下用dtruss)
     strace -p 15427 #简单追踪进程正在做什么
     Process 15427 attached - interrupt to quit
     futex(0x402f4900, FUTEX_WAIT, 2, NULL #在调用futex()的时候阻塞(挂起)卡死了
     Process 15427 detached
 
-    sudo strace -T -tt -e trace=all -p 11124 #查看该进程正在持续的状态
-    Process 11124 attached - interrupt to quit
-    15:33:07.259044 read(9,
+​	sudo strace -T -tt -e trace=all -p 11124 #查看该进程正在持续的状态
+​	Process 11124 attached - interrupt to quit
+​	15:33:07.259044 read(9,
 
 |iostat -> iostat -x 1 #查看磁盘IO情况. 总IO(io)/s = r/s(读) +w/s(写)
     -> r/s | w/s | svctm | util% 居高不下, 说明带宽占用率极高，遇到了瓶颈
@@ -45,7 +63,7 @@ working process | master #主进程
     $ cat /proc/pid/stat #查看进程的详细状态信息
 
 |pstack
-    pstack pid #查看进程函数堆栈
+    pstack pid #查看进程函数堆栈。尽管`pstack`并不能查看内核态信息，它仍然能够告诉我们是哪个系统调用被执行了（通常，有一个相应的libc库调用显示在用户态堆栈的顶端上）
 
 |pstree -> 以树状图显示进程间的关系
     pstree #以树状图显示进程，只显示进程的名字，且相同进程合并显示
@@ -60,39 +78,39 @@ working process | master #主进程
     -> -c #显示执行任务的命令行
     -> top界面里输入b和x, 再输入shift+’>’或’<‘就可以按照某列排序
 
-    |stat->S:Sleeping; R:Running; D:Disk Sleeping; T:Stop; s:有子进程; +:位于后台
+|stat->S:Sleeping; R:Running; D:Disk Sleeping; T:Stop; s:有子进程; +:位于后台
 
-    $ top
-    #进程状态, 线程数. zombie(卡死的僵尸进程)
-    Processes: 275 total, 2 running, 273 sleeping, 1483 threads    06:24:28
-    #平均负载, CPU状态. user(用户态), sys(内核态), idle(空闲CPU)
-    Load Avg: 1.34, 1.55, 1.55  CPU usage: 0.71% user, 1.18% sys, 98.9% idle
-    SharedLibs: 89M resident, 44M data, 31M linkedit. MemRegions: 123086 total, 946M resident, 31M private, 269M shared.
-    #内存使用情况
-    PhysMem: 4033M used (1398M wired), 62M unused.
-    VM: 1252G vsize, 1100M framework vsize, 14564471(0) swapins, 15571181(0) swapouts.
-    #网络使用情况
-    Networks: packets: 41959091/48G in, 22745049/2603M out. Disks: 26247414/322G read, 28232872/318G written.
-    Stat: 该进程的状态。其中S代表休眠状态；D代表由于阻塞IO造成的不可中断的休眠；R代表运行状态；Z代表僵尸状态；T代表停止或跟踪状态
+$ top
+#进程状态, 线程数. zombie(卡死的僵尸进程)
+Processes: 275 total, 2 running, 273 sleeping, 1483 threads    06:24:28
+#平均负载, CPU状态. user(用户态), sys(内核态), idle(空闲CPU)
+Load Avg: 1.34, 1.55, 1.55  CPU usage: 0.71% user, 1.18% sys, 98.9% idle
+SharedLibs: 89M resident, 44M data, 31M linkedit. MemRegions: 123086 total, 946M resident, 31M private, 269M shared.
+#内存使用情况
+PhysMem: 4033M used (1398M wired), 62M unused.
+VM: 1252G vsize, 1100M framework vsize, 14564471(0) swapins, 15571181(0) swapouts.
+#网络使用情况
+Networks: packets: 41959091/48G in, 22745049/2603M out. Disks: 26247414/322G read, 28232872/318G written.
+Stat: 该进程的状态。其中S代表休眠状态；D代表由于阻塞IO造成的不可中断的休眠；R代表运行状态；Z代表僵尸状态；T代表停止或跟踪状态
 
-    PID    COMMAND      %CPU TIME     #TH   #WQ  #PORT MEM    PURG   CMPRS  PGRP  PPID  STATE    BOOSTS            %CPU_ME
-    91947  top          4.0  00:00.61 1/1   0    23    2452K+ 0B     0B     91947 51072 running  *0[1]             0.00000
-    91930  quicklookd   0.0  00:00.13 4     1    76    3372K  28K    0B     91930 1     sleeping  0[0]             0.00000
-    91786  mdworker     0.0  00:00.11 3     1    48    1912K  0B     1356K  91786 1     sleeping *0[1]             0.00000
+PID    COMMAND      %CPU TIME     #TH   #WQ  #PORT MEM    PURG   CMPRS  PGRP  PPID  STATE    BOOSTS            %CPU_ME
+91947  top          4.0  00:00.61 1/1   0    23    2452K+ 0B     0B     91947 51072 running  *0[1]             0.00000
+91930  quicklookd   0.0  00:00.13 4     1    76    3372K  28K    0B     91930 1     sleeping  0[0]             0.00000
+91786  mdworker     0.0  00:00.11 3     1    48    1912K  0B     1356K  91786 1     sleeping *0[1]             0.00000
 
 |ps -> 查看当前正在运行的进程
-    -> Stat: 该进程的状态。其中S代表休眠状态；D代表由于阻塞IO造成的不可中断的休眠；R代表运行状态；Z代表僵尸状态；T代表停止或跟踪状态
+    -> Stat: 该进程的状态。其中S代表休眠状态；D代表由于**阻塞IO**造成的不可中断的休眠；R代表运行状态；Z代表僵尸状态；T代表停止或跟踪状态
     |ps -l #查看进程的优先级
         -> niceness值(NI)
         -> PRI表示进程当前的总优先级,值越小表示优先级越高,由进程默认的PRI加上NI得到,即PRI(new) = PRI(old) + NI
 
-    |ps [aux|-ef|-aef]|grep xxx #查看进程是否存在xxx进程
-        |aux 用BSD格式显示
-        -> 显示项:USER, PID, %CPU, %MEM, VSZ, RSS, TTY, STAT, START, TIME, COMMAND
-        |-ef/-aef 用标准格式显示
-        -> 显示项:UID, PID, PPID, C, STIME, TTY, TIME, CMD
+|ps [aux|-ef|-aef]|grep xxx #查看进程是否存在xxx进程
+    |aux 用BSD格式显示
+    -> 显示项:USER, PID, %CPU, %MEM, VSZ, RSS, TTY, STAT, START, TIME, COMMAND
+    |-ef/-aef 用标准格式显示
+    -> 显示项:UID, PID, PPID, C, STIME, TTY, TIME, CMD
 
-    $ ps -ef -o stat #指定显示项
+$ ps -ef -o stat #指定显示项
 
 |thread
     ps -T -p <pid> #查看某进程下的线程
@@ -113,22 +131,22 @@ working process | master #主进程
     -> "print"是打印指令,"kill -9"会强行杀掉指定进程,"$2"就是"ps -ef"结果的第二列显示的PID
     -> "|sh"是执行awk打印的"kill -9 nnn"命令
 
-    file xxx.txt|awk -F ':' '{cmd="rm "$1;system(cmd)}' #执行"rm xxx.txt"命令
+file xxx.txt|awk -F ':' '{cmd="rm "$1;system(cmd)}' #执行"rm xxx.txt"命令
 
-    cat /etc/passwd|awk -F ':' '{print $1}'
-    -> 等于"awk -F ':' '{print $1}' /etc/passwd"
-    -> "cat /etc/passwd"获取文件内容给awk
-    -> "-F ':'"为以":"分割文件内容的每行文本为两部分,"-F ':'"为域分隔符,"$1"为取每行第一部分,"$0"为取整条记录
-    -> 在不指明"-F"域分隔符的情况下，默认的域分隔符是"空格"
-    -> 适用于
-    1."ps -ef|grep xxx"
-    2."ls -l"
-    3."awk '{}' <file>"
-    4."cat <file>"
-    5."ifconfig"
-    6."find dir -name xxx"
+cat /etc/passwd|awk -F ':' '{print $1}'
+-> 等于"awk -F ':' '{print $1}' /etc/passwd"
+-> "cat /etc/passwd"获取文件内容给awk
+-> "-F ':'"为以":"分割文件内容的每行文本为两部分,"-F ':'"为域分隔符,"$1"为取每行第一部分,"$0"为取整条记录
+-> 在不指明"-F"域分隔符的情况下，默认的域分隔符是"空格"
+-> 适用于
+1."ps -ef|grep xxx"
+2."ls -l"
+3."awk '{}' <file>"
+4."cat <file>"
+5."ifconfig"
+6."find dir -name xxx"
 
-    awk [-F:] '/xxx/{action}' #正则获取包含"xxx"的结果,action为空则默认全部输出
+awk [-F:] '/xxx/{action}' #正则获取包含"xxx"的结果,action为空则默认全部输出
 
 |ulimit
     ulimit -a #显示当前的各种用户进程限制
@@ -156,10 +174,10 @@ working process | master #主进程
     |Cron -> 定时任务服务
         /user/sbin/cron start | stop | restart | reload | status
 
-    |Crontab -> 定时任务管理器
-        -> echo '*/1 * * * * /bin/date >> date.txt' > date.cron #crontab脚本
-            -> min hour day-of-month month-of-year day-of-week cmds #命令格式
-            -> *代表所有的取值范围内的数字，"/"代表每的意思,"/5"表示每5个单位，"-"代表从某个数字到某个数字,","分开几个离散的数字
-        crontab xxx.cron #启动任务脚本
-        crontab -l #查看定时任务是否成功
-            crontab -r #删除当前任务
+|Crontab -> 定时任务管理器
+    -> echo '*/1 * * * * /bin/date >> date.txt' > date.cron #crontab脚本
+        -> min hour day-of-month month-of-year day-of-week cmds #命令格式
+        -> *代表所有的取值范围内的数字，"/"代表每的意思,"/5"表示每5个单位，"-"代表从某个数字到某个数字,","分开几个离散的数字
+    crontab xxx.cron #启动任务脚本
+    crontab -l #查看定时任务是否成功
+        crontab -r #删除当前任务
